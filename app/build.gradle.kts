@@ -45,6 +45,7 @@ kotlin {
 }
 
 dependencies {
+    implementation("io.coil-kt:coil-compose:2.7.0")
   coreLibraryDesugaring(libs.desugaring)
   implementation(project(":innertube"))
   val composeBom = platform(libs.androidx.compose.bom)
