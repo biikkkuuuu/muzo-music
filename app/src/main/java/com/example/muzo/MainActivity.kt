@@ -7,9 +7,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,8 +17,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.muzo.core.resolveStreamUrl
-import com.example.muzo.ui.components.FloatingMiniPlayer
 import com.example.muzo.ui.components.FullPlayerSheet
+import com.example.muzo.ui.components.PlayerWithBottomNav
 import com.example.muzo.ui.screens.HomeScreen
 import com.example.muzo.ui.screens.LibraryScreen
 import com.example.muzo.ui.screens.SearchScreen
@@ -163,7 +160,7 @@ fun MuzoApp(player: ExoPlayer) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = if (currentSong != null) 146.dp else 88.dp)
+                    .padding(bottom = if (currentSong != null) 128.dp else 70.dp)
             ) {
                 when (selectedTab) {
                     0 -> HomeScreen(
@@ -190,79 +187,41 @@ fun MuzoApp(player: ExoPlayer) {
                         },
                         statusText = statusText
                     )
-                    2 -> LibraryScreen()
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (currentSong != null && !isPlayerExpanded) {
-                    FloatingMiniPlayer(
-                        song = currentSong!!,
-                        isPlaying = isPlaying,
-                        currentPosition = currentPosition,
-                        duration = duration,
-                        hasPrev = currentIndex > 0,
-                        hasNext = currentIndex + 1 < playbackQueue.size,
-                        onClick = { isPlayerExpanded = true },
-                        onPlayPause = {
-                            if (player.isPlaying) player.pause() else player.play()
-                        },
-                        onPrev = {
-                            if (currentIndex > 0) playTrack(currentIndex - 1, playbackQueue)
-                        },
-                        onNext = {
-                            if (currentIndex + 1 < playbackQueue.size) {
-                                playTrack(currentIndex + 1, playbackQueue)
-                            }
+                    2 -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Voice Search / Feature Coming Soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .height(58.dp)
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
-                    shadowElevation = 12.dp,
-                    tonalElevation = 6.dp
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { selectedTab = 0 }) {
-                            Icon(
-                                imageVector = Icons.Default.Home,
-                                contentDescription = "Home",
-                                tint = if (selectedTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = { selectedTab = 1 }) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                tint = if (selectedTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = { selectedTab = 2 }) {
-                            Icon(
-                                imageVector = Icons.Default.LibraryMusic,
-                                contentDescription = "Library",
-                                tint = if (selectedTab == 2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    }
+                    3 -> LibraryScreen()
+                    4 -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("More Options", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            ) {
+                PlayerWithBottomNav(
+                    currentSong = currentSong,
+                    isPlaying = isPlaying,
+                    onPlayPause = {
+                        if (player.isPlaying) player.pause() else player.play()
+                    },
+                    onNext = {
+                        if (currentIndex + 1 < playbackQueue.size) playTrack(currentIndex + 1, playbackQueue)
+                    },
+                    onPrevious = {
+                        if (currentIndex > 0) playTrack(currentIndex - 1, playbackQueue)
+                    },
+                    onSongClick = { isPlayerExpanded = true },
+                    currentTab = selectedTab,
+                    onTabSelected = { selectedTab = it }
+                )
             }
 
             AnimatedVisibility(
