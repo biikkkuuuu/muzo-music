@@ -51,8 +51,10 @@ import kotlinx.coroutines.withContext
 sealed class HomeSection(val id: String, val baseWeight: Int) {
     data object SpeedDialHero : HomeSection("speed_dial_hero", 110)
     data object QuickPicks : HomeSection("quick_picks", 100)
+    data object NewReleases : HomeSection("new_releases", 98)
     data object FeaturedArtists : HomeSection("featured_artists", 95)
     data object KeepListening : HomeSection("keep_listening", 90)
+    data object TopCharts : HomeSection("top_charts", 85)
     data object HotHits : HomeSection("hot_hits", 80)
     data object MoodAndGenres : HomeSection("mood_and_genres", 70)
     data object FeaturedPlaylists : HomeSection("featured_playlists", 65)
@@ -105,6 +107,8 @@ fun HomeScreen(
     var selectedMood by remember { mutableStateOf<String?>("Romance") }
     var speedDialSongs by remember { mutableStateOf<List<SongItem>>(emptyList()) }
     var quickPicks by remember { mutableStateOf<List<SongItem>>(emptyList()) }
+    var newReleasesSongs by remember { mutableStateOf<List<SongItem>>(emptyList()) }
+    var topChartsSongs by remember { mutableStateOf<List<SongItem>>(emptyList()) }
     var hotHits by remember { mutableStateOf<List<SongItem>>(emptyList()) }
     var dailyDiscover by remember { mutableStateOf<List<SongItem>>(emptyList()) }
     var similarRecs by remember { mutableStateOf<List<SongItem>>(emptyList()) }
@@ -133,12 +137,12 @@ fun HomeScreen(
 
     val queryKeywords = remember {
         mapOf(
-            "Romance" to listOf("Love Ballads Bollywood", "Romantic Hits Hindi", "Soulful Love Melodies"),
-            "Relax" to listOf("Chill Vibes Hindi", "Acoustic Chill", "Peaceful Hindi Songs"),
-            "Feel good" to listOf("Feel good Bollywood", "Feel good Indie Pop", "Happy Vibes Hindi"),
-            "Party" to listOf("Punjabi Party Hits", "Bollywood Club Bangers", "Desi Dance Party"),
-            "Energize" to listOf("Workout Hindi Bass", "Gym Motivational Hits", "High Energy Pop"),
-            "Chill" to listOf("Late Night Lo-Fi", "Calm Hindi Acoustic", "Slowed Reverb Hits")
+            "Romance" to listOf("Romantic Bollywood Love Songs", "Hindi Love Ballads", "Arijit Singh Romantic Hits", "Soulful Hindi Melodies"),
+            "Relax" to listOf("Peaceful Hindi Acoustic", "Lofi Chill Hindi Songs", "Calming Bollywood Melodies", "Sleep Hindi Songs"),
+            "Feel good" to listOf("Feel Good Bollywood Pop", "Happy Hindi Hits", "Desi Morning Vibes", "Bollywood upbeat tracks"),
+            "Party" to listOf("Bollywood Club Bangers", "Desi Party Hits Punjabi", "Latest Party Songs Hindi", "Badshah Honey Singh Hits"),
+            "Energize" to listOf("Workout Hindi Bass Boosted", "Gym Motivation Bollywood", "High Energy Desi Pop", "Running Hindi Songs"),
+            "Chill" to listOf("Late Night Lofi Hindi", "Slowed Reverb Bollywood", "Unplugged Hindi Songs", "Arijit Lofi Mashup")
         )
     }
 
@@ -146,16 +150,20 @@ fun HomeScreen(
         isRefreshing = true
         scope.launch(Dispatchers.IO) {
             try {
-                val pool = queryKeywords[category] ?: listOf(category)
+                val pool = queryKeywords[category] ?: listOf("$category Hindi Songs")
                 val q1Key = pool.random()
 
-                val res1 = async { YouTube.search(category, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty() }
+                val res1 = async { YouTube.search("$category Bollywood Hindi Hits", YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty() }
                 val res2 = async { YouTube.search(q1Key, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty() }
-                val res3 = async { YouTube.search("$category Artists", YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty() }
-                val res4 = async { YouTube.search("$category Playlists", YouTube.SearchFilter.FILTER_ALBUM).getOrNull()?.items.orEmpty() }
+                val resNew = async { YouTube.search("Latest Bollywood New Releases 2026", YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty() }
+                val resCharts = async { YouTube.search("Top 50 India Music Charts", YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty() }
+                val res3 = async { YouTube.search("Top Indian Bollywood Artists", YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty() }
+                val res4 = async { YouTube.search("$category Hindi Playlists Mix", YouTube.SearchFilter.FILTER_ALBUM).getOrNull()?.items.orEmpty() }
 
                 val items1 = res1.await().filterIsInstance<SongItem>()
                 val items2 = res2.await().filterIsInstance<SongItem>()
+                val newReleases = resNew.await().filterIsInstance<SongItem>()
+                val topCharts = resCharts.await().filterIsInstance<SongItem>()
                 val artists = res3.await().filterIsInstance<ArtistItem>()
                 val playlists = res4.await().map { 
                     PlaylistItem(
@@ -173,6 +181,8 @@ fun HomeScreen(
                 withContext(Dispatchers.Main) {
                     speedDialSongs = items1.shuffled().take(6)
                     quickPicks = items1.shuffled().take(8)
+                    newReleasesSongs = newReleases.shuffled().take(10)
+                    topChartsSongs = topCharts.shuffled().take(10)
                     hotHits = items2.shuffled().take(10)
                     dailyDiscover = items1.shuffled().take(10)
                     similarRecs = items2.shuffled().take(10)
@@ -195,7 +205,7 @@ fun HomeScreen(
         isGenreLoading = true
         scope.launch(Dispatchers.IO) {
             try {
-                val res = YouTube.search("$genre Bollywood Playlist Hits", YouTube.SearchFilter.FILTER_SONG)
+                val res = YouTube.search("$genre Bollywood Hindi Playlist Hits", YouTube.SearchFilter.FILTER_SONG)
                 val items = res.getOrNull()?.items?.filterIsInstance<SongItem>() ?: emptyList()
                 withContext(Dispatchers.Main) {
                     genreSongs = items.take(24)
@@ -248,6 +258,8 @@ fun HomeScreen(
     val homeSections = remember(
         speedDialSongs,
         quickPicks,
+        newReleasesSongs,
+        topChartsSongs,
         hotHits,
         dailyDiscover,
         similarRecs,
@@ -259,9 +271,11 @@ fun HomeScreen(
     ) {
         val list = mutableListOf<HomeSection>()
         if (speedDialSongs.isNotEmpty()) list.add(HomeSection.SpeedDialHero)
+        if (quickPicks.isNotEmpty()) list.add(HomeSection.QuickPicks)
+        if (newReleasesSongs.isNotEmpty()) list.add(HomeSection.NewReleases)
         if (artistsList.isNotEmpty()) list.add(HomeSection.FeaturedArtists)
         if (recentHistory.isNotEmpty()) list.add(HomeSection.KeepListening)
-        if (quickPicks.isNotEmpty()) list.add(HomeSection.QuickPicks)
+        if (topChartsSongs.isNotEmpty()) list.add(HomeSection.TopCharts)
         if (playlistsList.isNotEmpty()) list.add(HomeSection.FeaturedPlaylists)
         if (hotHits.isNotEmpty()) list.add(HomeSection.HotHits)
         list.add(HomeSection.MoodAndGenres)
@@ -406,6 +420,30 @@ fun HomeScreen(
                                             }
                                         }
                                     }
+                                }
+                            }
+
+                            HomeSection.NewReleases -> {
+                                item(key = "new_releases") {
+                                    ShelfSection(
+                                        subtitle = "FRESH DROPS",
+                                        title = "New Releases",
+                                        songs = newReleasesSongs,
+                                        isLoading = isRefreshing && newReleasesSongs.isEmpty(),
+                                        onSongClick = { song -> onSongSelect(song, newReleasesSongs) }
+                                    )
+                                }
+                            }
+
+                            HomeSection.TopCharts -> {
+                                item(key = "top_charts") {
+                                    ShelfSection(
+                                        subtitle = "INDIA TRENDING",
+                                        title = "Top 50 Charts",
+                                        songs = topChartsSongs,
+                                        isLoading = isRefreshing && topChartsSongs.isEmpty(),
+                                        onSongClick = { song -> onSongSelect(song, topChartsSongs) }
+                                    )
                                 }
                             }
 
