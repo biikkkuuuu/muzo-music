@@ -45,6 +45,8 @@ import com.music.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -134,6 +136,14 @@ fun HomeScreen(
 
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    // Echo-inspired snapshotFlow isolation
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .map { it > 0 }
+            .distinctUntilChanged()
+            .collect { _ -> }
+    }
 
     val queryKeywords = remember {
         mapOf(
@@ -255,6 +265,7 @@ fun HomeScreen(
         refreshContent(selectedMood ?: "Romance")
     }
 
+    // Dynamic data-driven section builder (Echo pattern)
     val homeSections = remember(
         speedDialSongs,
         quickPicks,
@@ -394,7 +405,7 @@ fun HomeScreen(
                     homeSections.forEach { section ->
                         when (section) {
                             HomeSection.SpeedDialHero -> {
-                                item(key = "speed_dial_hero") {
+                                item(key = "section_speed_dial_hero") {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                                             Text(
@@ -424,7 +435,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.NewReleases -> {
-                                item(key = "new_releases") {
+                                item(key = "section_new_releases") {
                                     ShelfSection(
                                         subtitle = "FRESH DROPS",
                                         title = "New Releases",
@@ -436,7 +447,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.TopCharts -> {
-                                item(key = "top_charts") {
+                                item(key = "section_top_charts") {
                                     ShelfSection(
                                         subtitle = "INDIA TRENDING",
                                         title = "Top 50 Charts",
@@ -448,7 +459,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.FeaturedArtists -> {
-                                item(key = "featured_artists") {
+                                item(key = "section_featured_artists") {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                                             Text(
@@ -478,7 +489,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.FeaturedPlaylists -> {
-                                item(key = "featured_playlists") {
+                                item(key = "section_featured_playlists") {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                                             Text(
@@ -509,7 +520,7 @@ fun HomeScreen(
 
                             HomeSection.KeepListening -> {
                                 if (recentHistory.isNotEmpty()) {
-                                    item(key = "keep_listening") {
+                                    item(key = "section_keep_listening") {
                                         ShelfSection(
                                             subtitle = "CONTINUE YOUR SESSION",
                                             title = "Keep Listening",
@@ -522,7 +533,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.QuickPicks -> {
-                                item(key = "quick_picks") {
+                                item(key = "section_quick_picks") {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                                             Text(
@@ -545,7 +556,7 @@ fun HomeScreen(
                                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                                             ) {
-                                                items(4) {
+                                                items(4, key = { "shimmer_qp_$it" }) {
                                                     ShimmerPlaceholder(modifier = Modifier.width(250.dp).height(68.dp))
                                                 }
                                             }
@@ -567,7 +578,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.HotHits -> {
-                                item(key = "hot_hits") {
+                                item(key = "section_hot_hits") {
                                     ShelfSection(
                                         subtitle = "MUSIC THAT'S HOT AND HAPPENING!",
                                         title = "${selectedMood ?: "India"}'s biggest hits",
@@ -579,7 +590,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.MoodAndGenres -> {
-                                item(key = "mood_and_genres") {
+                                item(key = "section_mood_and_genres") {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -628,7 +639,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.DailyDiscover -> {
-                                item(key = "daily_discover") {
+                                item(key = "section_daily_discover") {
                                     ShelfSection(
                                         subtitle = "CURATED JUST FOR TODAY",
                                         title = "Daily Discover",
@@ -640,7 +651,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.SimilarRecommendation -> {
-                                item(key = "similar_recommendations") {
+                                item(key = "section_similar_recommendations") {
                                     ShelfSection(
                                         subtitle = "SIMILAR RECOMMENDATIONS",
                                         title = "Because You Love ${selectedMood ?: "Hits"}",
@@ -652,7 +663,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.FromTheCommunity -> {
-                                item(key = "from_the_community") {
+                                item(key = "section_from_the_community") {
                                     ShelfSection(
                                         subtitle = "FROM THE WEIRD TO THE WONDERFUL",
                                         title = "Trending community playlists",
@@ -664,7 +675,7 @@ fun HomeScreen(
                             }
 
                             HomeSection.ForgottenFavorites -> {
-                                item(key = "forgotten_favorites") {
+                                item(key = "section_forgotten_favorites") {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                                             Text(
@@ -848,7 +859,7 @@ fun ShelfSection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(5) {
+                items(5, key = { "shimmer_$it" }) {
                     Column(modifier = Modifier.width(142.dp)) {
                         ShimmerPlaceholder(
                             modifier = Modifier

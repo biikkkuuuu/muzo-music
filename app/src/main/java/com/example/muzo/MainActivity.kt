@@ -1,7 +1,9 @@
 package com.example.muzo
 
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -35,6 +37,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Optimize for 120Hz+ high refresh rate displays
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.let { win ->
+                val display = win.windowManager.defaultDisplay
+                val peakMode = display.supportedModes.maxByOrNull { it.refreshRate }
+                peakMode?.let {
+                    val attrs = win.attributes
+                    attrs.preferredDisplayModeId = it.modeId
+                    win.attributes = attrs
+                }
+            }
+        }
+
         player = ExoPlayer.Builder(this).build()
 
         setContent {
@@ -140,7 +156,7 @@ fun MuzoApp(player: ExoPlayer) {
         while (isPlaying) {
             currentPosition = player.currentPosition.coerceAtLeast(0L)
             duration = player.duration.coerceAtLeast(0L)
-            delay(400)
+            delay(500)
         }
     }
 
