@@ -1,12 +1,16 @@
 package com.example.muzo.playback
 
+import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.core.resolveStreamUrl
 import com.example.muzo.data.local.HistoryDao
 import com.example.muzo.data.local.HistoryEntity
@@ -21,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class PlayerViewModel(
+    private val context: Context,
     private val historyDao: HistoryDao,
     val player: ExoPlayer
 ) : ViewModel() {
@@ -46,29 +51,68 @@ class PlayerViewModel(
     private val _statusText = MutableStateFlow("")
     val statusText: StateFlow<String> = _statusText.asStateFlow()
 
+    private val _isCurrentSongLiked = MutableStateFlow(false)
+    val isCurrentSongLiked: StateFlow<Boolean> = _isCurrentSongLiked.asStateFlow()
+
+    private val prefs = context.getSharedPreferences("muzo_likes", Context.MODE_PRIVATE)
+
+    fun isSongLiked(songId: String): Boolean {
+        return prefs.getBoolean("like_$songId", false)
+    }
+
+    fun toggleLikeCurrentSong(forceValue: Boolean? = null) {
+        val song = _currentSong.value ?: return
+        val newLiked = forceValue ?: !isSongLiked(song.id)
+        prefs.edit().putBoolean("like_${song.id}", newLiked).apply()
+        _isCurrentSongLiked.value = newLiked
+        MuziMediaSessionService.isSongLiked = newLiked
+        android.widget.Toast.makeText(
+            context,
+            if (newLiked) "Added to Liked Songs ❤️" else "Removed from Liked Songs",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
+    }
+
     private var playJob: kotlinx.coroutines.Job? = null
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
             _isPlaying.value = playing
+            Log.d("PlayerVM", "onIsPlayingChanged: $playing")
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            Log.d("PlayerVM", "onPlaybackStateChanged: $playbackState")
             if (playbackState == Player.STATE_READY) {
                 _duration.value = player.duration.coerceAtLeast(0L)
+                _statusText.value = ""
             } else if (playbackState == Player.STATE_ENDED) {
                 playNext()
             }
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            android.util.Log.e("PlayerVM", "ExoPlayer Error: ${error.errorCodeName} - ${error.message}", error)
+            Log.e("PlayerVM", "ExoPlayer Error: ${error.errorCodeName} - ${error.message}", error)
             _statusText.value = "Error: ${error.errorCodeName}"
         }
     }
 
     init {
         player.addListener(playerListener)
+
+        // Connect media notification and bluetooth headphone controls to ViewModel
+        MuziMediaSessionService.onNextCallback = {
+            viewModelScope.launch(Dispatchers.Main) { playNext() }
+        }
+        MuziMediaSessionService.onPreviousCallback = {
+            viewModelScope.launch(Dispatchers.Main) { playPrevious() }
+        }
+        MuziMediaSessionService.onLikeToggled = { newLiked ->
+            viewModelScope.launch(Dispatchers.Main) {
+                toggleLikeCurrentSong(newLiked)
+            }
+        }
+
         viewModelScope.launch {
             while (isActive) {
                 if (_isPlaying.value) {
@@ -87,6 +131,14 @@ class PlayerViewModel(
         val song = queue[index]
         _currentSong.value = song
         _statusText.value = "Loading ${song.title}..."
+        Log.d("PlayerVM", "playTrack called: index=$index, title=${song.title}, id=${song.id}")
+
+        val isLiked = isSongLiked(song.id)
+        _isCurrentSongLiked.value = isLiked
+        MuziMediaSessionService.isSongLiked = isLiked
+
+        // Ensure background MediaSessionService is running
+        MuziMediaSessionService.start(context)
 
         // Stop old playing song immediately on tap for instant response
         player.stop()
@@ -118,14 +170,32 @@ class PlayerViewModel(
             val streamUrl = withContext(Dispatchers.IO) {
                 resolveStreamUrl(song.id)
             }
+            Log.d("PlayerVM", "streamUrl resolved: $streamUrl")
 
             if (!streamUrl.isNullOrBlank()) {
-                val mediaItem = MediaItem.fromUri(Uri.parse(streamUrl))
+                val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
+                val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
+                val artworkUri = highResThumb?.let { Uri.parse(it) }
+
+                val metadata = MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(artistName)
+                    .setDisplayTitle(song.title)
+                    .setArtworkUri(artworkUri)
+                    .build()
+
+                val mediaItem = MediaItem.Builder()
+                    .setMediaId(song.id)
+                    .setUri(Uri.parse(streamUrl))
+                    .setMediaMetadata(metadata)
+                    .build()
+
                 player.setMediaItem(mediaItem)
                 player.prepare()
                 player.play()
                 _isPlaying.value = true
                 _statusText.value = ""
+                Log.d("PlayerVM", "player.play() executed successfully")
 
                 // Pre-fetch next 2 tracks in background for instantaneous next-song playback
                 for (offset in 1..2) {
@@ -140,6 +210,7 @@ class PlayerViewModel(
                     }
                 }
             } else {
+                Log.e("PlayerVM", "Failed to resolve streamUrl for ${song.id}")
                 _statusText.value = "Unable to load stream"
             }
         }
@@ -175,15 +246,18 @@ class PlayerViewModel(
     override fun onCleared() {
         super.onCleared()
         player.removeListener(playerListener)
+        MuziMediaSessionService.onNextCallback = null
+        MuziMediaSessionService.onPreviousCallback = null
     }
 
     class Factory(
+        private val context: Context,
         private val historyDao: HistoryDao,
         private val player: ExoPlayer
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return PlayerViewModel(historyDao, player) as T
+            return PlayerViewModel(context, historyDao, player) as T
         }
     }
 }

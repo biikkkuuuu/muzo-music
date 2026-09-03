@@ -56,7 +56,16 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        player = ExoPlayer.Builder(this).build()
+        // Request notification permission for Android 13+ (TIRAMISU)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
+
+        // Shared background ExoPlayer managed by MuziMediaSessionService
+        player = com.example.muzo.playback.MuziMediaSessionService.getPlayer(this)
+        com.example.muzo.playback.MuziMediaSessionService.start(this)
 
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             com.example.muzo.core.warmUpStreamEngine()
@@ -91,7 +100,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        player.release()
+        // Player release is managed by MuziMediaSessionService so background audio continues
     }
 }
 
@@ -110,7 +119,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     val historyDao = database.historyDao()
 
     val playerViewModel: PlayerViewModel = viewModel(
-        factory = PlayerViewModel.Factory(historyDao, player)
+        factory = PlayerViewModel.Factory(context.applicationContext, historyDao, player)
     )
     val feedViewModel: HomeFeedViewModel = viewModel(
         factory = HomeFeedViewModel.Factory(historyDao)
@@ -126,6 +135,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     val currentPosition by playerViewModel.currentPosition.collectAsStateWithLifecycle()
     val duration by playerViewModel.duration.collectAsStateWithLifecycle()
     val statusText by playerViewModel.statusText.collectAsStateWithLifecycle()
+    val isCurrentSongLiked by playerViewModel.isCurrentSongLiked.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -575,6 +585,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                 hasPrev = currentIndex > 0,
                 hasNext = currentIndex + 1 < playbackQueue.size,
                 queueCount = playbackQueue.size,
+                isLiked = isCurrentSongLiked,
+                onLikeToggle = { playerViewModel.toggleLikeCurrentSong() },
                 onClose = { isPlayerExpanded = false },
                 onPlayPause = { playerViewModel.togglePlayPause() },
                 onPrev = { playerViewModel.playPrevious() },
