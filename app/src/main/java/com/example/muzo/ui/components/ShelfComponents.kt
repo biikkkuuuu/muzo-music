@@ -22,11 +22,135 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.*
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.muzo.data.model.HomeShelf
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.data.model.ShelfType
+
+@Composable
+fun ShimmerBrush(targetValue: Float = 1000f): Brush {
+    val shimmerColors = listOf(
+        Color(0xFF131317),
+        Color(0xFF22222A),
+        Color(0xFF131317)
+    )
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnimation = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = targetValue,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1100, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmerTranslate"
+    )
+    return Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset.Zero,
+        end = Offset(x = translateAnimation.value, y = translateAnimation.value)
+    )
+}
+
+@Composable
+fun ShelfRowSkeleton(brush: Brush, hasSubtitle: Boolean = true) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        // Shelf Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (hasSubtitle) {
+                    Box(
+                        modifier = Modifier
+                            .width(110.dp)
+                            .height(10.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(brush)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .width(160.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(brush)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(brush)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Horizontal Row of Cards (matching 130.dp actual card size)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Spacer(modifier = Modifier.width(2.dp))
+            repeat(4) {
+                Column(
+                    modifier = Modifier.width(130.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(130.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(brush)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.88f)
+                            .height(13.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(brush)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(11.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(brush)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeScreenSkeleton() {
+    val brush = ShimmerBrush()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 120.dp)
+    ) {
+        // 1. Shelf 1 Skeleton (Matches Recently Played / Keep Listening!)
+        ShelfRowSkeleton(brush = brush, hasSubtitle = true)
+
+        // 2. Shelf 2 Skeleton (Matches New releases)
+        ShelfRowSkeleton(brush = brush, hasSubtitle = false)
+
+        // 3. Shelf 3 Skeleton (Matches Rain Therapy / Playlists)
+        ShelfRowSkeleton(brush = brush, hasSubtitle = true)
+    }
+}
 
 @Composable
 fun PlaylistShelfRow(
@@ -95,7 +219,7 @@ fun PlaylistShelfRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    items(shelf.items, key = { it.id }) { item ->
+                    items(shelf.items.take(12), key = { it.id }) { item ->
                         ShelfCard(
                             item = item,
                             onClick = { onItemClick(item) }
@@ -109,16 +233,17 @@ fun PlaylistShelfRow(
 
 @Composable
 fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
+    val brush = ShimmerBrush()
     Column(
         modifier = Modifier
-            .width(145.dp)
+            .width(130.dp)
             .clickable { onClick() }
     ) {
         Box(
             modifier = Modifier
-                .size(145.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1B1B1F))
+                .size(130.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(brush)
         ) {
             if (item.imageUrls.size >= 4) {
                 CollageCover(imageUrls = item.imageUrls.take(4))
@@ -152,15 +277,16 @@ fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = Color.White,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
         Text(
             text = item.subtitle,
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp)
         )
     }
 }
@@ -168,7 +294,10 @@ fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
 @Composable
 fun SingleCover(imageUrl: String) {
     AsyncImage(
-        model = imageUrl,
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(imageUrl)
+            .crossfade(300)
+            .build(),
         contentDescription = null,
         modifier = Modifier.fillMaxSize(),
         contentScale = ContentScale.Crop
@@ -177,16 +306,17 @@ fun SingleCover(imageUrl: String) {
 
 @Composable
 fun CollageCover(imageUrls: List<String>) {
+    val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AsyncImage(
-                model = imageUrls.getOrNull(0),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(0)).crossfade(300).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop
             )
             AsyncImage(
-                model = imageUrls.getOrNull(1),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(1)).crossfade(300).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop
@@ -194,13 +324,13 @@ fun CollageCover(imageUrls: List<String>) {
         }
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AsyncImage(
-                model = imageUrls.getOrNull(2),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(2)).crossfade(300).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop
             )
             AsyncImage(
-                model = imageUrls.getOrNull(3),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(3)).crossfade(300).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop

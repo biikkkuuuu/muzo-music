@@ -81,16 +81,19 @@ class HomeFeedViewModel(
         )
 
     init {
-        loadFeed()
+        loadFeed(isUserRefresh = false)
     }
 
     fun refreshFeed() {
-        loadFeed()
+        loadFeed(isUserRefresh = true)
     }
 
-    private fun loadFeed() {
+    private fun loadFeed(isUserRefresh: Boolean = false) {
         viewModelScope.launch {
-            _isRefreshing.value = true
+            if (isUserRefresh) {
+                _isRefreshing.value = true
+                _remoteShelves.value = emptyList() // Clear only on user pull-to-refresh
+            }
             try {
                 val fetchedShelves = withContext(Dispatchers.IO) {
                     val configs = listOf(
@@ -150,13 +153,15 @@ class HomeFeedViewModel(
                             config,
                             async {
                                 try {
-                                    val primary = YouTube.search(config.query, config.filter).getOrNull()?.items
-                                    if (!primary.isNullOrEmpty()) {
-                                        primary
-                                    } else {
-                                        // Fallback to song search if category/playlist filter returned empty
-                                        YouTube.search(config.query, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items ?: emptyList()
-                                    }
+                                    kotlinx.coroutines.withTimeoutOrNull(4500L) {
+                                        val primary = YouTube.search(config.query, config.filter).getOrNull()?.items
+                                        if (!primary.isNullOrEmpty()) {
+                                            primary
+                                        } else {
+                                            // Fallback to song search if category/playlist filter returned empty
+                                            YouTube.search(config.query, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items ?: emptyList()
+                                        }
+                                    } ?: emptyList()
                                 } catch (e: Exception) {
                                     Log.e("HomeFeedVM", "Error searching for ${config.title}: ${e.message}")
                                     emptyList()
@@ -220,7 +225,7 @@ class HomeFeedViewModel(
                                 }
                                 else -> null
                             }
-                        }.shuffled().take(12)
+                        }.shuffled()
 
                         if (shelfItems.isNotEmpty()) {
                             val shelfType = if (config.isPlaylistShelf) {

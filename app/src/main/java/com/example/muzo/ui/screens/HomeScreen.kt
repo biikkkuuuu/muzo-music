@@ -20,10 +20,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import com.example.muzo.data.model.HomeShelf
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.data.model.ShelfType
+import com.example.muzo.ui.components.HomeScreenSkeleton
 import com.example.muzo.ui.components.PlaylistShelfRow
 import com.music.innertube.models.Artist
 import com.music.innertube.models.SongItem
@@ -131,10 +134,10 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (homeShelves.isEmpty() && isRefreshing) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF2F60FF))
-                }
+            val hasRemote = homeShelves.any { it.id != "keep_listening" }
+
+            if (isRefreshing || !hasRemote) {
+                HomeScreenSkeleton()
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -143,47 +146,47 @@ fun HomeScreen(
                 ) {
                     items(homeShelves, key = { it.id }) { shelf ->
                         PlaylistShelfRow(
-                        shelf = shelf,
-                        onItemClick = { item ->
-                            when (item.type) {
-                                ItemType.SONG -> {
-                                    val songItem = SongItem(
-                                        id = item.id,
-                                        title = item.title,
-                                        artists = listOf(Artist(name = item.subtitle, id = null)),
-                                        album = null,
-                                        duration = 0,
-                                        thumbnail = item.imageUrls.firstOrNull() ?: ""
-                                    )
-                                    val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
-                                        SongItem(
-                                            id = it.id,
-                                            title = it.title,
-                                            artists = listOf(Artist(name = it.subtitle, id = null)),
+                            shelf = shelf,
+                            onItemClick = { item ->
+                                when (item.type) {
+                                    ItemType.SONG -> {
+                                        val songItem = SongItem(
+                                            id = item.id,
+                                            title = item.title,
+                                            artists = listOf(Artist(name = item.subtitle, id = null)),
                                             album = null,
                                             duration = 0,
-                                            thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                            thumbnail = item.imageUrls.firstOrNull() ?: ""
                                         )
+                                        val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
+                                            SongItem(
+                                                id = it.id,
+                                                title = it.title,
+                                                artists = listOf(Artist(name = it.subtitle, id = null)),
+                                                album = null,
+                                                duration = 0,
+                                                thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                            )
+                                        }
+                                        onSongSelect(songItem, allSongsInShelf)
                                     }
-                                    onSongSelect(songItem, allSongsInShelf)
+                                    ItemType.PLAYLIST, ItemType.ALBUM -> {
+                                        onPlaylistSelect(item)
+                                    }
+                                    ItemType.CHART, ItemType.ARTIST -> {
+                                        onCategoryClick(item.title)
+                                    }
                                 }
-                                ItemType.PLAYLIST, ItemType.ALBUM -> {
-                                    onPlaylistSelect(item)
-                                }
-                                ItemType.CHART, ItemType.ARTIST -> {
-                                    onCategoryClick(item.title)
-                                }
+                            },
+                            onSeeAllClick = {
+                                onSeeAllClick(shelf)
                             }
-                        },
-                        onSeeAllClick = {
-                            onSeeAllClick(shelf)
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
     }
-}
 }
 
 // Restored MoodTile for SearchScreen compatibility
