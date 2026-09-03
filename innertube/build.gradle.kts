@@ -20,6 +20,9 @@ android {
 
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        freeCompilerArgs.add("-Xmetadata-version=2.0.0")
+    }
 }
 
 dependencies {

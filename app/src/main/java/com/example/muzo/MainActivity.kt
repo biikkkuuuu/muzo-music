@@ -1,9 +1,7 @@
 package com.example.muzo
 
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -14,21 +12,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.exoplayer.ExoPlayer
-import com.example.muzo.core.resolveStreamUrl
+import com.example.muzo.data.HomeFeedViewModel
+import com.example.muzo.data.local.MuziDatabase
+import com.example.muzo.data.model.HomeShelf
+import com.example.muzo.data.model.ItemType
+import com.example.muzo.data.model.ShelfItem
+import com.example.muzo.playback.PlayerViewModel
 import com.example.muzo.ui.components.FullPlayerSheet
 import com.example.muzo.ui.components.PlayerWithBottomNav
-import com.example.muzo.ui.screens.HomeScreen
-import com.example.muzo.ui.screens.LibraryScreen
-import com.example.muzo.ui.screens.SearchScreen
-import com.example.muzo.ui.screens.SettingsScreen
+import com.example.muzo.ui.screens.*
 import com.music.innertube.NewPipeExtractor
+import com.music.innertube.YouTube
+import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -37,12 +39,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Optimize for 120Hz+ high refresh rate displays
+
+        // Optimize for 120Hz+ displays
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.let { win ->
-                val display = win.windowManager.defaultDisplay
-                val peakMode = display.supportedModes.maxByOrNull { it.refreshRate }
+                val display = win.decorView.display
+                val peakMode = display?.supportedModes?.maxByOrNull { it.refreshRate }
                 peakMode?.let {
                     val attrs = win.attributes
                     attrs.preferredDisplayModeId = it.modeId
@@ -55,9 +57,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val muzoDarkTheme = darkColorScheme(
-                primary = Color(0xFF6B8AFD),
+                primary = Color(0xFF2F60FF),
                 onPrimary = Color.White,
-                primaryContainer = Color(0xFF283560),
+                primaryContainer = Color(0xFF1E294B),
                 onPrimaryContainer = Color(0xFFD6E2FF),
                 surface = Color(0xFF0F0E13),
                 surfaceContainer = Color(0xFF16151C),
@@ -74,7 +76,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MuzoApp(player = player)
+                    MuziMainScreen(player = player)
                 }
             }
         }
@@ -87,78 +89,43 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MuzoApp(player: ExoPlayer) {
+fun MuziMainScreen(player: ExoPlayer) {
+    val context = LocalContext.current
+    val database = remember { MuziDatabase.getInstance(context) }
+    val historyDao = database.historyDao()
+
+    val playerViewModel: PlayerViewModel = viewModel(
+        factory = PlayerViewModel.Factory(historyDao, player)
+    )
+    val feedViewModel: HomeFeedViewModel = viewModel(
+        factory = HomeFeedViewModel.Factory(historyDao)
+    )
+
+    val homeShelves by feedViewModel.homeShelves.collectAsStateWithLifecycle()
+    val isFeedRefreshing by feedViewModel.isRefreshing.collectAsStateWithLifecycle()
+
+    val isPlaying by playerViewModel.isPlaying.collectAsStateWithLifecycle()
+    val currentSong by playerViewModel.currentSong.collectAsStateWithLifecycle()
+    val playbackQueue by playerViewModel.playbackQueue.collectAsStateWithLifecycle()
+    val currentIndex by playerViewModel.currentIndex.collectAsStateWithLifecycle()
+    val currentPosition by playerViewModel.currentPosition.collectAsStateWithLifecycle()
+    val duration by playerViewModel.duration.collectAsStateWithLifecycle()
+    val statusText by playerViewModel.statusText.collectAsStateWithLifecycle()
+
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
-
-    var currentSong by remember { mutableStateOf<SongItem?>(null) }
-    var playbackQueue by remember { mutableStateOf<List<SongItem>>(emptyList()) }
-    var recentHistory by remember { mutableStateOf<List<SongItem>>(emptyList()) }
-    var currentIndex by remember { mutableIntStateOf(-1) }
-    var isPlaying by remember { mutableStateOf(false) }
     var isPlayerExpanded by remember { mutableStateOf(false) }
-    var statusText by remember { mutableStateOf("") }
+
+    // Navigation Sub-Screens
+    var selectedPlaylist by remember { mutableStateOf<ShelfItem?>(null) }
+    var playlistSongs by remember { mutableStateOf<List<SongItem>>(emptyList()) }
+    var isPlaylistLoading by remember { mutableStateOf(false) }
+    var selectedSeeAllShelf by remember { mutableStateOf<HomeShelf?>(null) }
+    var isMoodAndGenresOpen by remember { mutableStateOf(false) }
+
     var searchQuery by remember { mutableStateOf("Top Trending Hindi") }
     var triggerSearch by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
-
-    fun playTrack(index: Int, queue: List<SongItem>) {
-        if (index !in queue.indices) return
-        playbackQueue = queue
-        currentIndex = index
-        val song = queue[index]
-        currentSong = song
-
-        if (recentHistory.none { it.id == song.id }) {
-            recentHistory = (listOf(song) + recentHistory).take(12)
-        }
-
-        statusText = "Loading ${song.title}..."
-
-        scope.launch {
-            val streamUrl = resolveStreamUrl(song.id)
-            if (!streamUrl.isNullOrBlank()) {
-                val mediaItem = MediaItem.fromUri(Uri.parse(streamUrl))
-                player.setMediaItem(mediaItem)
-                player.prepare()
-                player.play()
-                isPlaying = true
-                statusText = ""
-            } else {
-                statusText = "Unable to load stream"
-            }
-        }
-    }
-
-    DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) {
-                isPlaying = playing
-            }
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    duration = player.duration.coerceAtLeast(0L)
-                } else if (playbackState == Player.STATE_ENDED) {
-                    if (currentIndex + 1 < playbackQueue.size) {
-                        playTrack(currentIndex + 1, playbackQueue)
-                    }
-                }
-            }
-        }
-        player.addListener(listener)
-        onDispose { player.removeListener(listener) }
-    }
-
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
-            currentPosition = player.currentPosition.coerceAtLeast(0L)
-            duration = player.duration.coerceAtLeast(0L)
-            delay(500)
-        }
-    }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -168,108 +135,232 @@ fun MuzoApp(player: ExoPlayer) {
         }
     }
 
-    if (isSettingsOpen) {
-        BackHandler { isSettingsOpen = false }
-        SettingsScreen(onBack = { isSettingsOpen = false })
-    } else {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = if (currentSong != null) 128.dp else 70.dp)
-            ) {
-                when (selectedTab) {
-                    0 -> HomeScreen(
-                        recentHistory = recentHistory,
-                        onSongSelect = { song, list ->
-                            val idx = list.indexOf(song).coerceAtLeast(0)
-                            playTrack(idx, list)
-                        },
+    // Helper to open playlist and fetch songs
+    fun openPlaylist(item: ShelfItem) {
+        selectedPlaylist = item
+        isPlaylistLoading = true
+        scope.launch {
+            val songs = withContext(Dispatchers.IO) {
+                try {
+                    val albumRes = YouTube.album(item.id).getOrNull()
+                    if (albumRes != null && albumRes.songs.isNotEmpty()) {
+                        albumRes.songs
+                    } else {
+                        val playlistRes = YouTube.playlist(item.id).getOrNull()
+                        if (playlistRes != null && playlistRes.songs.isNotEmpty()) {
+                            playlistRes.songs
+                        } else {
+                            YouTube.search("${item.title} songs", YouTube.SearchFilter.FILTER_SONG)
+                                .getOrNull()?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                        }
+                    }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+            playlistSongs = songs
+            isPlaylistLoading = false
+        }
+    }
+
+    // Back handlers hierarchy
+    when {
+        isPlayerExpanded -> {
+            BackHandler { isPlayerExpanded = false }
+        }
+        selectedPlaylist != null -> {
+            BackHandler { selectedPlaylist = null }
+        }
+        selectedSeeAllShelf != null -> {
+            BackHandler { selectedSeeAllShelf = null }
+        }
+        isMoodAndGenresOpen -> {
+            BackHandler { isMoodAndGenresOpen = false }
+        }
+        isSettingsOpen -> {
+            BackHandler { isSettingsOpen = false }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = if (currentSong != null) 128.dp else 70.dp)
+        ) {
+            when {
+                isSettingsOpen -> {
+                    SettingsScreen(onBack = { isSettingsOpen = false })
+                }
+                isMoodAndGenresOpen -> {
+                    MoodAndGenresScreen(
+                        onBack = { isMoodAndGenresOpen = false },
                         onCategoryClick = { tag ->
+                            isMoodAndGenresOpen = false
                             searchQuery = tag
                             triggerSearch = true
                             selectedTab = 1
-                        },
-                        onOpenSettings = { isSettingsOpen = true }
+                        }
                     )
-                    1 -> SearchScreen(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        triggerSearch = triggerSearch,
-                        onSearchHandled = { triggerSearch = false },
+                }
+                selectedSeeAllShelf != null -> {
+                    SeeAllGridScreen(
+                        title = selectedSeeAllShelf?.title ?: "Albums & singles",
+                        items = selectedSeeAllShelf?.items ?: emptyList(),
+                        onBack = { selectedSeeAllShelf = null },
+                        onItemClick = { item ->
+                            if (item.type == ItemType.SONG) {
+                                val song = SongItem(
+                                    id = item.id,
+                                    title = item.title,
+                                    artists = listOf(com.music.innertube.models.Artist(name = item.subtitle, id = null)),
+                                    album = null,
+                                    duration = 0,
+                                    thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                )
+                                playerViewModel.playTrack(0, listOf(song))
+                            } else {
+                                openPlaylist(item)
+                            }
+                        }
+                    )
+                }
+                selectedPlaylist != null -> {
+                    val pItem = PlaylistItem(
+                        id = selectedPlaylist!!.id,
+                        title = selectedPlaylist!!.title,
+                        author = com.music.innertube.models.Artist(name = selectedPlaylist!!.subtitle, id = null),
+                        songCountText = "${playlistSongs.size} songs",
+                        thumbnail = selectedPlaylist!!.imageUrls.firstOrNull() ?: "",
+                        playEndpoint = null,
+                        shuffleEndpoint = null,
+                        radioEndpoint = null
+                    )
+                    // Related playlists from home feed
+                    val related = homeShelves.firstOrNull { it.id == "trending_playlists" }?.items ?: emptyList()
+
+                    PlaylistDetailScreen(
+                        playlist = pItem,
+                        songs = playlistSongs,
+                        relatedPlaylists = related,
+                        isLoading = isPlaylistLoading,
+                        onBack = { selectedPlaylist = null },
+                        onSearchClick = {
+                            selectedPlaylist = null
+                            selectedTab = 1
+                        },
                         onSongSelect = { song, list ->
                             val idx = list.indexOf(song).coerceAtLeast(0)
-                            playTrack(idx, list)
+                            playerViewModel.playTrack(idx, list)
                         },
-                        statusText = statusText
-                    )
-                    2 -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Voice Search / Feature Coming Soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        onRelatedPlaylistClick = { relItem ->
+                            openPlaylist(relItem)
                         }
-                    }
-                    3 -> LibraryScreen()
-                    4 -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("More Options", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
+                }
+                else -> {
+                    when (selectedTab) {
+                        0 -> HomeScreen(
+                            homeShelves = homeShelves,
+                            isRefreshing = isFeedRefreshing,
+                            onRefresh = { feedViewModel.refreshFeed() },
+                            onSongSelect = { song, list ->
+                                val idx = list.indexOf(song).coerceAtLeast(0)
+                                playerViewModel.playTrack(idx, list)
+                            },
+                            onPlaylistSelect = { item ->
+                                openPlaylist(item)
+                            },
+                            onSeeAllClick = { shelf ->
+                                if (shelf.id == "mood_and_genres") {
+                                    isMoodAndGenresOpen = true
+                                } else {
+                                    selectedSeeAllShelf = shelf
+                                }
+                            },
+                            onCategoryClick = { tag ->
+                                if (tag == "Mood and Genres") {
+                                    isMoodAndGenresOpen = true
+                                } else {
+                                    searchQuery = tag
+                                    triggerSearch = true
+                                    selectedTab = 1
+                                }
+                            },
+                            onOpenSettings = { isSettingsOpen = true },
+                            onOpenSearch = { selectedTab = 1 }
+                        )
+                        1 -> SearchScreen(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            triggerSearch = triggerSearch,
+                            onSearchHandled = { triggerSearch = false },
+                            onSongSelect = { song, list ->
+                                val idx = list.indexOf(song).coerceAtLeast(0)
+                                playerViewModel.playTrack(idx, list)
+                            },
+                            statusText = statusText
+                        )
+                        2 -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Voice Search / Feature Coming Soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        3 -> LibraryScreen()
+                        4 -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("More Options", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
             }
+        }
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-            ) {
-                PlayerWithBottomNav(
-                    currentSong = currentSong,
-                    isPlaying = isPlaying,
-                    onPlayPause = {
-                        if (player.isPlaying) player.pause() else player.play()
-                    },
-                    onNext = {
-                        if (currentIndex + 1 < playbackQueue.size) playTrack(currentIndex + 1, playbackQueue)
-                    },
-                    onPrevious = {
-                        if (currentIndex > 0) playTrack(currentIndex - 1, playbackQueue)
-                    },
-                    onSongClick = { isPlayerExpanded = true },
-                    currentTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
-                )
-            }
+        // Floating Mini Player & Bottom Nav Bar
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            PlayerWithBottomNav(
+                currentSong = currentSong,
+                isPlaying = isPlaying,
+                onPlayPause = { playerViewModel.togglePlayPause() },
+                onNext = { playerViewModel.playNext() },
+                onPrevious = { playerViewModel.playPrevious() },
+                onSongClick = { isPlayerExpanded = true },
+                currentTab = selectedTab,
+                onTabSelected = { tab ->
+                    // Reset sub-screens when switching tab
+                    selectedPlaylist = null
+                    selectedSeeAllShelf = null
+                    isMoodAndGenresOpen = false
+                    selectedTab = tab
+                }
+            )
+        }
 
-            AnimatedVisibility(
-                visible = isPlayerExpanded && currentSong != null,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it })
-            ) {
-                BackHandler { isPlayerExpanded = false }
-                FullPlayerSheet(
-                    song = currentSong!!,
-                    isPlaying = isPlaying,
-                    currentPosition = currentPosition,
-                    duration = duration,
-                    hasPrev = currentIndex > 0,
-                    hasNext = currentIndex + 1 < playbackQueue.size,
-                    queueCount = playbackQueue.size,
-                    onClose = { isPlayerExpanded = false },
-                    onPlayPause = {
-                        if (player.isPlaying) player.pause() else player.play()
-                    },
-                    onPrev = {
-                        if (currentIndex > 0) playTrack(currentIndex - 1, playbackQueue)
-                    },
-                    onNext = {
-                        if (currentIndex + 1 < playbackQueue.size) playTrack(currentIndex + 1, playbackQueue)
-                    },
-                    onSeek = { targetMs ->
-                        player.seekTo(targetMs)
-                        currentPosition = targetMs
-                    }
-                )
-            }
+        // Full Player Sheet (Expandable)
+        AnimatedVisibility(
+            visible = isPlayerExpanded && currentSong != null,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it })
+        ) {
+            FullPlayerSheet(
+                song = currentSong!!,
+                isPlaying = isPlaying,
+                currentPosition = currentPosition,
+                duration = duration,
+                hasPrev = currentIndex > 0,
+                hasNext = currentIndex + 1 < playbackQueue.size,
+                queueCount = playbackQueue.size,
+                onClose = { isPlayerExpanded = false },
+                onPlayPause = { playerViewModel.togglePlayPause() },
+                onPrev = { playerViewModel.playPrevious() },
+                onNext = { playerViewModel.playNext() },
+                onSeek = { targetMs -> playerViewModel.seekTo(targetMs) }
+            )
         }
     }
 }

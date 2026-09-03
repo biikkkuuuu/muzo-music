@@ -2,6 +2,7 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.legacy.kapt)
 }
 
 android {
@@ -23,8 +24,8 @@ android {
     }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
       compose = true
@@ -41,7 +42,10 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
+    compilerOptions {
+        freeCompilerArgs.add("-Xmetadata-version=2.0.0")
+    }
 }
 
 dependencies {
@@ -56,6 +60,10 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.common)
+  implementation(libs.androidx.media3.session)
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.room.ktx)
+  "kapt"(libs.androidx.room.compiler)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.activity.compose)
 
