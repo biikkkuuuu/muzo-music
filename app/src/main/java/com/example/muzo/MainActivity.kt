@@ -132,7 +132,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     var categoryPlaylists by remember { mutableStateOf<List<ShelfItem>>(emptyList()) }
     var isCategoryLoading by remember { mutableStateOf(false) }
 
-    var searchQuery by remember { mutableStateOf("Top Trending Hindi") }
+    var searchQuery by remember { mutableStateOf("") }
     var triggerSearch by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -403,6 +403,12 @@ fun MuziMainScreen(player: ExoPlayer) {
                             onSongSelect = { song, list ->
                                 val idx = list.indexOf(song).coerceAtLeast(0)
                                 playerViewModel.playTrack(idx, list)
+                            },
+                            onPlaylistSelect = { item ->
+                                openPlaylist(item)
+                            },
+                            onCategoryClick = { category ->
+                                openCategory(category)
                             },
                             statusText = statusText
                         )
