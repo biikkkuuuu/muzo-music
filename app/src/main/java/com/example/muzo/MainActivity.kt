@@ -55,6 +55,10 @@ class MainActivity : ComponentActivity() {
 
         player = ExoPlayer.Builder(this).build()
 
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            com.example.muzo.core.warmUpStreamEngine()
+        }
+
         setContent {
             val muzoDarkTheme = darkColorScheme(
                 primary = Color(0xFF2F60FF),

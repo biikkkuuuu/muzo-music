@@ -46,6 +46,8 @@ class PlayerViewModel(
     private val _statusText = MutableStateFlow("")
     val statusText: StateFlow<String> = _statusText.asStateFlow()
 
+    private var playJob: kotlinx.coroutines.Job? = null
+
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
             _isPlaying.value = playing
@@ -57,6 +59,11 @@ class PlayerViewModel(
             } else if (playbackState == Player.STATE_ENDED) {
                 playNext()
             }
+        }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            android.util.Log.e("PlayerVM", "ExoPlayer Error: ${error.errorCodeName} - ${error.message}", error)
+            _statusText.value = "Error: ${error.errorCodeName}"
         }
     }
 
@@ -81,6 +88,12 @@ class PlayerViewModel(
         _currentSong.value = song
         _statusText.value = "Loading ${song.title}..."
 
+        // Stop old playing song immediately on tap for instant response
+        player.stop()
+        player.clearMediaItems()
+        _currentPosition.value = 0L
+        _isPlaying.value = false
+
         // Reactive History: Save directly to Room Database
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -99,8 +112,9 @@ class PlayerViewModel(
             }
         }
 
-        // Fetch stream URL asynchronously from InnerTube
-        viewModelScope.launch {
+        // Cancel any existing stream loading job so rapid clicks don't conflict
+        playJob?.cancel()
+        playJob = viewModelScope.launch {
             val streamUrl = withContext(Dispatchers.IO) {
                 resolveStreamUrl(song.id)
             }
@@ -112,6 +126,19 @@ class PlayerViewModel(
                 player.play()
                 _isPlaying.value = true
                 _statusText.value = ""
+
+                // Pre-fetch next 2 tracks in background for instantaneous next-song playback
+                for (offset in 1..2) {
+                    val prefetchIdx = index + offset
+                    if (prefetchIdx in queue.indices) {
+                        val nextSong = queue[prefetchIdx]
+                        viewModelScope.launch(Dispatchers.IO) {
+                            try {
+                                resolveStreamUrl(nextSong.id)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
             } else {
                 _statusText.value = "Unable to load stream"
             }
