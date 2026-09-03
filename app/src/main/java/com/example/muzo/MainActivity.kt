@@ -67,9 +67,8 @@ class MainActivity : ComponentActivity() {
         player = com.example.muzo.playback.MuziMediaSessionService.getPlayer(this)
         com.example.muzo.playback.MuziMediaSessionService.start(this)
 
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            com.example.muzo.core.warmUpStreamEngine()
-        }
+        // Initialize stream engine immediately with persistent timestamp cache
+        com.example.muzo.core.initStreamEngine(this)
 
         setContent {
             val muzoDarkTheme = darkColorScheme(
@@ -117,12 +116,17 @@ fun MuziMainScreen(player: ExoPlayer) {
     val context = LocalContext.current
     val database = remember { MuziDatabase.getInstance(context) }
     val historyDao = database.historyDao()
+    val likedSongDao = database.likedSongDao()
+    val userPlaylistDao = database.userPlaylistDao()
 
     val playerViewModel: PlayerViewModel = viewModel(
-        factory = PlayerViewModel.Factory(context.applicationContext, historyDao, player)
+        factory = PlayerViewModel.Factory(context.applicationContext, historyDao, likedSongDao, player)
     )
     val feedViewModel: HomeFeedViewModel = viewModel(
         factory = HomeFeedViewModel.Factory(historyDao)
+    )
+    val libraryViewModel: LibraryViewModel = viewModel(
+        factory = LibraryViewModel.Factory(likedSongDao, historyDao, userPlaylistDao)
     )
 
     val homeShelves by feedViewModel.homeShelves.collectAsStateWithLifecycle()
@@ -140,6 +144,11 @@ fun MuziMainScreen(player: ExoPlayer) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
     var isPlayerExpanded by remember { mutableStateOf(false) }
+
+    val librarySubScreen by libraryViewModel.activeSubScreen.collectAsStateWithLifecycle()
+    BackHandler(enabled = librarySubScreen != null && selectedTab == 3) {
+        libraryViewModel.setSubScreen(null)
+    }
 
     // Navigation Sub-Screens
     var selectedPlaylist by remember { mutableStateOf<ShelfItem?>(null) }
@@ -536,7 +545,14 @@ fun MuziMainScreen(player: ExoPlayer) {
                                 Text("Voice Search / Feature Coming Soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        3 -> LibraryScreen()
+                        3 -> LibraryScreen(
+                            libraryViewModel = libraryViewModel,
+                            onSongPlay = { song, queue ->
+                                val songIdx = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+                                playerViewModel.playTrack(songIdx, queue)
+                            },
+                            onSettingsClick = { isSettingsOpen = true }
+                        )
                         4 -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("More Options", color = MaterialTheme.colorScheme.onSurfaceVariant)

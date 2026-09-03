@@ -13,7 +13,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.core.resolveStreamUrl
 import com.example.muzo.data.local.HistoryDao
-import com.example.muzo.data.local.HistoryEntity
+import com.example.muzo.data.local.LikedSongDao
+import com.example.muzo.data.local.LikedSongEntity
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -27,6 +28,7 @@ import kotlinx.coroutines.withContext
 class PlayerViewModel(
     private val context: Context,
     private val historyDao: HistoryDao,
+    private val likedSongDao: LikedSongDao,
     val player: ExoPlayer
 ) : ViewModel() {
 
@@ -54,23 +56,35 @@ class PlayerViewModel(
     private val _isCurrentSongLiked = MutableStateFlow(false)
     val isCurrentSongLiked: StateFlow<Boolean> = _isCurrentSongLiked.asStateFlow()
 
-    private val prefs = context.getSharedPreferences("muzo_likes", Context.MODE_PRIVATE)
-
-    fun isSongLiked(songId: String): Boolean {
-        return prefs.getBoolean("like_$songId", false)
-    }
-
     fun toggleLikeCurrentSong(forceValue: Boolean? = null) {
         val song = _currentSong.value ?: return
-        val newLiked = forceValue ?: !isSongLiked(song.id)
-        prefs.edit().putBoolean("like_${song.id}", newLiked).apply()
-        _isCurrentSongLiked.value = newLiked
-        MuziMediaSessionService.isSongLiked = newLiked
-        android.widget.Toast.makeText(
-            context,
-            if (newLiked) "Added to Liked Songs ❤️" else "Removed from Liked Songs",
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
+        viewModelScope.launch(Dispatchers.IO) {
+            val currentLiked = likedSongDao.isLiked(song.id)
+            val newLiked = forceValue ?: !currentLiked
+            if (newLiked) {
+                val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
+                likedSongDao.insert(
+                    LikedSongEntity(
+                        videoId = song.id,
+                        title = song.title,
+                        artist = artistName,
+                        thumbnailUrl = song.thumbnail,
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+            } else {
+                likedSongDao.delete(song.id)
+            }
+            withContext(Dispatchers.Main) {
+                _isCurrentSongLiked.value = newLiked
+                MuziMediaSessionService.isSongLiked = newLiked
+                android.widget.Toast.makeText(
+                    context,
+                    if (newLiked) "Added to Liked Songs ❤️" else "Removed from Liked Songs",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     private var playJob: kotlinx.coroutines.Job? = null
@@ -133,9 +147,14 @@ class PlayerViewModel(
         _statusText.value = "Loading ${song.title}..."
         Log.d("PlayerVM", "playTrack called: index=$index, title=${song.title}, id=${song.id}")
 
-        val isLiked = isSongLiked(song.id)
-        _isCurrentSongLiked.value = isLiked
-        MuziMediaSessionService.isSongLiked = isLiked
+        // Check if song is liked in Room DB
+        viewModelScope.launch(Dispatchers.IO) {
+            val isLiked = likedSongDao.isLiked(song.id)
+            withContext(Dispatchers.Main) {
+                _isCurrentSongLiked.value = isLiked
+                MuziMediaSessionService.isSongLiked = isLiked
+            }
+        }
 
         // Ensure background MediaSessionService is running
         MuziMediaSessionService.start(context)
@@ -146,18 +165,15 @@ class PlayerViewModel(
         _currentPosition.value = 0L
         _isPlaying.value = false
 
-        // Reactive History: Save directly to Room Database
+        // Reactive History: Save directly to Room Database with play count tracking
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val artistName = song.artists.firstOrNull()?.name ?: "Unknown Artist"
-                historyDao.insertOrUpdate(
-                    HistoryEntity(
-                        videoId = song.id,
-                        title = song.title,
-                        artist = artistName,
-                        thumbnailUrl = song.thumbnail,
-                        timestamp = System.currentTimeMillis()
-                    )
+                historyDao.recordPlay(
+                    videoId = song.id,
+                    title = song.title,
+                    artist = artistName,
+                    thumbnailUrl = song.thumbnail ?: ""
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -253,11 +269,12 @@ class PlayerViewModel(
     class Factory(
         private val context: Context,
         private val historyDao: HistoryDao,
+        private val likedSongDao: LikedSongDao,
         private val player: ExoPlayer
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return PlayerViewModel(context, historyDao, player) as T
+            return PlayerViewModel(context, historyDao, likedSongDao, player) as T
         }
     }
 }

@@ -1,13 +1,14 @@
 package com.example.muzo.core
 
+import android.content.Context
+import android.util.Log
 import com.music.innertube.NewPipeExtractor
 import com.music.innertube.YouTube
 import com.music.innertube.models.YouTubeClient
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
 fun getHighResThumbnail(url: String?): String {
@@ -28,30 +29,49 @@ fun formatTime(ms: Long): String {
 }
 
 val streamUrlCache = ConcurrentHashMap<String, String>()
-private var cachedSigTimestamp: Int? = null
+
+// Persistent signature timestamp so cold launch never blocks on network extraction
+@Volatile
+private var cachedSigTimestamp: Int = 20150
+
+fun initStreamEngine(context: Context) {
+    try {
+        val prefs = context.getSharedPreferences("muzi_stream_prefs", Context.MODE_PRIVATE)
+        val saved = prefs.getInt("sig_timestamp", -1)
+        if (saved > 0) {
+            cachedSigTimestamp = saved
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                NewPipeExtractor.init()
+                val fresh = NewPipeExtractor.getSignatureTimestamp("dQw4w9WgXcQ").getOrNull()
+                if (fresh != null && fresh > 0) {
+                    cachedSigTimestamp = fresh
+                    prefs.edit().putInt("sig_timestamp", fresh).apply()
+                }
+            } catch (_: Exception) {}
+        }
+    } catch (_: Exception) {}
+}
 
 fun warmUpStreamEngine() {
     try {
         NewPipeExtractor.init()
-        if (cachedSigTimestamp == null) {
-            cachedSigTimestamp = NewPipeExtractor.getSignatureTimestamp("dQw4w9WgXcQ").getOrNull()
-        }
     } catch (_: Exception) {}
 }
 
 suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers.IO) {
     streamUrlCache[videoId]?.let { return@withContext it }
 
+    val startTime = System.currentTimeMillis()
+
     // Strategy 1 (Ultra Fast ~250ms): Direct InnerTube JSON API with cached timestamp + JS deobfuscation
     try {
-        val sigTimestamp = cachedSigTimestamp ?: NewPipeExtractor.getSignatureTimestamp(videoId).getOrNull()?.also {
-            cachedSigTimestamp = it
-        }
-
         val pRes = YouTube.player(
             videoId = videoId,
             client = YouTubeClient.WEB_REMIX,
-            signatureTimestamp = sigTimestamp
+            signatureTimestamp = cachedSigTimestamp
         ).getOrNull()
 
         val formats = (pRes?.streamingData?.adaptiveFormats.orEmpty() + pRes?.streamingData?.formats.orEmpty())
@@ -61,10 +81,13 @@ suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers
             val url = format.url ?: NewPipeExtractor.getStreamUrl(format, videoId)
             if (!url.isNullOrBlank()) {
                 streamUrlCache[videoId] = url
+                Log.d("StreamEngine", "Resolved via WEB_REMIX in ${System.currentTimeMillis() - startTime}ms: $url")
                 return@withContext url
             }
         }
-    } catch (_: Exception) {}
+    } catch (e: Exception) {
+        Log.e("StreamEngine", "WEB_REMIX strategy failed: ${e.message}")
+    }
 
     // Strategy 2: Fallback to full NewPipe player
     try {
@@ -75,10 +98,13 @@ suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers
             val direct = audioMatch?.second ?: streamPairs.first().second
             if (direct.isNotBlank()) {
                 streamUrlCache[videoId] = direct
+                Log.d("StreamEngine", "Resolved via NewPipe fallback in ${System.currentTimeMillis() - startTime}ms")
                 return@withContext direct
             }
         }
-    } catch (_: Exception) {}
+    } catch (e: Exception) {
+        Log.e("StreamEngine", "NewPipe fallback failed: ${e.message}")
+    }
 
     null
 }

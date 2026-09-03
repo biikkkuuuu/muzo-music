@@ -286,6 +286,18 @@ class HomeFeedViewModel(
 
                 _remoteShelves.value = fetchedShelves
                 Log.d("HomeFeedVM", "Loaded ${fetchedShelves.size} shelves")
+
+                // Pre-resolve stream URLs of first 3 visible songs for instantaneous 0ms playback on tap
+                viewModelScope.launch(Dispatchers.IO) {
+                    fetchedShelves.flatMap { it.items }
+                        .filter { it.type == ItemType.SONG }
+                        .take(3)
+                        .forEach { songItem ->
+                            try {
+                                com.example.muzo.core.resolveStreamUrl(songItem.id)
+                            } catch (_: Exception) {}
+                        }
+                }
             } catch (e: Exception) {
                 Log.e("HomeFeedVM", "Failed to load feed", e)
             } finally {
