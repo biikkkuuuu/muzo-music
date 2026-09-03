@@ -22,6 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.muzo.data.model.HomeShelf
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
@@ -47,11 +54,39 @@ fun HomeScreen(
     var selectedMoodChip by remember { mutableStateOf<String?>(null) }
     val moodChips = listOf("Workout", "Commute", "Feel good", "Romance", "Party", "Chill", "Focus", "Gaming")
 
+    val lazyListState = rememberLazyListState()
+    var chipsVisible by remember { mutableStateOf(true) }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                if (delta < -10f) {
+                    // Scrolling down into feed -> collapse/hide mood chips
+                    chipsVisible = false
+                } else if (delta > 10f) {
+                    // Scrolling up towards top -> expand/show mood chips
+                    chipsVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
+    val isAtTop by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset <= 15
+        }
+    }
+    val showChips = isAtTop || chipsVisible
+
     Scaffold(
+        modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(Color(0xFF08080A))
                     .statusBarsPadding()
             ) {
                 // 1. App Header (Echo Music / MUZI, History, Settings, Search)
@@ -95,31 +130,45 @@ fun HomeScreen(
                     }
                 }
 
-                // 2. Horizontally scrollable Mood Chips
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // 2. Horizontally scrollable Mood Chips (Collapses smoothly on scroll)
+                AnimatedVisibility(
+                    visible = showChips,
+                    enter = expandVertically(
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(durationMillis = 200)
+                    ),
+                    exit = shrinkVertically(
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(durationMillis = 180)
+                    )
                 ) {
-                    items(moodChips) { chip ->
-                        val isSelected = selectedMoodChip == chip
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = if (isSelected) Color(0xFF2F60FF) else Color(0xFF1E1E24),
-                            modifier = Modifier.clickable {
-                                selectedMoodChip = if (isSelected) null else chip
-                                onCategoryClick(chip)
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(moodChips) { chip ->
+                            val isSelected = selectedMoodChip == chip
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isSelected) Color(0xFF2F60FF) else Color(0xFF1E1E24),
+                                modifier = Modifier.clickable {
+                                    selectedMoodChip = if (isSelected) null else chip
+                                    onCategoryClick(chip)
+                                }
+                            ) {
+                                Text(
+                                    text = chip,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isSelected) Color.White else Color.LightGray
+                                )
                             }
-                        ) {
-                            Text(
-                                text = chip,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isSelected) Color.White else Color.LightGray
-                            )
                         }
                     }
                 }
@@ -140,6 +189,7 @@ fun HomeScreen(
                 HomeScreenSkeleton()
             } else {
                 LazyColumn(
+                    state = lazyListState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 120.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
