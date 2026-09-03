@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.data.HomeFeedViewModel
 import com.example.muzo.data.local.MuziDatabase
 import com.example.muzo.data.model.HomeShelf
@@ -127,6 +128,9 @@ fun MuziMainScreen(player: ExoPlayer) {
     var isPlaylistLoading by remember { mutableStateOf(false) }
     var selectedSeeAllShelf by remember { mutableStateOf<HomeShelf?>(null) }
     var isMoodAndGenresOpen by remember { mutableStateOf(false) }
+    var selectedCategoryTitle by remember { mutableStateOf<String?>(null) }
+    var categoryPlaylists by remember { mutableStateOf<List<ShelfItem>>(emptyList()) }
+    var isCategoryLoading by remember { mutableStateOf(false) }
 
     var searchQuery by remember { mutableStateOf("Top Trending Hindi") }
     var triggerSearch by remember { mutableStateOf(false) }
@@ -200,6 +204,50 @@ fun MuziMainScreen(player: ExoPlayer) {
         }
     }
 
+    // Helper to open mood/genre category and fetch its rich playlists
+    fun openCategory(categoryName: String) {
+        selectedCategoryTitle = categoryName
+        isCategoryLoading = true
+        scope.launch {
+            val playlists = withContext(Dispatchers.IO) {
+                try {
+                    val q1 = async {
+                        YouTube.search("$categoryName Hindi", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
+                            .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
+                    }
+                    val q2 = async {
+                        YouTube.search("$categoryName Bollywood", YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST)
+                            .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
+                    }
+                    val q3 = async {
+                        YouTube.search("$categoryName songs", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
+                            .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
+                    }
+                    val q4 = async {
+                        YouTube.search(categoryName, YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST)
+                            .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
+                    }
+
+                    val all = (q1.await() + q2.await() + q3.await() + q4.await()).distinctBy { it.id }
+                    all.map { p ->
+                        val thumb = p.thumbnail?.let { getHighResThumbnail(it) } ?: ""
+                        ShelfItem(
+                            id = p.id,
+                            title = p.title,
+                            subtitle = p.author?.name ?: "Playlist",
+                            imageUrls = listOf(thumb),
+                            type = ItemType.PLAYLIST
+                        )
+                    }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+            categoryPlaylists = playlists
+            isCategoryLoading = false
+        }
+    }
+
     // Back handlers hierarchy
     when {
         isPlayerExpanded -> {
@@ -207,6 +255,12 @@ fun MuziMainScreen(player: ExoPlayer) {
         }
         selectedPlaylist != null -> {
             BackHandler { selectedPlaylist = null }
+        }
+        selectedCategoryTitle != null -> {
+            BackHandler {
+                selectedCategoryTitle = null
+                categoryPlaylists = emptyList()
+            }
         }
         selectedSeeAllShelf != null -> {
             BackHandler { selectedSeeAllShelf = null }
@@ -226,39 +280,6 @@ fun MuziMainScreen(player: ExoPlayer) {
             when {
                 isSettingsOpen -> {
                     SettingsScreen(onBack = { isSettingsOpen = false })
-                }
-                isMoodAndGenresOpen -> {
-                    MoodAndGenresScreen(
-                        onBack = { isMoodAndGenresOpen = false },
-                        onCategoryClick = { tag ->
-                            isMoodAndGenresOpen = false
-                            searchQuery = tag
-                            triggerSearch = true
-                            selectedTab = 1
-                        }
-                    )
-                }
-                selectedSeeAllShelf != null -> {
-                    SeeAllGridScreen(
-                        title = selectedSeeAllShelf?.title ?: "Albums & singles",
-                        items = selectedSeeAllShelf?.items ?: emptyList(),
-                        onBack = { selectedSeeAllShelf = null },
-                        onItemClick = { item ->
-                            if (item.type == ItemType.SONG) {
-                                val song = SongItem(
-                                    id = item.id,
-                                    title = item.title,
-                                    artists = listOf(com.music.innertube.models.Artist(name = item.subtitle, id = null)),
-                                    album = null,
-                                    duration = 0,
-                                    thumbnail = item.imageUrls.firstOrNull() ?: ""
-                                )
-                                playerViewModel.playTrack(0, listOf(song))
-                            } else {
-                                openPlaylist(item)
-                            }
-                        }
-                    )
                 }
                 selectedPlaylist != null -> {
                     val isArtist = selectedPlaylist!!.type == ItemType.ARTIST
@@ -289,8 +310,58 @@ fun MuziMainScreen(player: ExoPlayer) {
                             val idx = list.indexOf(song).coerceAtLeast(0)
                             playerViewModel.playTrack(idx, list)
                         },
+                        onPlayAll = {
+                            if (playlistSongs.isNotEmpty()) {
+                                playerViewModel.playTrack(0, playlistSongs)
+                            }
+                        },
                         onRelatedPlaylistClick = { relItem ->
                             openPlaylist(relItem)
+                        }
+                    )
+                }
+                selectedCategoryTitle != null -> {
+                    SeeAllGridScreen(
+                        title = "$selectedCategoryTitle Playlists",
+                        items = categoryPlaylists,
+                        isLoading = isCategoryLoading,
+                        onBack = {
+                            selectedCategoryTitle = null
+                            categoryPlaylists = emptyList()
+                        },
+                        onItemClick = { item ->
+                            openPlaylist(item)
+                        }
+                    )
+                }
+                selectedSeeAllShelf != null -> {
+                    SeeAllGridScreen(
+                        title = selectedSeeAllShelf?.title ?: "Albums & singles",
+                        items = selectedSeeAllShelf?.items ?: emptyList(),
+                        isLoading = false,
+                        onBack = { selectedSeeAllShelf = null },
+                        onItemClick = { item ->
+                            if (item.type == ItemType.SONG) {
+                                val song = SongItem(
+                                    id = item.id,
+                                    title = item.title,
+                                    artists = listOf(com.music.innertube.models.Artist(name = item.subtitle, id = null)),
+                                    album = null,
+                                    duration = 0,
+                                    thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                )
+                                playerViewModel.playTrack(0, listOf(song))
+                            } else {
+                                openPlaylist(item)
+                            }
+                        }
+                    )
+                }
+                isMoodAndGenresOpen -> {
+                    MoodAndGenresScreen(
+                        onBack = { isMoodAndGenresOpen = false },
+                        onCategoryClick = { tag ->
+                            openCategory(tag)
                         }
                     )
                 }
@@ -318,9 +389,7 @@ fun MuziMainScreen(player: ExoPlayer) {
                                 if (tag == "Mood and Genres") {
                                     isMoodAndGenresOpen = true
                                 } else {
-                                    searchQuery = tag
-                                    triggerSearch = true
-                                    selectedTab = 1
+                                    openCategory(tag)
                                 }
                             },
                             onOpenSettings = { isSettingsOpen = true },

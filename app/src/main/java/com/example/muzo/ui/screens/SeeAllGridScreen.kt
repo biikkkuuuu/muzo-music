@@ -33,6 +33,7 @@ import com.example.muzo.ui.components.SingleCover
 fun SeeAllGridScreen(
     title: String,
     items: List<ShelfItem>,
+    isLoading: Boolean = false,
     onBack: () -> Unit,
     onItemClick: (ShelfItem) -> Unit
 ) {
@@ -64,15 +65,25 @@ fun SeeAllGridScreen(
         },
         containerColor = Color(0xFF08080A)
     ) { paddingValues ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF2F60FF))
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
             items(items, key = { it.id }) { item ->
                 val isArtist = item.type == ItemType.ARTIST
                 Column(
@@ -138,4 +149,5 @@ fun SeeAllGridScreen(
             }
         }
     }
+}
 }
