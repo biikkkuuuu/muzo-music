@@ -13,6 +13,7 @@ import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.data.model.ShelfType
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
+import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
@@ -134,6 +135,13 @@ class HomeFeedViewModel(
                             query = listOf("90s Bollywood romantic hits", "Retro Hindi Hits", "2000s Bollywood Nostalgia", "Classic Hindi Songs").random(),
                             filter = YouTube.SearchFilter.FILTER_SONG,
                             isPlaylistShelf = false
+                        ),
+                        FeedShelfConfig(
+                            title = "Top Artists",
+                            subtitle = "YOUR FAVORITE STARS",
+                            query = listOf("Bollywood top artists", "Trending Indian singers", "Top Punjabi Artists", "Best Hindi Singers").random(),
+                            filter = YouTube.SearchFilter.FILTER_ARTIST,
+                            isPlaylistShelf = false
                         )
                     )
 
@@ -198,6 +206,16 @@ class HomeFeedViewModel(
                                         subtitle = raw.artists?.joinToString(", ") { it.name } ?: "Album",
                                         imageUrls = listOf(thumb),
                                         type = ItemType.ALBUM
+                                    )
+                                }
+                                is ArtistItem -> {
+                                    val thumb = getHighResThumbnail(raw.thumbnail ?: "")
+                                    ShelfItem(
+                                        id = raw.id,
+                                        title = raw.title,
+                                        subtitle = raw.subtext ?: "Artist",
+                                        imageUrls = listOf(thumb),
+                                        type = ItemType.ARTIST
                                     )
                                 }
                                 else -> null
