@@ -113,13 +113,15 @@ fun PlaylistDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val thumb = playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""
+                        val isArtist = playlist.author?.name?.equals("Artist", ignoreCase = true) == true ||
+                                playlist.songCountText?.contains("Artist", ignoreCase = true) == true
                         Box(
                             modifier = Modifier
                                 .size(200.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(if (isArtist) CircleShape else RoundedCornerShape(16.dp))
                                 .background(Color(0xFF1E1E24))
                         ) {
-                            if (playlist.title?.contains("community", ignoreCase = true) == true) {
+                            if (!isArtist && playlist.title?.contains("community", ignoreCase = true) == true) {
                                 CollageCover(imageUrls = listOf(thumb, thumb, thumb, thumb))
                             } else {
                                 SingleCover(imageUrl = thumb)

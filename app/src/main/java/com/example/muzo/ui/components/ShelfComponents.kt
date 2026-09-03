@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -234,15 +235,17 @@ fun PlaylistShelfRow(
 @Composable
 fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
     val brush = ShimmerBrush()
+    val isArtist = item.type == ItemType.ARTIST
     Column(
         modifier = Modifier
             .width(130.dp)
-            .clickable { onClick() }
+            .clickable { onClick() },
+        horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start
     ) {
         Box(
             modifier = Modifier
                 .size(130.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(if (isArtist) CircleShape else RoundedCornerShape(8.dp))
                 .background(brush)
         ) {
             if (item.imageUrls.size >= 4) {
@@ -251,11 +254,11 @@ fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
                 SingleCover(imageUrl = item.imageUrls.firstOrNull() ?: "")
             }
 
-            // Bottom-right Play Icon Badge (like in the screen recording)
+            // Bottom-right Play Icon Badge
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(8.dp)
+                    .padding(if (isArtist) 4.dp else 8.dp)
                     .size(28.dp)
                     .clip(CircleShape)
                     .background(Color.Black.copy(alpha = 0.65f)),
@@ -278,15 +281,20 @@ fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
             color = Color.White,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
         )
         Text(
-            text = item.subtitle,
+            text = if (isArtist) "Artist" else item.subtitle,
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 2.dp)
+            textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 2.dp)
         )
     }
 }

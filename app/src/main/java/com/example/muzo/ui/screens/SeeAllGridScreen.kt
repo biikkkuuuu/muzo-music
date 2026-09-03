@@ -19,9 +19,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.ui.components.CollageCover
 import com.example.muzo.ui.components.SingleCover
@@ -72,16 +74,18 @@ fun SeeAllGridScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             items(items, key = { it.id }) { item ->
+                val isArtist = item.type == ItemType.ARTIST
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onItemClick(item) }
+                        .clickable { onItemClick(item) },
+                    horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(if (isArtist) CircleShape else RoundedCornerShape(12.dp))
                             .background(Color(0xFF1B1B1F))
                     ) {
                         if (item.imageUrls.size >= 4) {
@@ -94,7 +98,7 @@ fun SeeAllGridScreen(
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(8.dp)
+                                .padding(if (isArtist) 4.dp else 8.dp)
                                 .size(30.dp)
                                 .clip(CircleShape)
                                 .background(Color.Black.copy(alpha = 0.65f)),
@@ -117,14 +121,18 @@ fun SeeAllGridScreen(
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        text = item.subtitle,
+                        text = if (isArtist) "Artist" else item.subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

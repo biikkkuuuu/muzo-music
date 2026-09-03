@@ -142,24 +142,53 @@ class HomeFeedViewModel(
                         FeedShelfConfig(
                             title = "Top Artists",
                             subtitle = "YOUR FAVORITE STARS",
-                            query = listOf("Bollywood top artists", "Trending Indian singers", "Top Punjabi Artists", "Best Hindi Singers").random(),
+                            query = "Top Artists",
                             filter = YouTube.SearchFilter.FILTER_ARTIST,
                             isPlaylistShelf = false
                         )
                     )
+
+                    val artistBatches = listOf(
+                        "Arijit Singh Atif Aslam Pritam Mohit Chauhan",
+                        "Diljit Dosanjh Karan Aujla AP Dhillon Shubh",
+                        "Shreya Ghoshal Sunidhi Chauhan Neha Kakkar Jonita Gandhi",
+                        "Anuv Jain Prateek Kuhad Jasleen Royal The Local Train",
+                        "KK Sonu Nigam Lucky Ali Kumar Sanu Alka Yagnik",
+                        "Divine King Seedhe Maut Raftaar MC Stan",
+                        "A.R. Rahman Amit Trivedi Vishal-Shekhar Shankar Mahadevan",
+                        "Darshan Raval Armaan Malik Jubin Nautiyal B Praak",
+                        "The Weeknd Taylor Swift Ed Sheeran Bruno Mars",
+                        "Talwiinder Harrdy Sandhu Ammy Virk Parmish Verma",
+                        "Sidhu Moose Wala Amrit Maan Jassie Gill Akhil",
+                        "Javed Ali Papon Shilpa Rao Monali Thakur"
+                    ).shuffled()
 
                     val deferredList = configs.map { config ->
                         Pair(
                             config,
                             async {
                                 try {
-                                    kotlinx.coroutines.withTimeoutOrNull(4500L) {
-                                        val primary = YouTube.search(config.query, config.filter).getOrNull()?.items
-                                        if (!primary.isNullOrEmpty()) {
-                                            primary
+                                    kotlinx.coroutines.withTimeoutOrNull(5000L) {
+                                        if (config.filter == YouTube.SearchFilter.FILTER_ARTIST) {
+                                            // Fetch 2 completely randomized artist batches to guarantee zero repetition
+                                            val q1 = artistBatches[0]
+                                            val q2 = artistBatches[1]
+                                            val res1 = YouTube.search(q1, YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty()
+                                            val res2 = YouTube.search(q2, YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty()
+                                            val combinedArtists = (res1 + res2).filterIsInstance<ArtistItem>().distinctBy { it.id }
+                                            if (combinedArtists.isNotEmpty()) {
+                                                combinedArtists
+                                            } else {
+                                                YouTube.search("Indian top artists", YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items ?: emptyList()
+                                            }
                                         } else {
-                                            // Fallback to song search if category/playlist filter returned empty
-                                            YouTube.search(config.query, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items ?: emptyList()
+                                            val primary = YouTube.search(config.query, config.filter).getOrNull()?.items
+                                            if (!primary.isNullOrEmpty()) {
+                                                primary
+                                            } else {
+                                                // Fallback to song search if category/playlist filter returned empty
+                                                YouTube.search(config.query, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items ?: emptyList()
+                                            }
                                         }
                                     } ?: emptyList()
                                 } catch (e: Exception) {

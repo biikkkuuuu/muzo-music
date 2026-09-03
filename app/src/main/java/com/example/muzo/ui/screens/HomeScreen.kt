@@ -220,10 +220,10 @@ fun HomeScreen(
                                         }
                                         onSongSelect(songItem, allSongsInShelf)
                                     }
-                                    ItemType.PLAYLIST, ItemType.ALBUM -> {
+                                    ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
                                         onPlaylistSelect(item)
                                     }
-                                    ItemType.CHART, ItemType.ARTIST -> {
+                                    ItemType.CHART -> {
                                         onCategoryClick(item.title)
                                     }
                                 }

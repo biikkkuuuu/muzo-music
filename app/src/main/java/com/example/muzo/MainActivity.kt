@@ -31,6 +31,7 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -139,13 +140,39 @@ fun MuziMainScreen(player: ExoPlayer) {
         }
     }
 
-    // Helper to open playlist and fetch songs
+    // Helper to open playlist/artist and fetch songs
     fun openPlaylist(item: ShelfItem) {
         selectedPlaylist = item
         isPlaylistLoading = true
         scope.launch {
             val songs = withContext(Dispatchers.IO) {
                 try {
+                    if (item.type == ItemType.ARTIST) {
+                        // Parallel multi-query search to get 50-80+ comprehensive songs for the artist
+                        val officialDeferred = async {
+                            YouTube.artist(item.id).getOrNull()?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>().orEmpty()
+                        }
+                        val hitsDeferred = async {
+                            YouTube.search("${item.title} best songs", YouTube.SearchFilter.FILTER_SONG)
+                                .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
+                        }
+                        val allHitsDeferred = async {
+                            YouTube.search("${item.title} all hit songs", YouTube.SearchFilter.FILTER_SONG)
+                                .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
+                        }
+                        val latestDeferred = async {
+                            YouTube.search("${item.title} latest songs", YouTube.SearchFilter.FILTER_SONG)
+                                .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
+                        }
+
+                        val combined = (officialDeferred.await() + hitsDeferred.await() + allHitsDeferred.await() + latestDeferred.await())
+                            .distinctBy { it.id }
+
+                        if (combined.isNotEmpty()) {
+                            return@withContext combined
+                        }
+                    }
+
                     val albumRes = YouTube.album(item.id).getOrNull()
                     if (albumRes != null && albumRes.songs.isNotEmpty()) {
                         albumRes.songs
@@ -154,8 +181,14 @@ fun MuziMainScreen(player: ExoPlayer) {
                         if (playlistRes != null && playlistRes.songs.isNotEmpty()) {
                             playlistRes.songs
                         } else {
-                            YouTube.search("${item.title} songs", YouTube.SearchFilter.FILTER_SONG)
-                                .getOrNull()?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                            val artistRes = YouTube.artist(item.id).getOrNull()
+                            val artistSongs = artistRes?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>()
+                            if (!artistSongs.isNullOrEmpty()) {
+                                artistSongs
+                            } else {
+                                YouTube.search("${item.title} songs", YouTube.SearchFilter.FILTER_SONG)
+                                    .getOrNull()?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -228,11 +261,12 @@ fun MuziMainScreen(player: ExoPlayer) {
                     )
                 }
                 selectedPlaylist != null -> {
+                    val isArtist = selectedPlaylist!!.type == ItemType.ARTIST
                     val pItem = PlaylistItem(
                         id = selectedPlaylist!!.id,
                         title = selectedPlaylist!!.title,
-                        author = com.music.innertube.models.Artist(name = selectedPlaylist!!.subtitle, id = null),
-                        songCountText = "${playlistSongs.size} songs",
+                        author = com.music.innertube.models.Artist(name = if (isArtist) "Artist" else selectedPlaylist!!.subtitle, id = null),
+                        songCountText = if (isArtist) "Artist • ${playlistSongs.size} top songs" else "${playlistSongs.size} songs",
                         thumbnail = selectedPlaylist!!.imageUrls.firstOrNull() ?: "",
                         playEndpoint = null,
                         shuffleEndpoint = null,
