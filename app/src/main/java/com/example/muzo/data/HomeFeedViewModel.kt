@@ -96,42 +96,42 @@ class HomeFeedViewModel(
                         FeedShelfConfig(
                             title = "New releases",
                             subtitle = null,
-                            query = "Bollywood new releases",
+                            query = listOf("Bollywood new releases", "Latest Hindi Songs", "New Punjabi Songs", "Fresh Bollywood Hits").random(),
                             filter = YouTube.SearchFilter.FILTER_SONG,
                             isPlaylistShelf = false
                         ),
                         FeedShelfConfig(
                             title = "Rain Therapy 🌧️☘️",
                             subtitle = "FOR COZY DAYS AND ENDLESS CUPS OF TEA",
-                            query = "Monsoon Hindi acoustic songs",
+                            query = listOf("Monsoon Hindi acoustic songs", "Cozy rainy day Bollywood", "Rain therapy songs", "Lofi Bollywood Rain").random(),
                             filter = YouTube.SearchFilter.FILTER_SONG,
                             isPlaylistShelf = false
                         ),
                         FeedShelfConfig(
                             title = "Dancing on your own",
                             subtitle = "DANCE YOUR STRESS AWAY",
-                            query = "Bollywood party dance songs",
+                            query = listOf("Bollywood party dance songs", "Hindi dance hits", "Punjabi dance party", "High energy Bollywood").random(),
                             filter = YouTube.SearchFilter.FILTER_SONG,
                             isPlaylistShelf = false
                         ),
                         FeedShelfConfig(
                             title = "Trending community playlists",
                             subtitle = null,
-                            query = "Hindi Hits",
+                            query = listOf("Hindi Hits", "Bollywood Top 50", "Trending Punjabi", "Best of Arijit Singh").random(),
                             filter = YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST,
                             isPlaylistShelf = true
                         ),
                         FeedShelfConfig(
                             title = "Featured playlists for you",
                             subtitle = null,
-                            query = "Top Weekly India",
+                            query = listOf("Top Weekly India", "Bollywood Romance", "Chill Hits Hindi", "Viral 50 India").random(),
                             filter = YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST,
                             isPlaylistShelf = true
                         ),
                         FeedShelfConfig(
                             title = "Brb, Being Nostalgic!",
                             subtitle = "THROWBACK TO THE OG ERAS OF MUSIC",
-                            query = "90s Bollywood romantic hits",
+                            query = listOf("90s Bollywood romantic hits", "Retro Hindi Hits", "2000s Bollywood Nostalgia", "Classic Hindi Songs").random(),
                             filter = YouTube.SearchFilter.FILTER_SONG,
                             isPlaylistShelf = false
                         )
@@ -202,7 +202,7 @@ class HomeFeedViewModel(
                                 }
                                 else -> null
                             }
-                        }.take(12)
+                        }.shuffled().take(12)
 
                         if (shelfItems.isNotEmpty()) {
                             val shelfType = if (config.isPlaylistShelf) {
