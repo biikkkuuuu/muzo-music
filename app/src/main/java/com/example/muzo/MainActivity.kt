@@ -184,9 +184,7 @@ fun MuziMainScreen(player: ExoPlayer) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = if (currentSong != null) 128.dp else 70.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
             when {
                 isSettingsOpen -> {
