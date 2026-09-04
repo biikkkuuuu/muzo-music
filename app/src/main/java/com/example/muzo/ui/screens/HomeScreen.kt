@@ -40,6 +40,8 @@ import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.data.model.ShelfType
 import com.example.muzo.ui.components.HomeScreenSkeleton
 import com.example.muzo.ui.components.PlaylistShelfRow
+import com.example.muzo.ui.components.ShelfRowSkeleton
+import com.example.muzo.ui.components.ShimmerBrush
 import com.music.innertube.models.Artist
 import com.music.innertube.models.SongItem
 
@@ -154,29 +156,76 @@ fun HomeScreen(
         ) {
             val hasRemote = homeShelves.any { it.id != "keep_listening" }
 
-            // Only show skeleton on initial load when there is NO data yet; keep feed visible on refresh so sections animate
-            if (homeShelves.isEmpty() && !hasRemote) {
-                HomeScreenSkeleton()
-            } else {
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    // 1. Mood & Genre Filter Chips inside LazyColumn (Echo-Music pattern - glides smoothly with feed)
-                    item(key = "mood_chips_row") {
-                        com.example.muzo.ui.components.AnimatedChipsRow(
-                            chips = moodChips,
-                            selectedChip = selectedMoodChip,
-                            onChipSelect = { chip ->
-                                val isSelected = selectedMoodChip == chip
-                                selectedMoodChip = if (isSelected) null else chip
-                                onCategoryClick(chip)
-                            }
-                        )
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // 1. Mood & Genre Filter Chips inside LazyColumn (Echo-Music pattern - glides smoothly with feed)
+                item(key = "mood_chips_row") {
+                    com.example.muzo.ui.components.AnimatedChipsRow(
+                        chips = moodChips,
+                        selectedChip = selectedMoodChip,
+                        onChipSelect = { chip ->
+                            val isSelected = selectedMoodChip == chip
+                            selectedMoodChip = if (isSelected) null else chip
+                            onCategoryClick(chip)
+                        }
+                    )
+                }
+
+                // If remote shelves are still loading:
+                if (!hasRemote) {
+                    // Show Keep Listening if user already has local history
+                    val keepListeningShelf = homeShelves.firstOrNull { it.id == "keep_listening" }
+                    if (keepListeningShelf != null && keepListeningShelf.items.isNotEmpty()) {
+                        item(key = "keep_listening") {
+                            PlaylistShelfRow(
+                                shelf = keepListeningShelf,
+                                onItemClick = { item ->
+                                    when (item.type) {
+                                        ItemType.SONG -> {
+                                            val songItem = SongItem(
+                                                id = item.id,
+                                                title = item.title,
+                                                artists = listOf(Artist(name = item.subtitle, id = null)),
+                                                album = null,
+                                                duration = 0,
+                                                thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                            )
+                                            val allSongsInShelf = keepListeningShelf.items.filter { it.type == ItemType.SONG }.map {
+                                                SongItem(
+                                                    id = it.id,
+                                                    title = it.title,
+                                                    artists = listOf(Artist(name = it.subtitle, id = null)),
+                                                    album = null,
+                                                    duration = 0,
+                                                    thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                                )
+                                            }
+                                            onSongSelect(songItem, allSongsInShelf)
+                                        }
+                                        else -> Unit
+                                    }
+                                },
+                                onSeeAllClick = {
+                                    onSeeAllClick(keepListeningShelf)
+                                }
+                            )
+                        }
                     }
 
+                    // Shimmer skeleton shelves loading in real-time beneath it
+                    item(key = "skeleton_shelves") {
+                        val brush = ShimmerBrush()
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            ShelfRowSkeleton(brush = brush, hasSubtitle = true)
+                            ShelfRowSkeleton(brush = brush, hasSubtitle = false)
+                            ShelfRowSkeleton(brush = brush, hasSubtitle = true)
+                        }
+                    }
+                } else {
                     // 2. Dynamic Shelves that smoothly exchange positions up and down on refresh via animateItem
                     items(
                         items = orderedShelves,

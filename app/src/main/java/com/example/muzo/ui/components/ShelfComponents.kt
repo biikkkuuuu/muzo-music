@@ -103,35 +103,36 @@ fun ShelfRowSkeleton(brush: Brush, hasSubtitle: Boolean = true) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Horizontal Row of Cards (matching 130.dp actual card size)
-        Row(
+        // Horizontal Row of Cards (matching 140.dp actual card size)
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            userScrollEnabled = false
         ) {
-            Spacer(modifier = Modifier.width(2.dp))
-            repeat(4) {
+            items(4) {
                 Column(
-                    modifier = Modifier.width(130.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.width(140.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(130.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(140.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .background(brush)
                     )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.88f)
                             .height(13.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(RoundedCornerShape(4.dp))
                             .background(brush)
                     )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.6f)
                             .height(11.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(RoundedCornerShape(4.dp))
                             .background(brush)
                     )
                 }
