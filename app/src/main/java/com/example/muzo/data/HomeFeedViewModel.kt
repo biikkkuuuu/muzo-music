@@ -92,7 +92,6 @@ class HomeFeedViewModel(
         viewModelScope.launch {
             if (isUserRefresh) {
                 _isRefreshing.value = true
-                _remoteShelves.value = emptyList() // Clear only on user pull-to-refresh
             }
             try {
                 val fetchedShelves = withContext(Dispatchers.IO) {
