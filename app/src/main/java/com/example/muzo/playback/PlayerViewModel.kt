@@ -90,6 +90,7 @@ class PlayerViewModel(
     }
 
     val sleepTimer = SleepTimer(viewModelScope, player)
+    val equalizerController = EqualizerController(context)
 
     private var playJob: kotlinx.coroutines.Job? = null
 
@@ -104,6 +105,9 @@ class PlayerViewModel(
             if (playbackState == Player.STATE_READY) {
                 _duration.value = player.duration.coerceAtLeast(0L)
                 _statusText.value = ""
+                try {
+                    equalizerController.attachAudioSession(player.audioSessionId)
+                } catch (_: Exception) {}
             } else if (playbackState == Player.STATE_ENDED) {
                 if (sleepTimer.pauseWhenSongEnd.value) {
                     sleepTimer.notifySongEnded()
@@ -430,6 +434,7 @@ class PlayerViewModel(
     override fun onCleared() {
         super.onCleared()
         sleepTimer.cancel()
+        equalizerController.release()
         player.removeListener(playerListener)
         MuziMediaSessionService.onNextCallback = null
         MuziMediaSessionService.onPreviousCallback = null

@@ -51,6 +51,7 @@ private data class SettingItemDef(
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenEqualizer: (() -> Unit)? = null,
     onUpdateFound: ((UpdateInfo) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -434,6 +435,16 @@ fun SettingsScreen(
                     Toast.makeText(context, "Audio settings saved", Toast.LENGTH_SHORT).show()
                 }) {
                     Text("Done", color = Color(0xFF5B8DEF))
+                }
+            },
+            dismissButton = {
+                if (onOpenEqualizer != null) {
+                    TextButton(onClick = {
+                        showAudioQualityDialog = false
+                        onOpenEqualizer()
+                    }) {
+                        Text("Equalizer 🎚️", color = Color(0xFF6B9DFE))
+                    }
                 }
             },
             containerColor = Color(0xFF1E1D24)

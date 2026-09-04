@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -32,7 +33,8 @@ import com.example.muzo.BuildConfig
 fun SettingsBottomSheet(
     onDismiss: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenAbout: () -> Unit
+    onOpenAbout: () -> Unit,
+    onOpenEqualizer: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
 
@@ -139,6 +141,22 @@ fun SettingsBottomSheet(
                         onClick = {
                             onDismiss()
                             onOpenSettings()
+                        }
+                    )
+
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.06f),
+                        thickness = 1.dp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    SettingsSheetItem(
+                        icon = Icons.Default.GraphicEq,
+                        title = "Equalizer",
+                        subtitle = "Audio frequency & sound effects",
+                        onClick = {
+                            onDismiss()
+                            onOpenEqualizer?.invoke()
                         }
                     )
 

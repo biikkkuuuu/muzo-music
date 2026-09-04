@@ -150,6 +150,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     var isSettingsSheetOpen by remember { mutableStateOf(false) }
     var isAboutDialogOpen by remember { mutableStateOf(false) }
     var isPlayerExpanded by remember { mutableStateOf(false) }
+    var isEqualizerOpen by remember { mutableStateOf(false) }
     var actionMenuTarget by remember { mutableStateOf<ActionMenuTarget?>(null) }
 
     val prefs = remember { context.getSharedPreferences("muzi_app_prefs", Context.MODE_PRIVATE) }
@@ -401,6 +402,9 @@ fun MuziMainScreen(player: ExoPlayer) {
         isMoodAndGenresOpen -> {
             BackHandler { isMoodAndGenresOpen = false }
         }
+        isEqualizerOpen -> {
+            BackHandler { isEqualizerOpen = false }
+        }
         isSettingsOpen -> {
             BackHandler { isSettingsOpen = false }
         }
@@ -415,6 +419,7 @@ fun MuziMainScreen(player: ExoPlayer) {
                     SettingsScreen(
                         onBack = { isSettingsOpen = false },
                         onOpenAbout = { isAboutDialogOpen = true },
+                        onOpenEqualizer = { isEqualizerOpen = true },
                         onUpdateFound = { updateInfo -> availableUpdate = updateInfo }
                     )
                 }
@@ -697,6 +702,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                 queueCount = playbackQueue.size,
                 isLiked = isCurrentSongLiked,
                 sleepTimer = playerViewModel.sleepTimer,
+                equalizerController = playerViewModel.equalizerController,
+                audioSessionId = playerViewModel.player.audioSessionId,
                 queue = playbackQueue,
                 currentIndex = currentIndex,
                 onLikeToggle = { playerViewModel.toggleLikeCurrentSong() },
@@ -723,7 +730,20 @@ fun MuziMainScreen(player: ExoPlayer) {
                 onOpenAbout = {
                     isSettingsSheetOpen = false
                     isAboutDialogOpen = true
+                },
+                onOpenEqualizer = {
+                    isSettingsSheetOpen = false
+                    isEqualizerOpen = true
                 }
+            )
+        }
+
+        // Equalizer Bottom Sheet (when opened from Settings or Quick Menu)
+        if (isEqualizerOpen) {
+            com.example.muzo.ui.components.EqualizerBottomSheet(
+                equalizerController = playerViewModel.equalizerController,
+                audioSessionId = playerViewModel.player.audioSessionId,
+                onDismiss = { isEqualizerOpen = false }
             )
         }
 

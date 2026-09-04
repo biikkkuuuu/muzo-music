@@ -55,6 +55,8 @@ fun FullPlayerSheet(
     queueCount: Int,
     isLiked: Boolean = false,
     sleepTimer: com.example.muzo.playback.SleepTimer? = null,
+    equalizerController: com.example.muzo.playback.EqualizerController? = null,
+    audioSessionId: Int = 0,
     queue: List<SongItem> = emptyList(),
     currentIndex: Int = -1,
     onLikeToggle: () -> Unit = {},
@@ -73,10 +75,12 @@ fun FullPlayerSheet(
 
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showQueueSheet by remember { mutableStateOf(false) }
+    var showEqualizerSheet by remember { mutableStateOf(false) }
 
     val isSleepTimerActive = sleepTimer?.isActive?.collectAsStateWithLifecycle()?.value ?: false
     val sleepRemainingMs = sleepTimer?.remainingTimeMs?.collectAsStateWithLifecycle()?.value ?: 0L
     val pauseWhenSongEnd = sleepTimer?.pauseWhenSongEnd?.collectAsStateWithLifecycle()?.value ?: false
+    val isEqEnabled = equalizerController?.isEnabled?.collectAsStateWithLifecycle()?.value ?: false
 
     val currentProgress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
 
@@ -399,13 +403,27 @@ fun FullPlayerSheet(
                     }
                 }
 
-                IconButton(onClick = {}, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.GraphicEq,
-                        contentDescription = "Equalizer",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
+                IconButton(
+                    onClick = { showEqualizerSheet = true },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.GraphicEq,
+                            contentDescription = "Equalizer",
+                            tint = if (isEqEnabled) Color(0xFF6B9DFE) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        if (isEqEnabled) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .align(Alignment.TopEnd)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF6B9DFE))
+                            )
+                        }
+                    }
                 }
 
                 IconButton(
@@ -470,6 +488,15 @@ fun FullPlayerSheet(
                 onMoveItem = onMoveQueueItem,
                 onRemoveItem = onRemoveQueueItem,
                 onClearUpcoming = onClearUpcomingQueue
+            )
+        }
+
+        // Built-in Equalizer Bottom Sheet
+        if (showEqualizerSheet && equalizerController != null) {
+            EqualizerBottomSheet(
+                equalizerController = equalizerController,
+                audioSessionId = audioSessionId,
+                onDismiss = { showEqualizerSheet = false }
             )
         }
     }
