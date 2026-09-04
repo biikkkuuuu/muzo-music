@@ -9,6 +9,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -144,6 +145,16 @@ fun MuziMainScreen(player: ExoPlayer) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
     var isPlayerExpanded by remember { mutableStateOf(false) }
+
+    var showWelcomeDialog by rememberSaveable { mutableStateOf(true) }
+    var availableUpdate by remember { mutableStateOf<com.example.muzo.updater.UpdateInfo?>(null) }
+
+    LaunchedEffect(Unit) {
+        val update = com.example.muzo.updater.UpdateChecker.checkUpdate()
+        if (update != null) {
+            availableUpdate = update
+        }
+    }
 
     val librarySubScreen by libraryViewModel.activeSubScreen.collectAsStateWithLifecycle()
     BackHandler(enabled = librarySubScreen != null && selectedTab == 2) {
@@ -603,6 +614,26 @@ fun MuziMainScreen(player: ExoPlayer) {
                 onPrev = { playerViewModel.playPrevious() },
                 onNext = { playerViewModel.playNext() },
                 onSeek = { targetMs -> playerViewModel.seekTo(targetMs) }
+            )
+        }
+
+        // Welcome & Developer Info Dialog (Shown on app launch & when Settings/More is opened)
+        if (showWelcomeDialog || isSettingsOpen) {
+            com.example.muzo.ui.components.WelcomeDialog(
+                onDismissRequest = {
+                    showWelcomeDialog = false
+                    isSettingsOpen = false
+                }
+            )
+        }
+
+        // Update Available Dialog (Pops up when remote version > current version)
+        availableUpdate?.let { updateInfo ->
+            com.example.muzo.updater.UpdateAvailableDialog(
+                version = updateInfo.versionName,
+                updateUrl = updateInfo.updateUrl,
+                description = updateInfo.description,
+                onDismiss = { availableUpdate = null }
             )
         }
     }
