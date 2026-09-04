@@ -58,6 +58,15 @@ class PlayerViewModel(
     private val _isCurrentSongLiked = MutableStateFlow(false)
     val isCurrentSongLiked: StateFlow<Boolean> = _isCurrentSongLiked.asStateFlow()
 
+    private val _playbackSpeed = MutableStateFlow(1.0f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
+    fun setPlaybackSpeed(speed: Float) {
+        val clamped = speed.coerceIn(0.25f, 2.5f)
+        _playbackSpeed.value = clamped
+        player.playbackParameters = androidx.media3.common.PlaybackParameters(clamped)
+    }
+
     fun toggleLikeCurrentSong(forceValue: Boolean? = null) {
         val song = _currentSong.value ?: return
         viewModelScope.launch(Dispatchers.IO) {

@@ -144,6 +144,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     val duration by playerViewModel.duration.collectAsStateWithLifecycle()
     val statusText by playerViewModel.statusText.collectAsStateWithLifecycle()
     val isCurrentSongLiked by playerViewModel.isCurrentSongLiked.collectAsStateWithLifecycle()
+    val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -704,6 +705,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                 sleepTimer = playerViewModel.sleepTimer,
                 equalizerController = playerViewModel.equalizerController,
                 audioSessionId = playerViewModel.player.audioSessionId,
+                playbackSpeed = playbackSpeed,
+                onSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
                 queue = playbackQueue,
                 currentIndex = currentIndex,
                 onLikeToggle = { playerViewModel.toggleLikeCurrentSong() },
