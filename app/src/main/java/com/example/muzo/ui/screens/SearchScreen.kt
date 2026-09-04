@@ -434,7 +434,7 @@ fun SearchScreen(
                 ) {
                     Text(
                         text = tabName,
-                        color = if (isSelected) coralAccent else Color.LightGray,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         fontSize = 16.sp
                     )
@@ -444,7 +444,7 @@ fun SearchScreen(
                             .width(36.dp)
                             .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(if (isSelected) coralAccent else Color.Transparent)
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
                     )
                 }
             }
@@ -476,12 +476,12 @@ fun SearchScreen(
                         val isSelected = activeSearchResultFilter == opt
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = if (isSelected) coralAccent else cardBackground,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else cardBackground,
                             modifier = Modifier.clickable { activeSearchResultFilter = opt }
                         ) {
                             Text(
                                 text = opt,
-                                color = if (isSelected) Color.Black else Color.LightGray,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 fontSize = 13.sp,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)

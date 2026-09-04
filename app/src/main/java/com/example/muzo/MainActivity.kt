@@ -146,7 +146,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     var isPlayerExpanded by remember { mutableStateOf(false) }
 
     val librarySubScreen by libraryViewModel.activeSubScreen.collectAsStateWithLifecycle()
-    BackHandler(enabled = librarySubScreen != null && selectedTab == 3) {
+    BackHandler(enabled = librarySubScreen != null && selectedTab == 2) {
         libraryViewModel.setSubScreen(null)
     }
 
@@ -540,12 +540,7 @@ fun MuziMainScreen(player: ExoPlayer) {
                             },
                             statusText = statusText
                         )
-                        2 -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Voice Search / Feature Coming Soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        3 -> LibraryScreen(
+                        2 -> LibraryScreen(
                             libraryViewModel = libraryViewModel,
                             onSongPlay = { song, queue ->
                                 val songIdx = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
@@ -553,17 +548,12 @@ fun MuziMainScreen(player: ExoPlayer) {
                             },
                             onSettingsClick = { isSettingsOpen = true }
                         )
-                        4 -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("More Options", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
                     }
                 }
             }
         }
 
-        // Floating Mini Player & Bottom Nav Bar
+        // Floating Mini Player & Floating Dock Bottom Nav Bar (Echo-Music Style)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -572,6 +562,10 @@ fun MuziMainScreen(player: ExoPlayer) {
             PlayerWithBottomNav(
                 currentSong = currentSong,
                 isPlaying = isPlaying,
+                currentPosition = currentPosition,
+                duration = duration,
+                hasPrev = currentIndex > 0,
+                hasNext = currentIndex + 1 < playbackQueue.size,
                 onPlayPause = { playerViewModel.togglePlayPause() },
                 onNext = { playerViewModel.playNext() },
                 onPrevious = { playerViewModel.playPrevious() },
@@ -583,7 +577,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                     selectedSeeAllShelf = null
                     isMoodAndGenresOpen = false
                     selectedTab = tab
-                }
+                },
+                onMoreClick = { isSettingsOpen = true }
             )
         }
 

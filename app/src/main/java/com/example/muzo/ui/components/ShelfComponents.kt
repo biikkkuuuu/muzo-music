@@ -1,6 +1,8 @@
 package com.example.muzo.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -9,12 +11,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -218,7 +222,7 @@ fun PlaylistShelfRow(
             else -> {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
                     items(shelf.items.take(12), key = { it.id }) { item ->
                         ShelfCard(
@@ -233,19 +237,151 @@ fun PlaylistShelfRow(
 }
 
 @Composable
+fun HeroCarousel(
+    items: List<ShelfItem>,
+    currentSongId: String? = null,
+    isPlaying: Boolean = false,
+    onItemClick: (ShelfItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (items.isEmpty()) return
+
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            items(items, key = { it.id }) { item ->
+                val isActive = item.id == currentSongId
+
+                Surface(
+                    modifier = Modifier
+                        .width(300.dp)
+                        .height(134.dp)
+                        .clickable { onItemClick(item) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF1B1B22),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left Column: Category tag, Title, Subtitle, Play chip
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                ) {
+                                    Text(
+                                        text = "SPOTLIGHT",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontSize = 15.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip,
+                                    modifier = Modifier.fillMaxWidth().basicMarquee()
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = item.subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.65f),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            // Compact Play button chip
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isActive && isPlaying) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.12f),
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isActive && isPlaying) Icons.AutoMirrored.Filled.VolumeUp else Icons.Default.PlayArrow,
+                                        contentDescription = "Play",
+                                        tint = if (isActive && isPlaying) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = if (isActive && isPlaying) "Playing" else "Play",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isActive && isPlaying) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Right: Square Artwork with subtle 10dp rounded corners
+                        Box(
+                            modifier = Modifier
+                                .size(110.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(item.imageUrls.firstOrNull() ?: "")
+                                    .crossfade(300)
+                                    .build(),
+                                contentDescription = item.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
     val brush = ShimmerBrush()
     val isArtist = item.type == ItemType.ARTIST
     Column(
         modifier = Modifier
-            .width(130.dp)
+            .width(140.dp)
             .clickable { onClick() },
         horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start
     ) {
         Box(
             modifier = Modifier
-                .size(130.dp)
-                .clip(if (isArtist) CircleShape else RoundedCornerShape(8.dp))
+                .size(140.dp)
+                .shadow(6.dp, if (isArtist) CircleShape else RoundedCornerShape(10.dp), spotColor = Color.Black.copy(alpha = 0.4f))
+                .clip(if (isArtist) CircleShape else RoundedCornerShape(10.dp))
                 .background(brush)
         ) {
             if (item.imageUrls.size >= 4) {
@@ -254,21 +390,21 @@ fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
                 SingleCover(imageUrl = item.imageUrls.firstOrNull() ?: "")
             }
 
-            // Bottom-right Play Icon Badge
+            // Top-left Play Indicator Badge (Echo-Music signature)
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(if (isArtist) 4.dp else 8.dp)
-                    .size(28.dp)
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .size(26.dp)
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.65f)),
+                    .background(Color.Black.copy(alpha = 0.6f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = "Play",
                     tint = Color.White,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -280,10 +416,12 @@ fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = Color.White,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
             textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .basicMarquee()
         )
         Text(
             text = if (isArtist) "Artist" else item.subtitle,

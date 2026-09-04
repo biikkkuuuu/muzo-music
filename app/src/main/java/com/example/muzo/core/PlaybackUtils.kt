@@ -66,7 +66,7 @@ suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers
 
     val startTime = System.currentTimeMillis()
 
-    // Strategy 1 (Ultra Fast ~250ms): Direct InnerTube JSON API with cached timestamp + JS deobfuscation
+    // Strategy 1 (Fast ~250ms): Direct InnerTube WEB_REMIX API with cached timestamp + JS deobfuscation
     try {
         val pRes = YouTube.player(
             videoId = videoId,
@@ -89,7 +89,7 @@ suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers
         Log.e("StreamEngine", "WEB_REMIX strategy failed: ${e.message}")
     }
 
-    // Strategy 2: Fallback to full NewPipe player
+    // Strategy 2 (Guaranteed Fallback): Full NewPipe player extraction
     try {
         val streamPairs = NewPipeExtractor.newPipePlayer(videoId)
         if (streamPairs.isNotEmpty()) {

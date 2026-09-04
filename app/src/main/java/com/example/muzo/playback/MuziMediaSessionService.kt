@@ -67,8 +67,19 @@ class MuziMediaSessionService : MediaSessionService() {
                     val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context.applicationContext)
                         .setDataSourceFactory(httpDataSourceFactory)
 
+                    val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                        .setBufferDurationsMs(
+                            /* minBufferMs = */ 15_000,
+                            /* maxBufferMs = */ 50_000,
+                            /* bufferForPlaybackMs = */ 400,
+                            /* bufferForPlaybackAfterRebufferMs = */ 1_000
+                        )
+                        .setPrioritizeTimeOverSizeThresholds(true)
+                        .build()
+
                     _player = ExoPlayer.Builder(context.applicationContext)
                         .setMediaSourceFactory(mediaSourceFactory)
+                        .setLoadControl(loadControl)
                         .setAudioAttributes(audioAttributes, true)
                         .setWakeMode(C.WAKE_MODE_NETWORK)
                         .setHandleAudioBecomingNoisy(true)

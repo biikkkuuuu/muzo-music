@@ -48,6 +48,19 @@ kotlin {
     }
 }
 
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.verifyDatabase", "false")
+    }
+    javacOptions {
+        option("-J-Dorg.sqlite.tmpdir=C:/Users/VIKASH~1/AppData/Local/Temp")
+        option("-J-Djava.io.tmpdir=C:/Users/VIKASH~1/AppData/Local/Temp")
+    }
+}
+
+
+
 dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
   coreLibraryDesugaring(libs.desugaring)

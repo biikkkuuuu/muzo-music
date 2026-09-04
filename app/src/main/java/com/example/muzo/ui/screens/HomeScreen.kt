@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -89,11 +91,11 @@ fun HomeScreen(
                     .background(Color(0xFF08080A))
                     .statusBarsPadding()
             ) {
-                // 1. App Header (Echo Music / MUZI, History, Settings, Search)
+                // 1. App Header (Echo Music / MUZI, History, Stats/Trends, Settings)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -102,35 +104,35 @@ fun HomeScreen(
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
-                        letterSpacing = 1.sp
+                        fontSize = 26.sp
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { onCategoryClick("History") }) {
                             Icon(
                                 imageVector = Icons.Default.History,
                                 contentDescription = "History",
-                                tint = Color.LightGray
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = onOpenSearch) {
+                        IconButton(onClick = { onCategoryClick("Charts") }) {
                             Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                tint = Color.LightGray
+                                imageVector = Icons.Default.TrendingUp,
+                                contentDescription = "Charts",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         IconButton(onClick = onOpenSettings) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
-                                tint = Color.LightGray
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
 
-                // 2. Horizontally scrollable Mood Chips (Collapses smoothly on scroll)
+                // 2. Animated Mood & Genre Filter Chips (Morphing corner radii & spring response)
                 AnimatedVisibility(
                     visible = showChips,
                     enter = expandVertically(
@@ -144,33 +146,15 @@ fun HomeScreen(
                         animationSpec = tween(durationMillis = 180)
                     )
                 ) {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(moodChips) { chip ->
+                    com.example.muzo.ui.components.AnimatedChipsRow(
+                        chips = moodChips,
+                        selectedChip = selectedMoodChip,
+                        onChipSelect = { chip ->
                             val isSelected = selectedMoodChip == chip
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = if (isSelected) Color(0xFF2F60FF) else Color(0xFF1E1E24),
-                                modifier = Modifier.clickable {
-                                    selectedMoodChip = if (isSelected) null else chip
-                                    onCategoryClick(chip)
-                                }
-                            ) {
-                                Text(
-                                    text = chip,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isSelected) Color.White else Color.LightGray
-                                )
-                            }
+                            selectedMoodChip = if (isSelected) null else chip
+                            onCategoryClick(chip)
                         }
-                    }
+                    )
                 }
             }
         },
@@ -192,9 +176,61 @@ fun HomeScreen(
                     state = lazyListState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(22.dp)
                 ) {
-                    items(homeShelves, key = { it.id }) { shelf ->
+                    // Top Hero Carousel (First shelf or quick picks featured prominently)
+                    val featuredShelf = homeShelves.firstOrNull()
+                    if (featuredShelf != null && featuredShelf.items.isNotEmpty()) {
+                        item(key = "hero_carousel") {
+                            Column(modifier = Modifier.fillMaxWidth().padding(top = 2.dp)) {
+                                Text(
+                                    text = "Featured for you",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                                )
+                                com.example.muzo.ui.components.HeroCarousel(
+                                    items = featuredShelf.items,
+                                    onItemClick = { item ->
+                                        when (item.type) {
+                                            ItemType.SONG -> {
+                                                val songItem = SongItem(
+                                                    id = item.id,
+                                                    title = item.title,
+                                                    artists = listOf(Artist(name = item.subtitle, id = null)),
+                                                    album = null,
+                                                    duration = 0,
+                                                    thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                                )
+                                                val allSongs = featuredShelf.items.filter { it.type == ItemType.SONG }.map {
+                                                    SongItem(
+                                                        id = it.id,
+                                                        title = it.title,
+                                                        artists = listOf(Artist(name = it.subtitle, id = null)),
+                                                        album = null,
+                                                        duration = 0,
+                                                        thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                                    )
+                                                }
+                                                onSongSelect(songItem, allSongs)
+                                            }
+                                            ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
+                                                onPlaylistSelect(item)
+                                            }
+                                            ItemType.CHART -> {
+                                                onCategoryClick(item.title)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Remaining shelves
+                    val remainingShelves = if (homeShelves.size > 1) homeShelves.drop(1) else homeShelves
+                    items(remainingShelves, key = { it.id }) { shelf ->
                         PlaylistShelfRow(
                             shelf = shelf,
                             onItemClick = { item ->

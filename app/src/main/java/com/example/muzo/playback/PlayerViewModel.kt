@@ -107,7 +107,37 @@ class PlayerViewModel(
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Log.e("PlayerVM", "ExoPlayer Error: ${error.errorCodeName} - ${error.message}", error)
-            _statusText.value = "Error: ${error.errorCodeName}"
+            val current = _currentSong.value
+            if (current != null) {
+                com.example.muzo.core.streamUrlCache.remove(current.id)
+                viewModelScope.launch {
+                    _statusText.value = "Retrying..."
+                    val fallbackUrl = withContext(Dispatchers.IO) {
+                        try {
+                            val streamPairs = com.music.innertube.NewPipeExtractor.newPipePlayer(current.id)
+                            val audioItags = listOf(140, 251, 250, 249)
+                            val audioMatch = streamPairs.firstOrNull { it.first in audioItags }
+                            audioMatch?.second ?: streamPairs.firstOrNull()?.second
+                        } catch (_: Exception) { null }
+                    }
+                    if (!fallbackUrl.isNullOrBlank()) {
+                        com.example.muzo.core.streamUrlCache[current.id] = fallbackUrl
+                        val mediaItem = MediaItem.Builder()
+                            .setMediaId(current.id)
+                            .setUri(Uri.parse(fallbackUrl))
+                            .build()
+                        player.setMediaItem(mediaItem)
+                        player.prepare()
+                        player.play()
+                        _isPlaying.value = true
+                        _statusText.value = ""
+                    } else {
+                        _statusText.value = "Playback error"
+                    }
+                }
+            } else {
+                _statusText.value = "Error: ${error.errorCodeName}"
+            }
         }
     }
 
