@@ -32,6 +32,8 @@ import com.example.muzo.core.formatTime
 import com.example.muzo.core.getHighResThumbnail
 import com.music.innertube.models.SongItem
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 /**
  * Echo-Music style Full Player Sheet.
  * Features:
@@ -52,15 +54,29 @@ fun FullPlayerSheet(
     hasNext: Boolean,
     queueCount: Int,
     isLiked: Boolean = false,
+    sleepTimer: com.example.muzo.playback.SleepTimer? = null,
+    queue: List<SongItem> = emptyList(),
+    currentIndex: Int = -1,
     onLikeToggle: () -> Unit = {},
     onClose: () -> Unit,
     onPlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit,
+    onQueueSongSelect: (Int) -> Unit = {},
+    onMoveQueueItem: (Int, Int) -> Unit = { _, _ -> },
+    onRemoveQueueItem: (Int) -> Unit = {},
+    onClearUpcomingQueue: () -> Unit = {}
 ) {
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(0f) }
+
+    var showSleepTimerDialog by remember { mutableStateOf(false) }
+    var showQueueSheet by remember { mutableStateOf(false) }
+
+    val isSleepTimerActive = sleepTimer?.isActive?.collectAsStateWithLifecycle()?.value ?: false
+    val sleepRemainingMs = sleepTimer?.remainingTimeMs?.collectAsStateWithLifecycle()?.value ?: 0L
+    val pauseWhenSongEnd = sleepTimer?.pauseWhenSongEnd?.collectAsStateWithLifecycle()?.value ?: false
 
     val currentProgress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
 
@@ -360,13 +376,27 @@ fun FullPlayerSheet(
                     )
                 }
 
-                IconButton(onClick = {}, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Bedtime,
-                        contentDescription = "Sleep Timer",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
+                IconButton(
+                    onClick = { showSleepTimerDialog = true },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Bedtime,
+                            contentDescription = "Sleep Timer",
+                            tint = if (isSleepTimerActive) Color(0xFF6B9DFE) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        if (isSleepTimerActive) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .align(Alignment.TopEnd)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF6B9DFE))
+                            )
+                        }
+                    }
                 }
 
                 IconButton(onClick = {}, modifier = Modifier.size(40.dp)) {
@@ -405,15 +435,42 @@ fun FullPlayerSheet(
                     )
                 }
 
-                IconButton(onClick = {}, modifier = Modifier.size(40.dp)) {
+                IconButton(
+                    onClick = { showQueueSheet = true },
+                    modifier = Modifier.size(40.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
+                        imageVector = Icons.Default.QueueMusic,
+                        contentDescription = "Queue",
+                        tint = if (showQueueSheet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(23.dp)
                     )
                 }
             }
+        }
+
+        // Sleep Timer Dialog
+        if (showSleepTimerDialog && sleepTimer != null) {
+            SleepTimerDialog(
+                sleepTimer = sleepTimer,
+                onDismissRequest = { showSleepTimerDialog = false }
+            )
+        }
+
+        // Queue Management Bottom Sheet
+        if (showQueueSheet) {
+            QueueBottomSheet(
+                queue = queue,
+                currentIndex = currentIndex,
+                onDismiss = { showQueueSheet = false },
+                onSongSelect = { idx ->
+                    onQueueSongSelect(idx)
+                    showQueueSheet = false
+                },
+                onMoveItem = onMoveQueueItem,
+                onRemoveItem = onRemoveQueueItem,
+                onClearUpcoming = onClearUpcomingQueue
+            )
         }
     }
 }

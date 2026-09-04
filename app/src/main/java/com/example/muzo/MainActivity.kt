@@ -696,12 +696,19 @@ fun MuziMainScreen(player: ExoPlayer) {
                 hasNext = currentIndex + 1 < playbackQueue.size,
                 queueCount = playbackQueue.size,
                 isLiked = isCurrentSongLiked,
+                sleepTimer = playerViewModel.sleepTimer,
+                queue = playbackQueue,
+                currentIndex = currentIndex,
                 onLikeToggle = { playerViewModel.toggleLikeCurrentSong() },
                 onClose = { isPlayerExpanded = false },
                 onPlayPause = { playerViewModel.togglePlayPause() },
                 onPrev = { playerViewModel.playPrevious() },
                 onNext = { playerViewModel.playNext() },
-                onSeek = { targetMs -> playerViewModel.seekTo(targetMs) }
+                onSeek = { targetMs -> playerViewModel.seekTo(targetMs) },
+                onQueueSongSelect = { idx -> playerViewModel.playTrack(idx, playbackQueue) },
+                onMoveQueueItem = { from, to -> playerViewModel.moveQueueItem(from, to) },
+                onRemoveQueueItem = { idx -> playerViewModel.removeQueueItem(idx) },
+                onClearUpcomingQueue = { playerViewModel.clearUpcomingQueue() }
             )
         }
 

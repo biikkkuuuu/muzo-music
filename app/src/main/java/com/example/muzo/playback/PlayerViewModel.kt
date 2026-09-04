@@ -89,6 +89,8 @@ class PlayerViewModel(
         }
     }
 
+    val sleepTimer = SleepTimer(viewModelScope, player)
+
     private var playJob: kotlinx.coroutines.Job? = null
 
     private val playerListener = object : Player.Listener {
@@ -103,7 +105,11 @@ class PlayerViewModel(
                 _duration.value = player.duration.coerceAtLeast(0L)
                 _statusText.value = ""
             } else if (playbackState == Player.STATE_ENDED) {
-                playNext()
+                if (sleepTimer.pauseWhenSongEnd.value) {
+                    sleepTimer.notifySongEnded()
+                } else {
+                    playNext()
+                }
             }
         }
 
@@ -369,8 +375,61 @@ class PlayerViewModel(
         _currentPosition.value = positionMs
     }
 
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        val currentList = _playbackQueue.value.toMutableList()
+        if (fromIndex !in currentList.indices || toIndex !in currentList.indices || fromIndex == toIndex) return
+
+        val item = currentList.removeAt(fromIndex)
+        currentList.add(toIndex, item)
+        _playbackQueue.value = currentList
+
+        // Adjust currentIndex if affected
+        val current = _currentIndex.value
+        if (current == fromIndex) {
+            _currentIndex.value = toIndex
+        } else if (fromIndex < current && toIndex >= current) {
+            _currentIndex.value = current - 1
+        } else if (fromIndex > current && toIndex <= current) {
+            _currentIndex.value = current + 1
+        }
+    }
+
+    fun removeQueueItem(index: Int) {
+        val currentList = _playbackQueue.value.toMutableList()
+        if (index !in currentList.indices) return
+
+        val current = _currentIndex.value
+        currentList.removeAt(index)
+        _playbackQueue.value = currentList
+
+        if (index == current) {
+            if (currentList.isEmpty()) {
+                player.stop()
+                _currentSong.value = null
+                _currentIndex.value = -1
+                _isPlaying.value = false
+            } else {
+                val nextIdx = index.coerceAtMost(currentList.lastIndex)
+                playTrack(nextIdx, currentList)
+            }
+        } else if (index < current) {
+            _currentIndex.value = current - 1
+        }
+    }
+
+    fun clearUpcomingQueue() {
+        val current = _currentIndex.value
+        val currentList = _playbackQueue.value
+        if (current >= 0 && current < currentList.size) {
+            // Keep everything up to current playing song, clear upcoming
+            _playbackQueue.value = currentList.take(current + 1)
+            android.widget.Toast.makeText(context, "Upcoming queue cleared", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
+        sleepTimer.cancel()
         player.removeListener(playerListener)
         MuziMediaSessionService.onNextCallback = null
         MuziMediaSessionService.onPreviousCallback = null
