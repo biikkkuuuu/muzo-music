@@ -4,9 +4,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -220,7 +222,10 @@ fun PlaylistShelfRow(
                 )
             }
             else -> {
+                val rowState = rememberLazyListState()
                 LazyRow(
+                    state = rowState,
+                    flingBehavior = rememberSnapFlingBehavior(lazyListState = rowState),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
@@ -246,8 +251,11 @@ fun HeroCarousel(
 ) {
     if (items.isEmpty()) return
 
+    val heroState = rememberLazyListState()
     Column(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         LazyRow(
+            state = heroState,
+            flingBehavior = rememberSnapFlingBehavior(lazyListState = heroState),
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
@@ -353,7 +361,7 @@ fun HeroCarousel(
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(item.imageUrls.firstOrNull() ?: "")
-                                    .crossfade(300)
+                                    .crossfade(100)
                                     .build(),
                                 contentDescription = item.title,
                                 modifier = Modifier.fillMaxSize(),
@@ -369,7 +377,6 @@ fun HeroCarousel(
 
 @Composable
 fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
-    val brush = ShimmerBrush()
     val isArtist = item.type == ItemType.ARTIST
     Column(
         modifier = Modifier
@@ -382,7 +389,7 @@ fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
                 .size(140.dp)
                 .shadow(6.dp, if (isArtist) CircleShape else RoundedCornerShape(10.dp), spotColor = Color.Black.copy(alpha = 0.4f))
                 .clip(if (isArtist) CircleShape else RoundedCornerShape(10.dp))
-                .background(brush)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
         ) {
             if (item.imageUrls.size >= 4) {
                 CollageCover(imageUrls = item.imageUrls.take(4))
@@ -442,7 +449,7 @@ fun SingleCover(imageUrl: String) {
     AsyncImage(
         model = ImageRequest.Builder(LocalContext.current)
             .data(imageUrl)
-            .crossfade(300)
+            .crossfade(100)
             .build(),
         contentDescription = null,
         modifier = Modifier.fillMaxSize(),
@@ -456,13 +463,13 @@ fun CollageCover(imageUrls: List<String>) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(0)).crossfade(300).build(),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(0)).crossfade(100).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop
             )
             AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(1)).crossfade(300).build(),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(1)).crossfade(100).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop
@@ -470,13 +477,13 @@ fun CollageCover(imageUrls: List<String>) {
         }
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(2)).crossfade(300).build(),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(2)).crossfade(100).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop
             )
             AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(3)).crossfade(300).build(),
+                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(3)).crossfade(100).build(),
                 contentDescription = null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentScale = ContentScale.Crop

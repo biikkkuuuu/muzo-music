@@ -57,104 +57,49 @@ fun HomeScreen(
     val moodChips = listOf("Workout", "Commute", "Feel good", "Romance", "Party", "Chill", "Focus", "Gaming")
 
     val lazyListState = rememberLazyListState()
-    var chipsVisible by remember { mutableStateOf(true) }
-
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                if (delta < -10f) {
-                    // Scrolling down into feed -> collapse/hide mood chips
-                    chipsVisible = false
-                } else if (delta > 10f) {
-                    // Scrolling up towards top -> expand/show mood chips
-                    chipsVisible = true
-                }
-                return Offset.Zero
-            }
-        }
-    }
-
-    val isAtTop by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset <= 15
-        }
-    }
-    val showChips = isAtTop || chipsVisible
 
     Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
-            Column(
+            // App Header (Fixed height, static background - 0 layout re-measurement during vertical scroll)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF08080A))
                     .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. App Header (Echo Music / MUZI, History, Stats/Trends, Settings)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "MUZI",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        fontSize = 26.sp
-                    )
+                Text(
+                    text = "MUZI",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 26.sp
+                )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { onCategoryClick("History") }) {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = "History",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = { onCategoryClick("Charts") }) {
-                            Icon(
-                                imageVector = Icons.Default.TrendingUp,
-                                contentDescription = "Charts",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { onCategoryClick("History") }) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "History",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                }
-
-                // 2. Animated Mood & Genre Filter Chips (Morphing corner radii & spring response)
-                AnimatedVisibility(
-                    visible = showChips,
-                    enter = expandVertically(
-                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
-                    ) + fadeIn(
-                        animationSpec = tween(durationMillis = 200)
-                    ),
-                    exit = shrinkVertically(
-                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
-                    ) + fadeOut(
-                        animationSpec = tween(durationMillis = 180)
-                    )
-                ) {
-                    com.example.muzo.ui.components.AnimatedChipsRow(
-                        chips = moodChips,
-                        selectedChip = selectedMoodChip,
-                        onChipSelect = { chip ->
-                            val isSelected = selectedMoodChip == chip
-                            selectedMoodChip = if (isSelected) null else chip
-                            onCategoryClick(chip)
-                        }
-                    )
+                    IconButton(onClick = { onCategoryClick("Charts") }) {
+                        Icon(
+                            imageVector = Icons.Default.TrendingUp,
+                            contentDescription = "Charts",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         },
@@ -176,8 +121,21 @@ fun HomeScreen(
                     state = lazyListState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(22.dp)
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
+                    // 1. Mood & Genre Filter Chips inside LazyColumn (Echo-Music pattern - glides smoothly with feed)
+                    item(key = "mood_chips_row") {
+                        com.example.muzo.ui.components.AnimatedChipsRow(
+                            chips = moodChips,
+                            selectedChip = selectedMoodChip,
+                            onChipSelect = { chip ->
+                                val isSelected = selectedMoodChip == chip
+                                selectedMoodChip = if (isSelected) null else chip
+                                onCategoryClick(chip)
+                            }
+                        )
+                    }
+
                     // Top Hero Carousel (First shelf or quick picks featured prominently)
                     val featuredShelf = homeShelves.firstOrNull()
                     if (featuredShelf != null && featuredShelf.items.isNotEmpty()) {
