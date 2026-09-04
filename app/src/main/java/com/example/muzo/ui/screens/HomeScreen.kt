@@ -71,11 +71,11 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "MUZI",
+                    text = "Muzi Music",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
-                    fontSize = 26.sp
+                    fontSize = 24.sp
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
