@@ -84,37 +84,14 @@ fun WelcomeDialog(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        // Vinyl disc icon
-                        Box(
+                        // Official App Logo
+                        Image(
+                            painter = painterResource(R.drawable.app_logo),
+                            contentDescription = "Muzi Music",
                             modifier = Modifier
-                                .size(88.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE53935)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(66.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFB71C1C)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFE53935)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MusicNote,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                        }
+                                .size(92.dp)
+                                .clip(RoundedCornerShape(22.dp))
+                        )
 
                         Spacer(Modifier.height(2.dp))
 

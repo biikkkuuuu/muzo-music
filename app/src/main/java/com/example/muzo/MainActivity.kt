@@ -1,5 +1,6 @@
 package com.example.muzo
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -146,7 +147,10 @@ fun MuziMainScreen(player: ExoPlayer) {
     var isSettingsOpen by remember { mutableStateOf(false) }
     var isPlayerExpanded by remember { mutableStateOf(false) }
 
-    var showWelcomeDialog by rememberSaveable { mutableStateOf(true) }
+    val prefs = remember { context.getSharedPreferences("muzi_app_prefs", Context.MODE_PRIVATE) }
+    var showWelcomeDialog by rememberSaveable {
+        mutableStateOf(!prefs.getBoolean("has_shown_welcome_dialog", false))
+    }
     var availableUpdate by remember { mutableStateOf<com.example.muzo.updater.UpdateInfo?>(null) }
 
     LaunchedEffect(Unit) {
@@ -617,12 +621,13 @@ fun MuziMainScreen(player: ExoPlayer) {
             )
         }
 
-        // Welcome & Developer Info Dialog (Shown on app launch & when Settings/More is opened)
+        // Welcome & Developer Info Dialog (Shown once on first install & when Settings/More is opened)
         if (showWelcomeDialog || isSettingsOpen) {
             com.example.muzo.ui.components.WelcomeDialog(
                 onDismissRequest = {
                     showWelcomeDialog = false
                     isSettingsOpen = false
+                    prefs.edit().putBoolean("has_shown_welcome_dialog", true).apply()
                 }
             )
         }
