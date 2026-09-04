@@ -26,8 +26,10 @@ import com.example.muzo.data.model.HomeShelf
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.playback.PlayerViewModel
+import com.example.muzo.ui.components.ActionMenuTarget
 import com.example.muzo.ui.components.FullPlayerSheet
 import com.example.muzo.ui.components.PlayerWithBottomNav
+import com.example.muzo.ui.components.SongActionBottomSheet
 import com.example.muzo.ui.screens.*
 import com.music.innertube.NewPipeExtractor
 import com.music.innertube.YouTube
@@ -145,7 +147,10 @@ fun MuziMainScreen(player: ExoPlayer) {
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
+    var isSettingsSheetOpen by remember { mutableStateOf(false) }
+    var isAboutDialogOpen by remember { mutableStateOf(false) }
     var isPlayerExpanded by remember { mutableStateOf(false) }
+    var actionMenuTarget by remember { mutableStateOf<ActionMenuTarget?>(null) }
 
     val prefs = remember { context.getSharedPreferences("muzi_app_prefs", Context.MODE_PRIVATE) }
     var showWelcomeDialog by rememberSaveable {
@@ -407,7 +412,11 @@ fun MuziMainScreen(player: ExoPlayer) {
         ) {
             when {
                 isSettingsOpen -> {
-                    SettingsScreen(onBack = { isSettingsOpen = false })
+                    SettingsScreen(
+                        onBack = { isSettingsOpen = false },
+                        onOpenAbout = { isAboutDialogOpen = true },
+                        onUpdateFound = { updateInfo -> availableUpdate = updateInfo }
+                    )
                 }
                 selectedPlaylist != null -> {
                     val isArtist = selectedPlaylist!!.type == ItemType.ARTIST
@@ -460,6 +469,14 @@ fun MuziMainScreen(player: ExoPlayer) {
                         },
                         onSimilarArtistClick = { artistItem ->
                             openPlaylist(artistItem)
+                        },
+                        onSongActionClick = { song, songs ->
+                            actionMenuTarget = ActionMenuTarget.Song(song, songs)
+                        },
+                        onPlaylistActionClick = {
+                            selectedPlaylist?.let { pl ->
+                                actionMenuTarget = ActionMenuTarget.Playlist(pl, playlistSongs)
+                            }
                         }
                     )
                 }
@@ -474,6 +491,21 @@ fun MuziMainScreen(player: ExoPlayer) {
                         },
                         onItemClick = { item ->
                             openPlaylist(item)
+                        },
+                        onItemLongClick = { item ->
+                            if (item.type == ItemType.SONG) {
+                                val song = SongItem(
+                                    id = item.id,
+                                    title = item.title,
+                                    artists = listOf(com.music.innertube.models.Artist(name = item.subtitle, id = null)),
+                                    album = null,
+                                    duration = 0,
+                                    thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                )
+                                actionMenuTarget = ActionMenuTarget.Song(song, listOf(song))
+                            } else {
+                                actionMenuTarget = ActionMenuTarget.Playlist(item)
+                            }
                         }
                     )
                 }
@@ -496,6 +528,21 @@ fun MuziMainScreen(player: ExoPlayer) {
                                 playerViewModel.playTrack(0, listOf(song))
                             } else {
                                 openPlaylist(item)
+                            }
+                        },
+                        onItemLongClick = { item ->
+                            if (item.type == ItemType.SONG) {
+                                val song = SongItem(
+                                    id = item.id,
+                                    title = item.title,
+                                    artists = listOf(com.music.innertube.models.Artist(name = item.subtitle, id = null)),
+                                    album = null,
+                                    duration = 0,
+                                    thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                )
+                                actionMenuTarget = ActionMenuTarget.Song(song, listOf(song))
+                            } else {
+                                actionMenuTarget = ActionMenuTarget.Playlist(item)
                             }
                         }
                     )
@@ -535,8 +582,33 @@ fun MuziMainScreen(player: ExoPlayer) {
                                     openCategory(tag)
                                 }
                             },
-                            onOpenSettings = { isSettingsOpen = true },
-                            onOpenSearch = { selectedTab = 1 }
+                            onOpenSettings = { isSettingsSheetOpen = true },
+                            onOpenSearch = { selectedTab = 1 },
+                            onItemLongClick = { item, list ->
+                                if (item.type == ItemType.SONG) {
+                                    val songItem = SongItem(
+                                        id = item.id,
+                                        title = item.title,
+                                        artists = listOf(com.music.innertube.models.Artist(name = item.subtitle, id = null)),
+                                        album = null,
+                                        duration = 0,
+                                        thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                    )
+                                    val surroundingSongs = list.filter { it.type == ItemType.SONG }.map {
+                                        SongItem(
+                                            id = it.id,
+                                            title = it.title,
+                                            artists = listOf(com.music.innertube.models.Artist(name = it.subtitle, id = null)),
+                                            album = null,
+                                            duration = 0,
+                                            thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                        )
+                                    }
+                                    actionMenuTarget = ActionMenuTarget.Song(songItem, surroundingSongs)
+                                } else {
+                                    actionMenuTarget = ActionMenuTarget.Playlist(item)
+                                }
+                            }
                         )
                         1 -> SearchScreen(
                             query = searchQuery,
@@ -553,7 +625,13 @@ fun MuziMainScreen(player: ExoPlayer) {
                             onCategoryClick = { category ->
                                 openCategory(category)
                             },
-                            statusText = statusText
+                            statusText = statusText,
+                            onSongActionClick = { song, list ->
+                                actionMenuTarget = ActionMenuTarget.Song(song, list)
+                            },
+                            onPlaylistActionClick = { item ->
+                                actionMenuTarget = ActionMenuTarget.Playlist(item)
+                            }
                         )
                         2 -> LibraryScreen(
                             libraryViewModel = libraryViewModel,
@@ -561,7 +639,13 @@ fun MuziMainScreen(player: ExoPlayer) {
                                 val songIdx = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
                                 playerViewModel.playTrack(songIdx, queue)
                             },
-                            onSettingsClick = { isSettingsOpen = true }
+                            onSettingsClick = { isSettingsSheetOpen = true },
+                            onSongActionClick = { song, list ->
+                                actionMenuTarget = ActionMenuTarget.Song(song, list)
+                            },
+                            onPlaylistActionClick = { item ->
+                                actionMenuTarget = ActionMenuTarget.Playlist(item)
+                            }
                         )
                     }
                 }
@@ -593,7 +677,7 @@ fun MuziMainScreen(player: ExoPlayer) {
                     isMoodAndGenresOpen = false
                     selectedTab = tab
                 },
-                onMoreClick = { isSettingsOpen = true }
+                onMoreClick = { isSettingsSheetOpen = true }
             )
         }
 
@@ -621,12 +705,27 @@ fun MuziMainScreen(player: ExoPlayer) {
             )
         }
 
-        // Welcome & Developer Info Dialog (Shown once on first install & when Settings/More is opened)
-        if (showWelcomeDialog || isSettingsOpen) {
+        // Settings Bottom Sheet (Matches Screenshot 1)
+        if (isSettingsSheetOpen) {
+            com.example.muzo.ui.components.SettingsBottomSheet(
+                onDismiss = { isSettingsSheetOpen = false },
+                onOpenSettings = {
+                    isSettingsSheetOpen = false
+                    isSettingsOpen = true
+                },
+                onOpenAbout = {
+                    isSettingsSheetOpen = false
+                    isAboutDialogOpen = true
+                }
+            )
+        }
+
+        // Welcome & Developer Info Dialog (Shown once on first install & when explicitly opened)
+        if (showWelcomeDialog || isAboutDialogOpen) {
             com.example.muzo.ui.components.WelcomeDialog(
                 onDismissRequest = {
                     showWelcomeDialog = false
-                    isSettingsOpen = false
+                    isAboutDialogOpen = false
                     prefs.edit().putBoolean("has_shown_welcome_dialog", true).apply()
                 }
             )
@@ -639,6 +738,21 @@ fun MuziMainScreen(player: ExoPlayer) {
                 updateUrl = updateInfo.updateUrl,
                 description = updateInfo.description,
                 onDismiss = { availableUpdate = null }
+            )
+        }
+
+        // Song / Playlist Action Menu Bottom Sheet (Long-press on any track or playlist across all screens)
+        actionMenuTarget?.let { target ->
+            SongActionBottomSheet(
+                target = target,
+                playerViewModel = playerViewModel,
+                likedSongDao = likedSongDao,
+                userPlaylistDao = userPlaylistDao,
+                onDismiss = { actionMenuTarget = null },
+                onOpenPlaylistDetail = { item ->
+                    actionMenuTarget = null
+                    openPlaylist(item)
+                }
             )
         }
     }

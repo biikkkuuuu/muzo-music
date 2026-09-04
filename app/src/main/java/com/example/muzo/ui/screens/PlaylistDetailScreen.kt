@@ -1,7 +1,9 @@
 package com.example.muzo.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -60,7 +62,9 @@ fun PlaylistDetailScreen(
     onSongSelect: (SongItem, List<SongItem>) -> Unit,
     onPlayAll: () -> Unit = {},
     onRelatedPlaylistClick: (ShelfItem) -> Unit = {},
-    onSimilarArtistClick: (ShelfItem) -> Unit = {}
+    onSimilarArtistClick: (ShelfItem) -> Unit = {},
+    onSongActionClick: ((SongItem, List<SongItem>) -> Unit)? = null,
+    onPlaylistActionClick: (() -> Unit)? = null
 ) {
     Scaffold(
         topBar = {
@@ -91,6 +95,15 @@ fun PlaylistDetailScreen(
                                 contentDescription = "Search",
                                 tint = Color.White
                             )
+                        }
+                        if (onPlaylistActionClick != null) {
+                            IconButton(onClick = onPlaylistActionClick) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Options",
+                                    tint = Color.White
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -337,7 +350,10 @@ fun PlaylistDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onSongSelect(song, songs) }
+                            .combinedClickable(
+                                onClick = { onSongSelect(song, songs) },
+                                onLongClick = { onSongActionClick?.invoke(song, songs) }
+                            )
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -374,7 +390,7 @@ fun PlaylistDetailScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = { onSongActionClick?.invoke(song, songs) }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "More",

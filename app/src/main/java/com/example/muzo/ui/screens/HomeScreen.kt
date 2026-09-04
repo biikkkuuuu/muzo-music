@@ -56,7 +56,8 @@ fun HomeScreen(
     onSeeAllClick: (HomeShelf) -> Unit,
     onCategoryClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenSearch: () -> Unit = {}
+    onOpenSearch: () -> Unit = {},
+    onItemLongClick: ((ShelfItem, List<ShelfItem>) -> Unit)? = null
 ) {
     var selectedMoodChip by remember { mutableStateOf<String?>(null) }
     val moodChips = listOf("Workout", "Commute", "Feel good", "Romance", "Party", "Chill", "Focus", "Gaming")
@@ -211,6 +212,9 @@ fun HomeScreen(
                                 },
                                 onSeeAllClick = {
                                     onSeeAllClick(keepListeningShelf)
+                                },
+                                onItemLongClick = { item ->
+                                    onItemLongClick?.invoke(item, keepListeningShelf.items)
                                 }
                             )
                         }
@@ -278,6 +282,9 @@ fun HomeScreen(
                                 },
                                 onSeeAllClick = {
                                     onSeeAllClick(shelf)
+                                },
+                                onItemLongClick = { item ->
+                                    onItemLongClick?.invoke(item, shelf.items)
                                 }
                             )
                         }

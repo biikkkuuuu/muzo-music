@@ -7,8 +7,10 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -41,6 +43,8 @@ import com.example.muzo.data.local.HistoryEntity
 import com.example.muzo.data.local.LikedSongEntity
 import com.example.muzo.data.local.UserPlaylistEntity
 import com.example.muzo.data.local.UserPlaylistSongEntity
+import com.example.muzo.data.model.ItemType
+import com.example.muzo.data.model.ShelfItem
 import com.music.innertube.models.Artist
 import com.music.innertube.models.SongItem
 
@@ -75,7 +79,9 @@ fun UserPlaylistSongEntity.toSongItem(): SongItem = SongItem(
 fun LibraryScreen(
     libraryViewModel: LibraryViewModel,
     onSongPlay: (SongItem, List<SongItem>) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onSongActionClick: ((SongItem, List<SongItem>) -> Unit)? = null,
+    onPlaylistActionClick: ((ShelfItem) -> Unit)? = null
 ) {
     val activeSubScreen by libraryViewModel.activeSubScreen.collectAsStateWithLifecycle()
     val likedSongs by libraryViewModel.likedSongs.collectAsStateWithLifecycle()
@@ -135,7 +141,20 @@ fun LibraryScreen(
                             sortText = "Date added",
                             onBack = { libraryViewModel.setSubScreen(null) },
                             onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song -> songForPlaylistDialog = song }
+                            onSongOptionsClick = { song ->
+                                if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
+                            },
+                            onPlaylistOptionsClick = {
+                                onPlaylistActionClick?.invoke(
+                                    ShelfItem(
+                                        id = "liked",
+                                        title = "Liked",
+                                        subtitle = "${songs.size} songs",
+                                        imageUrls = listOfNotNull(coverUrl),
+                                        type = ItemType.PLAYLIST
+                                    )
+                                )
+                            }
                         )
                     }
 
@@ -155,37 +174,80 @@ fun LibraryScreen(
                             sortText = "Custom order",
                             onBack = { libraryViewModel.setSubScreen(null) },
                             onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song -> songForPlaylistDialog = song }
+                            onSongOptionsClick = { song ->
+                                if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
+                            },
+                            onPlaylistOptionsClick = {
+                                playlist?.let { pl ->
+                                    onPlaylistActionClick?.invoke(
+                                        ShelfItem(
+                                            id = pl.id.toString(),
+                                            title = pl.name,
+                                            subtitle = "${songs.size} songs",
+                                            imageUrls = listOfNotNull(coverUrl),
+                                            type = ItemType.PLAYLIST
+                                        )
+                                    )
+                                }
+                            }
                         )
                     }
 
                     LibrarySubScreen.TOP_50 -> {
                         val songs = top50Songs.map { it.toSongItem() }
+                        val coverUrl = songs.firstOrNull()?.thumbnail
                         PlaylistDetailLayout(
                             title = "My top 50",
                             subtitle = "Most played songs on Muzi • ${songs.size} tracks",
-                            coverUrl = songs.firstOrNull()?.thumbnail,
+                            coverUrl = coverUrl,
                             aboutText = "My top 50 is dynamically calculated based on how often you listen to each track on Muzi. Updated continuously with every play.",
                             songs = songs,
                             sortText = "Most played",
                             onBack = { libraryViewModel.setSubScreen(null) },
                             onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song -> songForPlaylistDialog = song }
+                            onSongOptionsClick = { song ->
+                                if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
+                            },
+                            onPlaylistOptionsClick = {
+                                onPlaylistActionClick?.invoke(
+                                    ShelfItem(
+                                        id = "top_50",
+                                        title = "My top 50",
+                                        subtitle = "${songs.size} songs",
+                                        imageUrls = listOfNotNull(coverUrl),
+                                        type = ItemType.PLAYLIST
+                                    )
+                                )
+                            }
                         )
                     }
 
                     LibrarySubScreen.HISTORY -> {
                         val songs = historySongs.map { it.toSongItem() }
+                        val coverUrl = songs.firstOrNull()?.thumbnail
                         PlaylistDetailLayout(
                             title = "History",
                             subtitle = "${songs.size} recently played songs",
-                            coverUrl = songs.firstOrNull()?.thumbnail,
+                            coverUrl = coverUrl,
                             aboutText = "A continuous chronological timeline of your recent musical listening sessions on Muzi.",
                             songs = songs,
                             sortText = "Recent first",
                             onBack = { libraryViewModel.setSubScreen(null) },
                             onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song -> songForPlaylistDialog = song }
+                            onSongOptionsClick = { song ->
+                                if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
+                            },
+                            onPlaylistOptionsClick = {
+                                onPlaylistActionClick?.invoke(
+                                    ShelfItem(
+                                        id = "history",
+                                        title = "History",
+                                        subtitle = "${songs.size} songs",
+                                        imageUrls = listOfNotNull(coverUrl),
+                                        type = ItemType.PLAYLIST
+                                    )
+                                )
+                            }
                         )
                     }
 
@@ -212,7 +274,18 @@ fun LibraryScreen(
                             sortText = "A to Z",
                             onBack = { libraryViewModel.setSubScreen(null) },
                             onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song -> songForPlaylistDialog = song }
+                            onSongOptionsClick = { song -> songForPlaylistDialog = song },
+                            onPlaylistOptionsClick = {
+                                onPlaylistActionClick?.invoke(
+                                    ShelfItem(
+                                        id = "local",
+                                        title = "Local",
+                                        subtitle = "${localSongs.size} songs",
+                                        imageUrls = listOfNotNull(localSongs.firstOrNull()?.thumbnail),
+                                        type = ItemType.PLAYLIST
+                                    )
+                                )
+                            }
                         )
                     }
 
@@ -260,7 +333,19 @@ fun LibraryScreen(
                     onStatsIconClick = { libraryViewModel.setSubScreen(LibrarySubScreen.TOP_50) },
                     onSettingsClick = onSettingsClick,
                     onCreatePlaylistClick = { showCreatePlaylistDialog = true },
-                    onSongPlay = onSongPlay
+                    onSongPlay = onSongPlay,
+                    onPlaylistLongClick = { playlist ->
+                        onPlaylistActionClick?.invoke(
+                            ShelfItem(
+                                id = playlist.id.toString(),
+                                title = playlist.name,
+                                subtitle = "${playlist.songCount} songs",
+                                imageUrls = listOfNotNull(playlist.coverUrl),
+                                type = ItemType.PLAYLIST
+                            )
+                        )
+                    },
+                    onSongActionClick = onSongActionClick
                 )
             }
         }
@@ -317,7 +402,9 @@ private fun MainLibraryScreenContent(
     onStatsIconClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onCreatePlaylistClick: () -> Unit,
-    onSongPlay: (SongItem, List<SongItem>) -> Unit
+    onSongPlay: (SongItem, List<SongItem>) -> Unit,
+    onPlaylistLongClick: ((UserPlaylistEntity) -> Unit)? = null,
+    onSongActionClick: ((SongItem, List<SongItem>) -> Unit)? = null
 ) {
     val context = LocalContext.current
 
@@ -561,7 +648,10 @@ private fun MainLibraryScreenContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
-                                .clickable { onPlaylistCardClick(playlist) }
+                                .combinedClickable(
+                                    onClick = { onPlaylistCardClick(playlist) },
+                                    onLongClick = { onPlaylistLongClick?.invoke(playlist) }
+                                )
                         ) {
                             Box(
                                 modifier = Modifier
@@ -622,7 +712,11 @@ private fun MainLibraryScreenContent(
 
                 val allSongs = (likedSongs.map { it.toSongItem() } + historySongs.map { it.toSongItem() }).distinctBy { it.id }
                 items(allSongs) { song ->
-                    PlaylistItemCard(song = song, onClick = { onSongPlay(song, allSongs) })
+                    PlaylistItemCard(
+                        song = song,
+                        onClick = { onSongPlay(song, allSongs) },
+                        onOptionsClick = { onSongActionClick?.invoke(song, allSongs) }
+                    )
                 }
             }
 
@@ -686,7 +780,8 @@ private fun PlaylistDetailLayout(
     isCustomPlaylist: Boolean = false,
     onBack: () -> Unit,
     onSongPlay: (SongItem, List<SongItem>) -> Unit,
-    onSongOptionsClick: (SongItem) -> Unit
+    onSongOptionsClick: (SongItem) -> Unit,
+    onPlaylistOptionsClick: (() -> Unit)? = null
 ) {
     var isAboutExpanded by remember { mutableStateOf(false) }
 
@@ -697,7 +792,7 @@ private fun PlaylistDetailLayout(
         contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Bar: Back button on left, Search icon on right
+        // Top Bar: Back button on left, Search & More icons on right
         item {
             Row(
                 modifier = Modifier
@@ -710,8 +805,15 @@ private fun PlaylistDetailLayout(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
 
-                IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Search, contentDescription = "Search in playlist", tint = Color.White)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Default.Search, contentDescription = "Search in playlist", tint = Color.White)
+                    }
+                    if (onPlaylistOptionsClick != null) {
+                        IconButton(onClick = onPlaylistOptionsClick, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Playlist options", tint = Color.White)
+                        }
+                    }
                 }
             }
 
@@ -989,6 +1091,7 @@ private fun PlaylistDetailLayout(
 // -------------------------------------------------------------
 // PLAYLIST ITEM CARD (Matches Track Card in Screenshot 1 & 3)
 // -------------------------------------------------------------
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PlaylistItemCard(
     song: SongItem,
@@ -996,12 +1099,15 @@ private fun PlaylistItemCard(
     onOptionsClick: (() -> Unit)? = null
 ) {
     Surface(
-        onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         color = Color(0xFF16151C),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 5.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onOptionsClick
+            )
     ) {
         Row(
             modifier = Modifier

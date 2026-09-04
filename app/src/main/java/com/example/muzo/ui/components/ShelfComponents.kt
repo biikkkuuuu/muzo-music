@@ -1,5 +1,7 @@
 package com.example.muzo.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -164,7 +166,8 @@ fun HomeScreenSkeleton() {
 fun PlaylistShelfRow(
     shelf: HomeShelf,
     onItemClick: (ShelfItem) -> Unit,
-    onSeeAllClick: (String) -> Unit
+    onSeeAllClick: (String) -> Unit,
+    onItemLongClick: ((ShelfItem) -> Unit)? = null
 ) {
     if (shelf.items.isEmpty()) return
 
@@ -233,7 +236,8 @@ fun PlaylistShelfRow(
                     items(shelf.items.take(12), key = { it.id }) { item ->
                         ShelfCard(
                             item = item,
-                            onClick = { onItemClick(item) }
+                            onClick = { onItemClick(item) },
+                            onLongClick = onItemLongClick?.let { { it(item) } }
                         )
                     }
                 }
@@ -376,13 +380,21 @@ fun HeroCarousel(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ShelfCard(item: ShelfItem, onClick: () -> Unit) {
+fun ShelfCard(
+    item: ShelfItem,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
+) {
     val isArtist = item.type == ItemType.ARTIST
     Column(
         modifier = Modifier
             .width(140.dp)
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start
     ) {
         Box(

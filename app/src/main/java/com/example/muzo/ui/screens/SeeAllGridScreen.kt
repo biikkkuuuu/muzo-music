@@ -1,7 +1,9 @@
 package com.example.muzo.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,14 +30,15 @@ import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.ui.components.CollageCover
 import com.example.muzo.ui.components.SingleCover
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SeeAllGridScreen(
     title: String,
     items: List<ShelfItem>,
     isLoading: Boolean = false,
     onBack: () -> Unit,
-    onItemClick: (ShelfItem) -> Unit
+    onItemClick: (ShelfItem) -> Unit,
+    onItemLongClick: ((ShelfItem) -> Unit)? = null
 ) {
     Scaffold(
         topBar = {
@@ -89,7 +92,10 @@ fun SeeAllGridScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onItemClick(item) },
+                        .combinedClickable(
+                            onClick = { onItemClick(item) },
+                            onLongClick = { onItemLongClick?.invoke(item) }
+                        ),
                     horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start
                 ) {
                     Box(

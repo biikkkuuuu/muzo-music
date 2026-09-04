@@ -15,7 +15,9 @@ import com.example.muzo.core.resolveStreamUrl
 import com.example.muzo.data.local.HistoryDao
 import com.example.muzo.data.local.LikedSongDao
 import com.example.muzo.data.local.LikedSongEntity
+import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
+import com.music.innertube.models.WatchEndpoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -282,6 +284,84 @@ class PlayerViewModel(
         if (prevIndex >= 0) {
             playTrack(prevIndex, _playbackQueue.value)
         }
+    }
+
+    fun addToQueueNext(song: SongItem) {
+        val currentQueue = _playbackQueue.value.toMutableList()
+        if (currentQueue.isEmpty()) {
+            playTrack(0, listOf(song))
+        } else {
+            val insertIdx = (_currentIndex.value + 1).coerceIn(0, currentQueue.size)
+            currentQueue.add(insertIdx, song)
+            _playbackQueue.value = currentQueue
+        }
+        android.widget.Toast.makeText(context, "Playing next: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun addToQueueNext(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        val currentQueue = _playbackQueue.value.toMutableList()
+        if (currentQueue.isEmpty()) {
+            playTrack(0, songs)
+        } else {
+            val insertIdx = (_currentIndex.value + 1).coerceIn(0, currentQueue.size)
+            currentQueue.addAll(insertIdx, songs)
+            _playbackQueue.value = currentQueue
+        }
+        android.widget.Toast.makeText(context, "Added ${songs.size} songs to play next", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun addToQueueEnd(song: SongItem) {
+        val currentQueue = _playbackQueue.value.toMutableList()
+        if (currentQueue.isEmpty()) {
+            playTrack(0, listOf(song))
+        } else {
+            currentQueue.add(song)
+            _playbackQueue.value = currentQueue
+        }
+        android.widget.Toast.makeText(context, "Added to queue: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun addToQueueEnd(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        val currentQueue = _playbackQueue.value.toMutableList()
+        if (currentQueue.isEmpty()) {
+            playTrack(0, songs)
+        } else {
+            currentQueue.addAll(songs)
+            _playbackQueue.value = currentQueue
+        }
+        android.widget.Toast.makeText(context, "Added ${songs.size} songs to queue", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun startRadio(song: SongItem) {
+        viewModelScope.launch {
+            _statusText.value = "Starting radio..."
+            val radioSongs = withContext(Dispatchers.IO) {
+                try {
+                    val res = YouTube.next(WatchEndpoint(videoId = song.id)).getOrNull()
+                    val endpointSongs = res?.items?.filterIsInstance<SongItem>().orEmpty()
+                    if (endpointSongs.isNotEmpty()) {
+                        listOf(song) + endpointSongs.filter { it.id != song.id }
+                    } else {
+                        val artistName = song.artists.firstOrNull()?.name.orEmpty()
+                        val searchRes = YouTube.search("${song.title} $artistName", YouTube.SearchFilter.FILTER_SONG)
+                            .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
+                        listOf(song) + searchRes.filter { it.id != song.id }
+                    }
+                } catch (_: Exception) {
+                    listOf(song)
+                }
+            }
+            playTrack(0, radioSongs)
+            android.widget.Toast.makeText(context, "Radio started 📻", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun playShuffled(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        val shuffled = songs.shuffled()
+        playTrack(0, shuffled)
     }
 
     fun seekTo(positionMs: Long) {

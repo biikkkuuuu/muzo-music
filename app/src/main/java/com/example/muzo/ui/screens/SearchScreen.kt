@@ -1,8 +1,10 @@
 package com.example.muzo.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -64,7 +66,9 @@ fun SearchScreen(
     onSongSelect: (SongItem, List<SongItem>) -> Unit,
     onPlaylistSelect: (ShelfItem) -> Unit = {},
     onCategoryClick: (String) -> Unit = {},
-    statusText: String = ""
+    statusText: String = "",
+    onSongActionClick: ((SongItem, List<SongItem>) -> Unit)? = null,
+    onPlaylistActionClick: ((ShelfItem) -> Unit)? = null
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
@@ -514,7 +518,10 @@ fun SearchScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .clickable { onSongSelect(song, searchResults) }
+                                    .combinedClickable(
+                                        onClick = { onSongSelect(song, searchResults) },
+                                        onLongClick = { onSongActionClick?.invoke(song, searchResults) }
+                                    )
                                     .padding(vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -632,16 +639,28 @@ fun SearchScreen(
                                     Column(
                                         modifier = Modifier
                                             .width(130.dp)
-                                            .clickable {
-                                                val item = ShelfItem(
-                                                    id = playlist.id,
-                                                    title = playlist.title,
-                                                    subtitle = playlist.author?.name ?: "Playlist",
-                                                    imageUrls = listOf(playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
-                                                    type = ItemType.PLAYLIST
-                                                )
-                                                onPlaylistSelect(item)
-                                            }
+                                            .combinedClickable(
+                                                onClick = {
+                                                    val item = ShelfItem(
+                                                        id = playlist.id,
+                                                        title = playlist.title,
+                                                        subtitle = playlist.author?.name ?: "Playlist",
+                                                        imageUrls = listOf(playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
+                                                        type = ItemType.PLAYLIST
+                                                    )
+                                                    onPlaylistSelect(item)
+                                                },
+                                                onLongClick = {
+                                                    val item = ShelfItem(
+                                                        id = playlist.id,
+                                                        title = playlist.title,
+                                                        subtitle = playlist.author?.name ?: "Playlist",
+                                                        imageUrls = listOf(playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
+                                                        type = ItemType.PLAYLIST
+                                                    )
+                                                    onPlaylistActionClick?.invoke(item)
+                                                }
+                                            )
                                     ) {
                                         Box(
                                             modifier = Modifier
@@ -693,7 +712,10 @@ fun SearchScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .clickable { onSongSelect(song, searchResults) }
+                                    .combinedClickable(
+                                        onClick = { onSongSelect(song, searchResults) },
+                                        onLongClick = { onSongActionClick?.invoke(song, searchResults) }
+                                    )
                                     .padding(vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -886,7 +908,10 @@ fun SearchScreen(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(cardBackground)
-                                        .clickable { onSongSelect(song, chartSongs) }
+                                        .combinedClickable(
+                                            onClick = { onSongSelect(song, chartSongs) },
+                                            onLongClick = { onSongActionClick?.invoke(song, chartSongs) }
+                                        )
                                         .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -1305,7 +1330,10 @@ fun SearchScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(12.dp))
-                                            .clickable { onSongSelect(song, liveSongs) }
+                                            .combinedClickable(
+                                                onClick = { onSongSelect(song, liveSongs) },
+                                                onLongClick = { onSongActionClick?.invoke(song, liveSongs) }
+                                            )
                                             .padding(vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
