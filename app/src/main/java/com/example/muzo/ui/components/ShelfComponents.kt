@@ -32,10 +32,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.muzo.data.model.HomeShelf
 import com.example.muzo.data.model.ItemType
@@ -45,16 +52,16 @@ import com.example.muzo.data.model.ShelfType
 @Composable
 fun ShimmerBrush(targetValue: Float = 1000f): Brush {
     val shimmerColors = listOf(
-        Color(0xFF131317),
-        Color(0xFF22222A),
-        Color(0xFF131317)
+        Color(0xFF1A1A22),
+        Color(0xFF32323E),
+        Color(0xFF1A1A22)
     )
     val transition = rememberInfiniteTransition(label = "shimmer")
     val translateAnimation = transition.animateFloat(
         initialValue = 0f,
         targetValue = targetValue,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1100, easing = LinearEasing),
+            animation = tween(durationMillis = 1000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmerTranslate"
@@ -67,7 +74,7 @@ fun ShimmerBrush(targetValue: Float = 1000f): Brush {
 }
 
 @Composable
-fun ShelfRowSkeleton(brush: Brush, hasSubtitle: Boolean = true) {
+fun ShelfRowSkeleton(brush: Brush = ShimmerBrush(), hasSubtitle: Boolean = true) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         // Shelf Header
         Row(
@@ -106,13 +113,14 @@ fun ShelfRowSkeleton(brush: Brush, hasSubtitle: Boolean = true) {
         Spacer(modifier = Modifier.height(12.dp))
 
         // Horizontal Row of Cards (matching 140.dp actual card size)
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-            userScrollEnabled = false
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState(), enabled = false)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            items(4) {
+            repeat(4) {
                 Column(
                     modifier = Modifier.width(140.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -312,8 +320,8 @@ fun HeroCarousel(
                                     color = Color.White,
                                     fontSize = 15.sp,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Clip,
-                                    modifier = Modifier.fillMaxWidth().basicMarquee()
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
@@ -361,17 +369,9 @@ fun HeroCarousel(
                             modifier = Modifier
                                 .size(110.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                .background(Color(0xFF141418))
                         ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(item.imageUrls.firstOrNull() ?: "")
-                                    .crossfade(100)
-                                    .build(),
-                                contentDescription = item.title,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                            SingleCover(imageUrl = item.imageUrls.firstOrNull() ?: "")
                         }
                     }
                 }
@@ -400,14 +400,17 @@ fun ShelfCard(
         Box(
             modifier = Modifier
                 .size(140.dp)
-                .shadow(6.dp, if (isArtist) CircleShape else RoundedCornerShape(10.dp), spotColor = Color.Black.copy(alpha = 0.4f))
+                .shadow(4.dp, if (isArtist) CircleShape else RoundedCornerShape(10.dp), spotColor = Color.Black.copy(alpha = 0.35f))
                 .clip(if (isArtist) CircleShape else RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                .background(Color(0xFF141418))
         ) {
             if (item.imageUrls.size >= 4) {
                 CollageCover(imageUrls = item.imageUrls.take(4))
             } else {
-                SingleCover(imageUrl = item.imageUrls.firstOrNull() ?: "")
+                SingleCover(
+                    imageUrl = item.imageUrls.firstOrNull() ?: "",
+                    isCircle = isArtist
+                )
             }
 
             // Top-left Play Indicator Badge (Echo-Music signature)
@@ -437,11 +440,9 @@ fun ShelfCard(
             fontWeight = FontWeight.SemiBold,
             color = Color.White,
             maxLines = 1,
-            overflow = TextOverflow.Clip,
+            overflow = TextOverflow.Ellipsis,
             textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier
-                .fillMaxWidth()
-                .basicMarquee()
+            modifier = Modifier.fillMaxWidth()
         )
         Text(
             text = if (isArtist) "Artist" else item.subtitle,
@@ -458,49 +459,75 @@ fun ShelfCard(
 }
 
 @Composable
-fun SingleCover(imageUrl: String) {
-    AsyncImage(
+fun SingleCover(
+    imageUrl: String,
+    modifier: Modifier = Modifier,
+    isCircle: Boolean = false
+) {
+    val painter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(LocalContext.current)
             .data(imageUrl)
-            .crossfade(100)
-            .build(),
-        contentDescription = null,
-        modifier = Modifier.fillMaxSize(),
-        contentScale = ContentScale.Crop
+            .crossfade(150)
+            .build()
     )
+    val state = painter.state
+    val shape = if (isCircle) CircleShape else RoundedCornerShape(10.dp)
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clip(shape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (state is AsyncImagePainter.State.Loading || state is AsyncImagePainter.State.Empty) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(ShimmerBrush())
+            )
+        } else if (state is AsyncImagePainter.State.Error) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF1B1B22)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isCircle) Icons.Default.Person else Icons.Default.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.25f),
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        }
+
+        Image(
+            painter = painter,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
 
 @Composable
 fun CollageCover(imageUrls: List<String>) {
-    val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(0)).crossfade(100).build(),
-                contentDescription = null,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                contentScale = ContentScale.Crop
-            )
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(1)).crossfade(100).build(),
-                contentDescription = null,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                contentScale = ContentScale.Crop
-            )
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SingleCover(imageUrl = imageUrls.getOrNull(0) ?: "")
+            }
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SingleCover(imageUrl = imageUrls.getOrNull(1) ?: "")
+            }
         }
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(2)).crossfade(100).build(),
-                contentDescription = null,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                contentScale = ContentScale.Crop
-            )
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(imageUrls.getOrNull(3)).crossfade(100).build(),
-                contentDescription = null,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                contentScale = ContentScale.Crop
-            )
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SingleCover(imageUrl = imageUrls.getOrNull(2) ?: "")
+            }
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SingleCover(imageUrl = imageUrls.getOrNull(3) ?: "")
+            }
         }
     }
 }

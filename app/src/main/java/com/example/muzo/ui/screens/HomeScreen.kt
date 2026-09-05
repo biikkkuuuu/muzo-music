@@ -37,7 +37,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.muzo.data.model.HomeShelf
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
-import com.example.muzo.data.model.ShelfType
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.animateFloatAsState
 import com.example.muzo.ui.components.HomeScreenSkeleton
 import com.example.muzo.ui.components.PlaylistShelfRow
 import com.example.muzo.ui.components.ShelfRowSkeleton
@@ -104,9 +107,9 @@ fun HomeScreen(
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val delta = available.y
-                if (delta < -8f && isHeaderVisible) {
+                if (delta < -12f && isHeaderVisible) {
                     isHeaderVisible = false
-                } else if (delta > 8f && !isHeaderVisible) {
+                } else if (delta > 12f && !isHeaderVisible) {
                     isHeaderVisible = true
                 }
                 return Offset.Zero
@@ -117,82 +120,32 @@ fun HomeScreen(
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex to lazyListState.firstVisibleItemScrollOffset }
             .collect { (index, offset) ->
-                if (index == 0 && offset < 10) {
+                if (index == 0 && offset < 20) {
                     isHeaderVisible = true
                 }
             }
     }
 
-    Scaffold(
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF08080A))
-                    .statusBarsPadding()
-            ) {
-                AnimatedVisibility(
-                    visible = isHeaderVisible,
-                    enter = expandVertically(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        expandFrom = Alignment.Top
-                    ) + fadeIn(animationSpec = tween(durationMillis = 200)),
-                    exit = shrinkVertically(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        shrinkTowards = Alignment.Top
-                    ) + fadeOut(animationSpec = tween(durationMillis = 150))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Muzi Music",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                            fontSize = 24.sp
-                        )
+    val density = LocalDensity.current
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val headerBarHeight = 56.dp
+    val totalHeaderHeight = statusBarHeight + headerBarHeight
+    val totalHeaderHeightPx = with(density) { totalHeaderHeight.toPx() }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { onCategoryClick("History") }) {
-                                Icon(
-                                    imageVector = Icons.Default.History,
-                                    contentDescription = "History",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            IconButton(onClick = { onCategoryClick("Charts") }) {
-                                Icon(
-                                    imageVector = Icons.Default.TrendingUp,
-                                    contentDescription = "Charts",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            IconButton(onClick = onOpenSettings) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Settings",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        containerColor = Color(0xFF08080A),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
+    val headerOffsetProgress by animateFloatAsState(
+        targetValue = if (isHeaderVisible) 0f else -1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "headerOffset"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF08080A))
+    ) {
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
@@ -201,7 +154,6 @@ fun HomeScreen(
             },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
                 .nestedScroll(nestedScrollConnection)
         ) {
             val hasRemote = homeShelves.any { it.id != "keep_listening" }
@@ -209,7 +161,10 @@ fun HomeScreen(
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 150.dp),
+                contentPadding = PaddingValues(
+                    top = totalHeaderHeight + 8.dp,
+                    bottom = 150.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // 1. Mood & Genre Filter Chips inside LazyColumn (Echo-Music pattern - glides smoothly with feed)
@@ -226,7 +181,7 @@ fun HomeScreen(
                 }
 
                 // If remote shelves are still loading:
-                if (!hasRemote) {
+                if (!hasRemote || homeShelves.isEmpty()) {
                     // Show Keep Listening if user already has local history
                     val keepListeningShelf = homeShelves.firstOrNull { it.id == "keep_listening" }
                     if (keepListeningShelf != null && keepListeningShelf.items.isNotEmpty()) {
@@ -279,64 +234,113 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    // 2. Dynamic Shelves that smoothly exchange positions up and down on refresh via animateItem
+                    // 2. Dynamic Shelves (Smooth liquid scrolling, zero jitter)
                     items(
                         items = orderedShelves,
                         key = { it.id }
                     ) { shelf ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateItem(
-                                    fadeInSpec = tween(durationMillis = 350),
-                                    fadeOutSpec = tween(durationMillis = 350),
-                                    placementSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    )
-                                )
-                        ) {
-                            PlaylistShelfRow(
-                                shelf = shelf,
-                                onItemClick = { item ->
-                                    when (item.type) {
-                                        ItemType.SONG -> {
-                                            val songItem = SongItem(
-                                                id = item.id,
-                                                title = item.title,
-                                                artists = listOf(Artist(name = item.subtitle, id = null)),
+                        PlaylistShelfRow(
+                            shelf = shelf,
+                            onItemClick = { item ->
+                                when (item.type) {
+                                    ItemType.SONG -> {
+                                        val songItem = SongItem(
+                                            id = item.id,
+                                            title = item.title,
+                                            artists = listOf(Artist(name = item.subtitle, id = null)),
+                                            album = null,
+                                            duration = 0,
+                                            thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                        )
+                                        val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
+                                            SongItem(
+                                                id = it.id,
+                                                title = it.title,
+                                                artists = listOf(Artist(name = it.subtitle, id = null)),
                                                 album = null,
                                                 duration = 0,
-                                                thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                                thumbnail = it.imageUrls.firstOrNull() ?: ""
                                             )
-                                            val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
-                                                SongItem(
-                                                    id = it.id,
-                                                    title = it.title,
-                                                    artists = listOf(Artist(name = it.subtitle, id = null)),
-                                                    album = null,
-                                                    duration = 0,
-                                                    thumbnail = it.imageUrls.firstOrNull() ?: ""
-                                                )
-                                            }
-                                            onSongSelect(songItem, allSongsInShelf)
                                         }
-                                        ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
-                                            onPlaylistSelect(item)
-                                        }
-                                        ItemType.CHART -> {
-                                            onCategoryClick(item.title)
-                                        }
+                                        onSongSelect(songItem, allSongsInShelf)
                                     }
-                                },
-                                onSeeAllClick = {
-                                    onSeeAllClick(shelf)
-                                },
-                                onItemLongClick = { item ->
-                                    onItemLongClick?.invoke(item, shelf.items)
+                                    ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
+                                        onPlaylistSelect(item)
+                                    }
+                                    ItemType.CHART -> {
+                                        onCategoryClick(item.title)
+                                    }
                                 }
-                            )
-                        }
+                            },
+                            onSeeAllClick = {
+                                onSeeAllClick(shelf)
+                            },
+                            onItemLongClick = { item ->
+                                onItemLongClick?.invoke(item, shelf.items)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Floating Top Header (GPU hardware translated - zero layout invalidations on LazyColumn!)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationY = headerOffsetProgress * totalHeaderHeightPx
+                    alpha = (1f + headerOffsetProgress * 0.8f).coerceIn(0f, 1f)
+                }
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF08080A),
+                            Color(0xFF08080A).copy(alpha = 0.96f),
+                            Color(0xFF08080A).copy(alpha = 0.85f),
+                            Color.Transparent
+                        )
+                    )
+                )
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(headerBarHeight),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Muzi Music",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 24.sp
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { onCategoryClick("History") }) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "History",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { onCategoryClick("Charts") }) {
+                        Icon(
+                            imageVector = Icons.Default.TrendingUp,
+                            contentDescription = "Charts",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

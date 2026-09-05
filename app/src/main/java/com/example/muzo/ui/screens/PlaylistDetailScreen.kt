@@ -577,12 +577,7 @@ fun PlaylistDetailScreen(
                                             .clip(RoundedCornerShape(12.dp))
                                             .background(Color(0xFF1E1E24))
                                     ) {
-                                        AsyncImage(
-                                            model = item.imageUrls.firstOrNull(),
-                                            contentDescription = item.title,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
+                                        SingleCover(imageUrl = item.imageUrls.firstOrNull() ?: "")
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
@@ -627,14 +622,10 @@ fun PlaylistDetailScreen(
                                         .width(95.dp)
                                         .clickable { onSimilarArtistClick(item) }
                                 ) {
-                                    AsyncImage(
-                                        model = item.imageUrls.firstOrNull(),
-                                        contentDescription = item.title,
-                                        modifier = Modifier
-                                            .size(85.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF1E1E24)),
-                                        contentScale = ContentScale.Crop
+                                    SingleCover(
+                                        imageUrl = item.imageUrls.firstOrNull() ?: "",
+                                        modifier = Modifier.size(85.dp),
+                                        isCircle = true
                                     )
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
@@ -945,13 +936,9 @@ fun PlaylistDetailScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
-                            model = getHighResThumbnail(song.thumbnail),
-                            contentDescription = song.title,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
+                        SingleCover(
+                            imageUrl = getHighResThumbnail(song.thumbnail),
+                            modifier = Modifier.size(48.dp)
                         )
 
                         Spacer(modifier = Modifier.width(14.dp))
