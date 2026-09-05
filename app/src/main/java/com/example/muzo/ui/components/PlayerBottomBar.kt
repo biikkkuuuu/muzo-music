@@ -4,8 +4,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,20 +72,32 @@ fun PlayerWithBottomNav(
             .padding(bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1. Floating Mini Player (Capsule with horizontal swipe gestures)
-        if (currentSong != null) {
-            FloatingMiniPlayer(
-                song = currentSong,
-                isPlaying = isPlaying,
-                currentPosition = currentPosition,
-                duration = duration,
-                hasPrev = hasPrev,
-                hasNext = hasNext,
-                onClick = onSongClick,
-                onPlayPause = onPlayPause,
-                onPrev = onPrevious,
-                onNext = onNext
-            )
+        // 1. Floating Mini Player (Capsule with horizontal swipe gestures & smooth slide in/out)
+        AnimatedVisibility(
+            visible = currentSong != null,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(durationMillis = 320, easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f))
+            ) + fadeIn(animationSpec = tween(durationMillis = 200)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(durationMillis = 260, easing = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f))
+            ) + fadeOut(animationSpec = tween(durationMillis = 180))
+        ) {
+            currentSong?.let { song ->
+                FloatingMiniPlayer(
+                    song = song,
+                    isPlaying = isPlaying,
+                    currentPosition = currentPosition,
+                    duration = duration,
+                    hasPrev = hasPrev,
+                    hasNext = hasNext,
+                    onClick = onSongClick,
+                    onPlayPause = onPlayPause,
+                    onPrev = onPrevious,
+                    onNext = onNext
+                )
+            }
             Spacer(modifier = Modifier.height(4.dp))
         }
 

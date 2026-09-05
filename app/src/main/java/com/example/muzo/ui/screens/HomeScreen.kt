@@ -26,6 +26,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -102,15 +103,26 @@ fun HomeScreen(
     }
 
     var isHeaderVisible by rememberSaveable { mutableStateOf(true) }
+    var scrollAccumulator by remember { mutableFloatStateOf(0f) }
 
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val delta = available.y
-                if (delta < -12f && isHeaderVisible) {
-                    isHeaderVisible = false
-                } else if (delta > 12f && !isHeaderVisible) {
-                    isHeaderVisible = true
+                if (delta < 0) {
+                    if (scrollAccumulator > 0) scrollAccumulator = 0f
+                    scrollAccumulator += delta
+                    if (scrollAccumulator < -25f && isHeaderVisible) {
+                        isHeaderVisible = false
+                        scrollAccumulator = 0f
+                    }
+                } else if (delta > 0) {
+                    if (scrollAccumulator < 0) scrollAccumulator = 0f
+                    scrollAccumulator += delta
+                    if (scrollAccumulator > 25f && !isHeaderVisible) {
+                        isHeaderVisible = true
+                        scrollAccumulator = 0f
+                    }
                 }
                 return Offset.Zero
             }
@@ -120,8 +132,9 @@ fun HomeScreen(
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex to lazyListState.firstVisibleItemScrollOffset }
             .collect { (index, offset) ->
-                if (index == 0 && offset < 20) {
+                if (index == 0 && offset < 30) {
                     isHeaderVisible = true
+                    scrollAccumulator = 0f
                 }
             }
     }
@@ -134,9 +147,9 @@ fun HomeScreen(
 
     val headerOffsetProgress by animateFloatAsState(
         targetValue = if (isHeaderVisible) 0f else -1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
+        animationSpec = tween(
+            durationMillis = 350,
+            easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
         ),
         label = "headerOffset"
     )
@@ -290,7 +303,7 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .graphicsLayer {
                     translationY = headerOffsetProgress * totalHeaderHeightPx
-                    alpha = (1f + headerOffsetProgress * 0.8f).coerceIn(0f, 1f)
+                    alpha = (1f + headerOffsetProgress).coerceIn(0f, 1f)
                 }
                 .background(
                     Brush.verticalGradient(

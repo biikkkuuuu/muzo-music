@@ -10,6 +10,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -714,8 +716,20 @@ fun MuziMainScreen(player: ExoPlayer) {
         // Full Player Sheet (Expandable)
         AnimatedVisibility(
             visible = isPlayerExpanded && currentSong != null,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it })
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(
+                    durationMillis = 380,
+                    easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
+                )
+            ) + fadeIn(animationSpec = tween(durationMillis = 260)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(
+                    durationMillis = 320,
+                    easing = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
+                )
+            ) + fadeOut(animationSpec = tween(durationMillis = 200))
         ) {
             FullPlayerSheet(
                 song = currentSong!!,
