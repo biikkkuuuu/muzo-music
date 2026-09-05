@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
@@ -119,6 +120,8 @@ fun FullPlayerSheet(
     var showQueueSheet by remember { mutableStateOf(false) }
     var showEqualizerSheet by remember { mutableStateOf(false) }
     var showLyricsInAlbum by rememberSaveable { mutableStateOf(false) }
+    var showLyricsResyncSheet by remember { mutableStateOf(false) }
+    var lyricsManualOffsetMs by remember(song.id) { mutableLongStateOf(songOffsetMap[song.id] ?: 0L) }
     var showMediaInfoSheet by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showAudioOutputSheet by remember { mutableStateOf(false) }
@@ -167,54 +170,61 @@ fun FullPlayerSheet(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 // ==========================================
-                // 1. TOP BAR: Centered "Now Playing" + Title, Down Chevron
                 // ==========================================
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp, bottom = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // 1. TOP BAR: Centered "Now Playing" + Title (Only in Cover Mode)
+                // ==========================================
+                AnimatedVisibility(
+                    visible = !showLyricsInAlbum,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
                 ) {
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Collapse",
-                            modifier = Modifier.size(28.dp),
-                            tint = Color.White.copy(alpha = 0.85f)
-                        )
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 40.dp) // Offset the left chevron so title is truly centered
+                            .fillMaxWidth()
+                            .padding(top = 2.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Now Playing",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.7f),
-                            letterSpacing = 0.3.sp
-                        )
-                        Text(
-                            text = song.title,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        IconButton(
+                            onClick = onClose,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Collapse",
+                                modifier = Modifier.size(28.dp),
+                                tint = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 40.dp) // Offset the left chevron so title is truly centered
+                        ) {
+                            Text(
+                                text = "Now Playing",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Color.White.copy(alpha = 0.7f),
+                                letterSpacing = 0.3.sp
+                            )
+                            Text(
+                                text = song.title,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(2.dp))
 
                 // ==========================================
-                // 2. ALBUM ARTWORK OR SYNCED LYRICS (Directly in Album Space)
+                // 2. ALBUM ARTWORK OR OPEN SYNCED LYRICS (Matches Image 2)
                 // ==========================================
                 AnimatedContent(
                     targetState = showLyricsInAlbum,
@@ -223,18 +233,19 @@ fun FullPlayerSheet(
                     },
                     label = "AlbumOrLyricsTransition",
                     modifier = Modifier
-                        .weight(1f, fill = false)
-                        .aspectRatio(1f)
-                        .fillMaxWidth(0.92f)
-                        .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.75f))
-                        .clip(RoundedCornerShape(24.dp))
+                        .weight(1f)
+                        .fillMaxWidth()
                 ) { isLyricsActive ->
                     if (isLyricsActive) {
+                        // Image 2: Open Edge-to-Edge Synchronized Lyrics on Ambient Canvas
                         AlbumSyncedLyricsView(
                             song = song,
                             currentPosition = currentPosition,
+                            manualOffsetMs = lyricsManualOffsetMs,
+                            onOffsetChange = { lyricsManualOffsetMs = it },
                             onSeek = onSeek,
                             onCloseLyrics = { showLyricsInAlbum = false },
+                            onClose = onClose,
                             onNext = onNext,
                             onPrev = onPrev,
                             hasNext = hasNext || repeatMode > 0 || isShuffleActive,
@@ -242,98 +253,107 @@ fun FullPlayerSheet(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
+                        // Big Album Artwork View
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .offset { IntOffset(animatedArtworkOffset.roundToInt(), 0) }
-                                .pointerInput(song.id) {
-                                    detectHorizontalDragGestures(
-                                        onHorizontalDrag = { _, dragAmount ->
-                                            swipeOffsetAccumulator = (swipeOffsetAccumulator + dragAmount).coerceIn(-180f, 180f)
-                                        },
-                                        onDragEnd = {
-                                            if (swipeOffsetAccumulator < -75f && (hasNext || repeatMode > 0 || isShuffleActive)) {
-                                                onNext()
-                                            } else if (swipeOffsetAccumulator > 75f && (hasPrev || repeatMode > 0)) {
-                                                onPrev()
-                                            }
-                                            swipeOffsetAccumulator = 0f
-                                        },
-                                        onDragCancel = { swipeOffsetAccumulator = 0f }
-                                    )
-                                }
-                                .pointerInput(song.id) {
-                                    detectTapGestures(
-                                        onDoubleTap = { offset ->
-                                            if (offset.x > size.width / 2) {
-                                                onSeek((currentPosition + 10000).coerceAtMost(duration))
-                                                seekFeedbackText = "+10s"
-                                            } else {
-                                                onSeek((currentPosition - 10000).coerceAtLeast(0L))
-                                                seekFeedbackText = "-10s"
-                                            }
-                                        },
-                                        onTap = { onPlayPause() }
-                                    )
-                                },
+                            modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            AsyncImage(
-                                model = getHighResThumbnail(song.thumbnail),
-                                contentDescription = song.title,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-
-                            // Floating Lyrics Quick Pill on Cover
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = Color.Black.copy(alpha = 0.55f),
-                                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
+                            Box(
                                 modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(12.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { showLyricsInAlbum = true }
+                                    .aspectRatio(1f)
+                                    .fillMaxWidth(0.92f)
+                                    .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.75f))
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .offset { IntOffset(animatedArtworkOffset.roundToInt(), 0) }
+                                    .pointerInput(song.id) {
+                                        detectHorizontalDragGestures(
+                                            onHorizontalDrag = { _, dragAmount ->
+                                                swipeOffsetAccumulator = (swipeOffsetAccumulator + dragAmount).coerceIn(-180f, 180f)
+                                            },
+                                            onDragEnd = {
+                                                if (swipeOffsetAccumulator < -75f && (hasNext || repeatMode > 0 || isShuffleActive)) {
+                                                    onNext()
+                                                } else if (swipeOffsetAccumulator > 75f && (hasPrev || repeatMode > 0)) {
+                                                    onPrev()
+                                                }
+                                                swipeOffsetAccumulator = 0f
+                                            },
+                                            onDragCancel = { swipeOffsetAccumulator = 0f }
+                                        )
+                                    }
+                                    .pointerInput(song.id) {
+                                        detectTapGestures(
+                                            onDoubleTap = { offset ->
+                                                if (offset.x > size.width / 2) {
+                                                    onSeek((currentPosition + 10000).coerceAtMost(duration))
+                                                    seekFeedbackText = "+10s"
+                                                } else {
+                                                    onSeek((currentPosition - 10000).coerceAtLeast(0L))
+                                                    seekFeedbackText = "-10s"
+                                                }
+                                            },
+                                            onTap = { onPlayPause() }
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MusicNote,
-                                        contentDescription = "Lyrics",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Lyrics",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
+                                AsyncImage(
+                                    model = getHighResThumbnail(song.thumbnail),
+                                    contentDescription = song.title,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
 
-                            // Double-tap Seek Feedback Bubble Overlay
-                            this@Column.AnimatedVisibility(
-                                visible = seekFeedbackText != null,
-                                enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                                exit = fadeOut() + scaleOut(targetScale = 0.8f)
-                            ) {
-                                Box(
+                                // Floating Lyrics Quick Pill on Cover
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color.Black.copy(alpha = 0.55f),
+                                    border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
                                     modifier = Modifier
-                                        .clip(CircleShape)
-                                        .background(Color.Black.copy(alpha = 0.8f))
-                                        .padding(horizontal = 22.dp, vertical = 11.dp)
+                                        .align(Alignment.BottomEnd)
+                                        .padding(12.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable { showLyricsInAlbum = true }
                                 ) {
-                                    Text(
-                                        text = seekFeedbackText ?: "",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.Notes,
+                                            contentDescription = "Lyrics",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Lyrics",
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                // Double-tap Seek Feedback Bubble Overlay
+                                this@Column.AnimatedVisibility(
+                                    visible = seekFeedbackText != null,
+                                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                                    exit = fadeOut() + scaleOut(targetScale = 0.8f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.8f))
+                                            .padding(horizontal = 22.dp, vertical = 11.dp)
+                                    ) {
+                                        Text(
+                                            text = seekFeedbackText ?: "",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 20.sp
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -343,7 +363,7 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // ==========================================
-                // 3. TRACK TITLE, ARTIST, & WHITE SQUIRCLE ACTION BUTTONS
+                // 3. TRACK TITLE, ARTIST, & ACTION SQUIRCLES (Image 2 exact match)
                 // ==========================================
                 Row(
                     modifier = Modifier
@@ -352,75 +372,162 @@ fun FullPlayerSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 16.dp),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            text = song.title,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            modifier = Modifier.basicMarquee()
-                        )
-                        Spacer(modifier = Modifier.height(3.dp))
-                        Text(
-                            text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" },
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.75f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Pure White Squircle Download Button
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color.White,
+                    if (showLyricsInAlbum) {
+                        // Image 2: Mini Album Artwork Thumbnail + Song Title & Artist
+                        Row(
                             modifier = Modifier
-                                .size(46.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { showMediaInfoSheet = true }
+                                .weight(1f)
+                                .padding(end = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Download,
-                                    contentDescription = "Download",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(22.dp)
+                            AsyncImage(
+                                model = getHighResThumbnail(song.thumbnail),
+                                contentDescription = song.title,
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = song.title,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip,
+                                    modifier = Modifier.basicMarquee()
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" },
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
 
-                        // Pure White Squircle Heart Like Button
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color.White,
-                            modifier = Modifier
-                                .size(46.dp)
-                                .graphicsLayer {
-                                    scaleX = likeScale
-                                    scaleY = likeScale
-                                }
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { onLikeToggle() }
+                        // Image 2: TWO Pure White Squircles on Right: [CropFree / Cover] and [... / MoreHoriz / Resync]
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = if (isLiked) "Liked" else "Like",
-                                    tint = if (isLiked) Color(0xFFFF3B30) else Color.Black,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                            // 1. CropFree (Corner brackets) -> Return to Big Cover View
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White,
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { showLyricsInAlbum = false }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.CropFree,
+                                        contentDescription = "Show Album Cover",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+
+                            // 2. MoreHoriz (...) -> Open Lyrics Resync & Options Bottom Sheet
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White,
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { showLyricsResyncSheet = true }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreHoriz,
+                                        contentDescription = "Lyrics Sync & Options",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Normal Cover View: Large Title & Artist + Download & Heart
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 16.dp),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Text(
+                                text = song.title,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                                modifier = Modifier.basicMarquee()
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" },
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Color.White.copy(alpha = 0.75f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Pure White Squircle Download Button
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White,
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { showMediaInfoSheet = true }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = "Download",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+
+                            // Pure White Squircle Heart Like Button
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White,
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .graphicsLayer {
+                                        scaleX = likeScale
+                                        scaleY = likeScale
+                                    }
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onLikeToggle() }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = if (isLiked) "Liked" else "Like",
+                                        tint = if (isLiked) Color(0xFFFF3B30) else Color.Black,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -581,23 +688,23 @@ fun FullPlayerSheet(
                             modifier = Modifier.weight(1f).height(buttonHeight)
                         )
 
-                        // 3. Equalizer / Sound Tuning
+                        // 3. Lyrics (In Image 2, button 3 is LYRICS with 3 horizontal lines, ACTIVE in pure white!)
+                        SegmentedToolbarButton(
+                            icon = Icons.AutoMirrored.Filled.Notes,
+                            contentDescription = "Lyrics",
+                            shape = itemShape,
+                            isActive = showLyricsInAlbum,
+                            onClick = { showLyricsInAlbum = !showLyricsInAlbum },
+                            modifier = Modifier.weight(1f).height(buttonHeight)
+                        )
+
+                        // 4. Equalizer / Sound Tuning
                         SegmentedToolbarButton(
                             icon = Icons.Default.Tune,
                             contentDescription = "Equalizer",
                             shape = itemShape,
                             isActive = isEqEnabled,
                             onClick = { showEqualizerSheet = true },
-                            modifier = Modifier.weight(1f).height(buttonHeight)
-                        )
-
-                        // 4. Fullscreen / Lyrics in Album Space
-                        SegmentedToolbarButton(
-                            icon = Icons.Default.OpenInFull,
-                            contentDescription = "Lyrics",
-                            shape = itemShape,
-                            isActive = showLyricsInAlbum,
-                            onClick = { showLyricsInAlbum = !showLyricsInAlbum },
                             modifier = Modifier.weight(1f).height(buttonHeight)
                         )
 
@@ -718,6 +825,16 @@ fun FullPlayerSheet(
                 SleepTimerDialog(
                     sleepTimer = sleepTimer,
                     onDismissRequest = { showSleepTimerDialog = false }
+                )
+            }
+
+            // Lyrics Resync & Options Bottom Sheet
+            if (showLyricsResyncSheet) {
+                LyricsResyncBottomSheet(
+                    song = song,
+                    manualOffsetMs = lyricsManualOffsetMs,
+                    onOffsetChange = { lyricsManualOffsetMs = it },
+                    onDismiss = { showLyricsResyncSheet = false }
                 )
             }
 
