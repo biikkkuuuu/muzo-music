@@ -259,12 +259,23 @@ class PlayerViewModel(
         // Cancel any existing stream loading job so rapid clicks don't conflict
         playJob?.cancel()
         playJob = viewModelScope.launch {
-            val streamUrl = withContext(Dispatchers.IO) {
-                resolveStreamUrl(song.id)
+            // Check if downloaded offline file exists first
+            val localFile = withContext(Dispatchers.IO) {
+                com.example.muzo.data.download.SongDownloadManager.getInstance(context).getDownloadedFile(song.id)
             }
-            Log.d("PlayerVM", "streamUrl resolved: $streamUrl")
 
-            if (!streamUrl.isNullOrBlank()) {
+            val mediaUri = if (localFile != null && localFile.exists() && localFile.length() > 0) {
+                Log.d("PlayerVM", "Playing from offline download: ${localFile.absolutePath}")
+                Uri.fromFile(localFile)
+            } else {
+                val streamUrl = withContext(Dispatchers.IO) {
+                    resolveStreamUrl(song.id)
+                }
+                Log.d("PlayerVM", "streamUrl resolved: $streamUrl")
+                if (!streamUrl.isNullOrBlank()) Uri.parse(streamUrl) else null
+            }
+
+            if (mediaUri != null) {
                 val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
                 val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
                 val artworkUri = highResThumb?.let { Uri.parse(it) }
@@ -278,7 +289,7 @@ class PlayerViewModel(
 
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(song.id)
-                    .setUri(Uri.parse(streamUrl))
+                    .setUri(mediaUri)
                     .setMediaMetadata(metadata)
                     .build()
 

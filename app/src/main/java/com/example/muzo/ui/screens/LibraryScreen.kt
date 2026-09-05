@@ -39,10 +39,12 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.muzo.data.local.DownloadedSongEntity
 import com.example.muzo.data.local.HistoryEntity
 import com.example.muzo.data.local.LikedSongEntity
 import com.example.muzo.data.local.UserPlaylistEntity
 import com.example.muzo.data.local.UserPlaylistSongEntity
+import com.example.muzo.data.local.toSongItem
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
 import com.music.innertube.models.Artist
@@ -95,6 +97,7 @@ fun LibraryScreen(
     val sortAscending by libraryViewModel.sortAscending.collectAsStateWithLifecycle()
     val localSongs by libraryViewModel.localSongs.collectAsStateWithLifecycle()
     val isLoadingLocal by libraryViewModel.isLoadingLocal.collectAsStateWithLifecycle()
+    val downloadedSongs by libraryViewModel.downloadedSongs.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
@@ -290,12 +293,41 @@ fun LibraryScreen(
                     }
 
                     LibrarySubScreen.DOWNLOADED -> {
-                        LibraryPlaceholderDetail(
-                            title = "Downloaded",
-                            icon = Icons.Default.CheckCircle,
-                            message = "Downloaded offline tracks will appear here.",
-                            onBack = { libraryViewModel.setSubScreen(null) }
-                        )
+                        val songs = downloadedSongs.map { it.toSongItem() }
+                        val coverUrl = songs.firstOrNull()?.thumbnail
+                        if (songs.isEmpty()) {
+                            LibraryPlaceholderDetail(
+                                title = "Downloaded",
+                                icon = Icons.Default.CheckCircle,
+                                message = "No downloaded tracks yet.\nTap the download button on any song to listen offline.",
+                                onBack = { libraryViewModel.setSubScreen(null) }
+                            )
+                        } else {
+                            PlaylistDetailLayout(
+                                title = "Downloaded",
+                                subtitle = "${songs.size} song${if (songs.size > 1) "s" else ""} • Offline Available",
+                                coverUrl = coverUrl,
+                                aboutText = "Downloaded tracks are saved to device storage and can be played completely offline with zero data usage and instant playback.",
+                                songs = songs,
+                                sortText = "Date downloaded",
+                                onBack = { libraryViewModel.setSubScreen(null) },
+                                onSongPlay = onSongPlay,
+                                onSongOptionsClick = { song ->
+                                    if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
+                                },
+                                onPlaylistOptionsClick = {
+                                    onPlaylistActionClick?.invoke(
+                                        ShelfItem(
+                                            id = "downloaded",
+                                            title = "Downloaded",
+                                            subtitle = "${songs.size} songs",
+                                            imageUrls = listOfNotNull(coverUrl),
+                                            type = ItemType.PLAYLIST
+                                        )
+                                    )
+                                }
+                            )
+                        }
                     }
 
                     LibrarySubScreen.CACHED -> {

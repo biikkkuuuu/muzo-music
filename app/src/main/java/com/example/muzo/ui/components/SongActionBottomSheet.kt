@@ -37,6 +37,7 @@ import com.example.muzo.data.local.UserPlaylistEntity
 import com.example.muzo.data.local.UserPlaylistSongEntity
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
+import com.example.muzo.data.download.SongDownloadManager
 import com.example.muzo.playback.PlayerViewModel
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
@@ -363,6 +364,27 @@ fun SongActionBottomSheet(
                         }
                     }
                 )
+
+                // Download Song (Offline playback)
+                if (isSong) {
+                    val song = (target as ActionMenuTarget.Song).song
+                    val downloadManager = remember { SongDownloadManager.getInstance(context.applicationContext) }
+                    val downloadedIds by downloadManager.downloadedVideoIds.collectAsState()
+                    val isDownloaded = downloadedIds.contains(song.id)
+                    ActionCardItem(
+                        icon = if (isDownloaded) Icons.Default.DownloadDone else Icons.Default.Download,
+                        title = if (isDownloaded) "Remove download" else "Download song",
+                        subtitle = if (isDownloaded) "Delete offline copy from storage" else "Download for offline listening",
+                        onClick = {
+                            onDismiss()
+                            if (isDownloaded) {
+                                downloadManager.removeDownload(song.id, song.title)
+                            } else {
+                                downloadManager.downloadSong(song)
+                            }
+                        }
+                    )
+                }
 
                 // Add to playlist (for Song)
                 if (isSong) {

@@ -10,15 +10,17 @@ import androidx.room.RoomDatabase
         HistoryEntity::class,
         LikedSongEntity::class,
         UserPlaylistEntity::class,
-        UserPlaylistSongEntity::class
+        UserPlaylistSongEntity::class,
+        DownloadedSongEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class MuziDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
     abstract fun likedSongDao(): LikedSongDao
     abstract fun userPlaylistDao(): UserPlaylistDao
+    abstract fun downloadedSongDao(): DownloadedSongDao
 
     companion object {
         @Volatile

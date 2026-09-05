@@ -148,6 +148,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     val historyDao = database.historyDao()
     val likedSongDao = database.likedSongDao()
     val userPlaylistDao = database.userPlaylistDao()
+    val downloadedSongDao = database.downloadedSongDao()
 
     val playerViewModel: PlayerViewModel = viewModel(
         factory = PlayerViewModel.Factory(context.applicationContext, historyDao, likedSongDao, player)
@@ -156,7 +157,7 @@ fun MuziMainScreen(player: ExoPlayer) {
         factory = HomeFeedViewModel.Factory(historyDao)
     )
     val libraryViewModel: LibraryViewModel = viewModel(
-        factory = LibraryViewModel.Factory(likedSongDao, historyDao, userPlaylistDao)
+        factory = LibraryViewModel.Factory(likedSongDao, historyDao, userPlaylistDao, downloadedSongDao)
     )
 
     val homeShelves by feedViewModel.homeShelves.collectAsStateWithLifecycle()

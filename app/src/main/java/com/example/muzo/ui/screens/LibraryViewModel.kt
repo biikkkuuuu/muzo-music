@@ -7,6 +7,8 @@ import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.muzo.data.local.DownloadedSongDao
+import com.example.muzo.data.local.DownloadedSongEntity
 import com.example.muzo.data.local.HistoryDao
 import com.example.muzo.data.local.HistoryEntity
 import com.example.muzo.data.local.LikedSongDao
@@ -39,8 +41,12 @@ enum class LibrarySubScreen {
 class LibraryViewModel(
     private val likedSongDao: LikedSongDao,
     private val historyDao: HistoryDao,
-    private val userPlaylistDao: UserPlaylistDao
+    private val userPlaylistDao: UserPlaylistDao,
+    private val downloadedSongDao: DownloadedSongDao
 ) : ViewModel() {
+
+    val downloadedSongs: StateFlow<List<DownloadedSongEntity>> = downloadedSongDao.getAllDownloaded()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val likedSongs: StateFlow<List<LikedSongEntity>> = likedSongDao.getAllLikedSongs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -236,11 +242,12 @@ class LibraryViewModel(
     class Factory(
         private val likedSongDao: LikedSongDao,
         private val historyDao: HistoryDao,
-        private val userPlaylistDao: UserPlaylistDao
+        private val userPlaylistDao: UserPlaylistDao,
+        private val downloadedSongDao: DownloadedSongDao
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return LibraryViewModel(likedSongDao, historyDao, userPlaylistDao) as T
+            return LibraryViewModel(likedSongDao, historyDao, userPlaylistDao, downloadedSongDao) as T
         }
     }
 }

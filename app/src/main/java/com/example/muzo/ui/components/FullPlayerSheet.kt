@@ -2,6 +2,8 @@ package com.example.muzo.ui.components
 
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
+import com.example.muzo.data.download.SongDownloadManager
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -112,6 +114,12 @@ fun FullPlayerSheet(
     onClearUpcomingQueue: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val downloadManager = remember { SongDownloadManager.getInstance(context.applicationContext) }
+    val downloadedIds by downloadManager.downloadedVideoIds.collectAsStateWithLifecycle()
+    val activeDownloads by downloadManager.activeDownloads.collectAsStateWithLifecycle()
+    val isSongDownloaded = downloadedIds.contains(song.id)
+    val isSongDownloading = activeDownloads.contains(song.id)
+
     var isDraggingSeek by remember { mutableStateOf(false) }
     var dragSeekProgress by remember { mutableFloatStateOf(0f) }
 
@@ -413,17 +421,59 @@ fun FullPlayerSheet(
                             }
                         }
 
-                        // Image 2: TWO Pure White Squircles on Right: [CropFree / Cover] and [... / MoreHoriz / Resync]
+                        // Image 2: THREE Pure White Squircles on Right: [Download], [CropFree / Cover] and [... / MoreHoriz / Resync]
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 1. CropFree (Corner brackets) -> Return to Big Cover View
+                            // 1. Pure White Squircle Download Button
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color.White,
                                 modifier = Modifier
-                                    .size(46.dp)
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        if (isSongDownloading) {
+                                            Toast.makeText(context, "Download in progress...", Toast.LENGTH_SHORT).show()
+                                        } else if (isSongDownloaded) {
+                                            downloadManager.removeDownload(song.id, song.title)
+                                        } else {
+                                            downloadManager.downloadSong(song)
+                                        }
+                                    }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (isSongDownloading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = Color.Black
+                                        )
+                                    } else if (isSongDownloaded) {
+                                        Icon(
+                                            imageVector = Icons.Default.DownloadDone,
+                                            contentDescription = "Downloaded (Tap to remove)",
+                                            tint = Color(0xFF00A844),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Download,
+                                            contentDescription = "Download Song",
+                                            tint = Color.Black,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 2. CropFree (Corner brackets) -> Return to Big Cover View
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White,
+                                modifier = Modifier
+                                    .size(42.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .clickable { showLyricsInAlbum = false }
                             ) {
@@ -432,17 +482,17 @@ fun FullPlayerSheet(
                                         imageVector = Icons.Default.CropFree,
                                         contentDescription = "Show Album Cover",
                                         tint = Color.Black,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
 
-                            // 2. MoreHoriz (...) -> Open Lyrics Resync & Options Bottom Sheet
+                            // 3. MoreHoriz (...) -> Open Lyrics Resync & Options Bottom Sheet
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color.White,
                                 modifier = Modifier
-                                    .size(46.dp)
+                                    .size(42.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .clickable { showLyricsResyncSheet = true }
                             ) {
@@ -451,7 +501,7 @@ fun FullPlayerSheet(
                                         imageVector = Icons.Default.MoreHoriz,
                                         contentDescription = "Lyrics Sync & Options",
                                         tint = Color.Black,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
@@ -495,15 +545,38 @@ fun FullPlayerSheet(
                                 modifier = Modifier
                                     .size(46.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .clickable { showMediaInfoSheet = true }
+                                    .clickable {
+                                        if (isSongDownloading) {
+                                            Toast.makeText(context, "Download in progress...", Toast.LENGTH_SHORT).show()
+                                        } else if (isSongDownloaded) {
+                                            downloadManager.removeDownload(song.id, song.title)
+                                        } else {
+                                            downloadManager.downloadSong(song)
+                                        }
+                                    }
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Download,
-                                        contentDescription = "Download",
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    if (isSongDownloading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp,
+                                            color = Color.Black
+                                        )
+                                    } else if (isSongDownloaded) {
+                                        Icon(
+                                            imageVector = Icons.Default.DownloadDone,
+                                            contentDescription = "Downloaded (Tap to remove)",
+                                            tint = Color(0xFF00A844),
+                                            modifier = Modifier.size(23.dp)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Download,
+                                            contentDescription = "Download",
+                                            tint = Color.Black,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -755,6 +828,10 @@ fun FullPlayerSheet(
                     queueCount = queue.size,
                     playbackSpeed = playbackSpeed,
                     isShuffleActive = isShuffleActive,
+                    isDownloaded = isSongDownloaded,
+                    onToggleDownload = {
+                        downloadManager.toggleDownload(song)
+                    },
                     onDismiss = { showMoreMenu = false },
                     onOpenQueue = {
                         showMoreMenu = false
@@ -1002,6 +1079,8 @@ private fun EchoPlayerMenuSheet(
     queueCount: Int,
     playbackSpeed: Float,
     isShuffleActive: Boolean,
+    isDownloaded: Boolean = false,
+    onToggleDownload: () -> Unit = {},
     onDismiss: () -> Unit,
     onOpenQueue: () -> Unit,
     onOpenSpeed: () -> Unit,
@@ -1071,6 +1150,17 @@ private fun EchoPlayerMenuSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Option Items
+            MenuActionRow(
+                icon = if (isDownloaded) Icons.Default.DownloadDone else Icons.Default.Download,
+                title = if (isDownloaded) "Remove Download" else "Download Song",
+                subtitle = if (isDownloaded) "Saved offline • Tap to delete" else "Download track for offline listening",
+                badge = if (isDownloaded) "SAVED" else null,
+                onClick = {
+                    onDismiss()
+                    onToggleDownload()
+                }
+            )
+
             MenuActionRow(
                 icon = Icons.AutoMirrored.Filled.QueueMusic,
                 title = "Up Next / Queue",
