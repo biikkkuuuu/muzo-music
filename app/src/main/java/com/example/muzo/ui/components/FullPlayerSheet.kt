@@ -7,19 +7,21 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,24 +51,30 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
- * Echo-Music Player Screen (Pixel-Perfect implementation of echo_ui_player.png).
+ * Echo-Music Signature Player Screen (Matches the exact style from user's screenshots).
  *
- * Visual Layout & Features:
- * - Top Bar: Down chevron (collapse), centered "Now Playing" + song title, Cast/Audio Output icon.
- * - Artwork: Large 28dp rounded square with subtle elevation shadow, Prev/Next horizontal swipe,
- *            double-tap +/- 10s seek bubble feedback, tap play/pause.
+ * Visual Features:
+ * - Top Bar: Centered "Now Playing" + song/album title, subtle down chevron on left.
+ * - Artwork: Rounded square (24dp) with deep dynamic ambient background gradient.
  * - Title & Action Row:
- *     - Left: Bold Title (24sp) + Artist (16sp)
- *     - Right: Circular Download button (48dp) + Circular Heart Like button (48dp) with spring animation.
- * - Seekbar: Sleek slim slider with vertical blue pill/capsule thumb and left/right timestamps (00:01 / 02:43).
- * - Main Controls: Circular Prev (58dp), Signature Wide Pill Play/Pause button (112x62dp, #3872FF), Circular Next (58dp).
- * - Bottom Utility Row: 6 evenly spaced icons matching Echo:
- *     1. Quotes (Lyrics)
- *     2. Crescent Moon (Sleep Timer with live active indicator dot)
- *     3. Sound Waves / Equalizer (with live active indicator dot)
- *     4. Shuffle (with active #3872FF highlight)
- *     5. Repeat / RepeatOne (with active #3872FF highlight)
- *     6. More Options (Three vertical dots -> Echo More Menu with Queue, Speed, Codec, Radio, Share).
+ *     - Left: Bold Title + Artist
+ *     - Right: Two Pure White Squircles:
+ *         1. White Squircle Download button with black icon
+ *         2. White Squircle Heart Like button with black/red icon
+ * - Seekbar: 6dp rounded track, translucent white inactive, pure white active, white circle thumb, "0:00" left timestamp.
+ * - Main Controls:
+ *     - Previous: Translucent circular button (68dp)
+ *     - Play/Pause: Hero Pure White Circle (84dp) with black icon
+ *     - Next: Translucent circular button (68dp)
+ * - Bottom Toolbar:
+ *     - 5 Connected segmented bordered buttons:
+ *         1. Queue (rounded left)
+ *         2. Sleep Timer (middle square)
+ *         3. Equalizer / Tune (middle square)
+ *         4. Fullscreen / Lyrics (middle square)
+ *         5. Repeat (rounded right)
+ *     - Separator Spacer
+ *     - 6. Pure White Circle button with black 3 vertical dots (More Menu).
  */
 @Composable
 fun FullPlayerSheet(
@@ -158,24 +166,23 @@ fun FullPlayerSheet(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 // ==========================================
-                // 1. TOP BAR: Chevron Down, "Now Playing" + Title, Cast Icon
+                // 1. TOP BAR: Centered "Now Playing" + Title, Down Chevron
                 // ==========================================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .padding(top = 2.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
                         onClick = onClose,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.KeyboardArrowDown,
                             contentDescription = "Collapse",
-                            modifier = Modifier.size(32.dp),
-                            tint = Color.White
+                            modifier = Modifier.size(28.dp),
+                            tint = Color.White.copy(alpha = 0.85f)
                         )
                     }
 
@@ -183,14 +190,14 @@ fun FullPlayerSheet(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 8.dp)
+                            .padding(end = 40.dp) // Offset the left chevron so title is truly centered
                     ) {
                         Text(
                             text = "Now Playing",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
-                            color = Color(0xFFA0A0A8),
-                            letterSpacing = 0.2.sp
+                            color = Color.White.copy(alpha = 0.7f),
+                            letterSpacing = 0.3.sp
                         )
                         Text(
                             text = song.title,
@@ -201,24 +208,12 @@ fun FullPlayerSheet(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-
-                    IconButton(
-                        onClick = { showAudioOutputSheet = true },
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Cast,
-                            contentDescription = "Cast & Audio Output",
-                            modifier = Modifier.size(24.dp),
-                            tint = Color.White
-                        )
-                    }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 // ==========================================
-                // 2. ALBUM ARTWORK: 28dp rounded square, swipe gesture & double-tap
+                // 2. ALBUM ARTWORK: 24dp rounded square, swipe gesture & double-tap
                 // ==========================================
                 Box(
                     modifier = Modifier
@@ -226,8 +221,8 @@ fun FullPlayerSheet(
                         .aspectRatio(1f)
                         .fillMaxWidth(0.92f)
                         .offset { IntOffset(animatedArtworkOffset.roundToInt(), 0) }
-                        .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.75f))
-                        .clip(RoundedCornerShape(28.dp))
+                        .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.75f))
+                        .clip(RoundedCornerShape(24.dp))
                         .pointerInput(song.id) {
                             detectHorizontalDragGestures(
                                 onHorizontalDrag = { _, dragAmount ->
@@ -241,9 +236,7 @@ fun FullPlayerSheet(
                                     }
                                     swipeOffsetAccumulator = 0f
                                 },
-                                onDragCancel = {
-                                    swipeOffsetAccumulator = 0f
-                                }
+                                onDragCancel = { swipeOffsetAccumulator = 0f }
                             )
                         }
                         .pointerInput(song.id) {
@@ -294,7 +287,7 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // ==========================================
-                // 3. TRACK TITLE, ARTIST, & CIRCULAR ACTION BUTTONS ROW
+                // 3. TRACK TITLE, ARTIST, & WHITE SQUIRCLE ACTION BUTTONS
                 // ==========================================
                 Row(
                     modifier = Modifier
@@ -323,54 +316,54 @@ fun FullPlayerSheet(
                             text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" },
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Normal,
-                            color = Color(0xFFA0A0A5),
+                            color = Color.White.copy(alpha = 0.75f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Circular Download Button
+                        // Pure White Squircle Download Button
                         Surface(
-                            shape = CircleShape,
-                            color = Color(0xFF1E1E24),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White,
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
                                 .clickable { showMediaInfoSheet = true }
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Download,
-                                    contentDescription = "Download & Codec",
-                                    tint = Color.White,
+                                    contentDescription = "Download",
+                                    tint = Color.Black,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
 
-                        // Circular Heart Like Button
+                        // Pure White Squircle Heart Like Button
                         Surface(
-                            shape = CircleShape,
-                            color = Color(0xFF1E1E24),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White,
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(46.dp)
                                 .graphicsLayer {
                                     scaleX = likeScale
                                     scaleY = likeScale
                                 }
-                                .clip(CircleShape)
+                                .clip(RoundedCornerShape(12.dp))
                                 .clickable { onLikeToggle() }
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                     contentDescription = if (isLiked) "Liked" else "Like",
-                                    tint = if (isLiked) Color(0xFFFF3B30) else Color.White,
-                                    modifier = Modifier.size(23.dp)
+                                    tint = if (isLiked) Color(0xFFFF3B30) else Color.Black,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
@@ -380,14 +373,14 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // ==========================================
-                // 4. SEEKBAR & TIMESTAMPS (Echo Minimalist Capsule Slider)
+                // 4. SEEKBAR & TIMESTAMPS (Echo Thick White Seekbar)
                 // ==========================================
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)
                 ) {
-                    EchoSeekSlider(
+                    EchoThickSeekSlider(
                         progress = if (isDraggingSeek) dragSeekProgress else currentProgress,
                         onSeekProgress = { ratio ->
                             isDraggingSeek = true
@@ -400,22 +393,22 @@ fun FullPlayerSheet(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 2.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(horizontal = 2.dp),
+                        horizontalArrangement = Arrangement.Start
                     ) {
+                        val posMs = if (isDraggingSeek) (dragSeekProgress * duration).toLong() else currentPosition
+                        val totalSec = (posMs / 1000).coerceAtLeast(0)
+                        val mins = totalSec / 60
+                        val secs = totalSec % 60
                         Text(
-                            text = formatTime(if (isDraggingSeek) (dragSeekProgress * duration).toLong() else currentPosition),
-                            fontSize = 12.sp,
-                            color = Color(0xFF8E8E93),
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = formatTime(duration),
-                            fontSize = 12.sp,
-                            color = Color(0xFF8E8E93),
+                            text = String.format("%d:%02d", mins, secs),
+                            fontSize = 13.sp,
+                            color = Color.White,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -424,21 +417,21 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 // ==========================================
-                // 5. MAIN PLAYBACK CONTROLS: Circular Prev, Signature Blue Pill Play/Pause, Circular Next
+                // 5. MAIN CONTROLS: Translucent Prev, Hero White Circle Play/Pause, Translucent Next
                 // ==========================================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Previous Button
                     Surface(
                         shape = CircleShape,
-                        color = Color(0xFF1E1E24),
+                        color = Color.White.copy(alpha = 0.2f),
                         modifier = Modifier
-                            .size(58.dp)
+                            .size(68.dp)
                             .clip(CircleShape)
                             .clickable(enabled = hasPrev || repeatMode > 0) { onPrev() }
                     ) {
@@ -446,30 +439,29 @@ fun FullPlayerSheet(
                             Icon(
                                 imageVector = Icons.Default.SkipPrevious,
                                 contentDescription = "Previous",
-                                modifier = Modifier.size(28.dp),
+                                modifier = Modifier.size(32.dp),
                                 tint = if (hasPrev || repeatMode > 0) Color.White else Color.White.copy(alpha = 0.35f)
                             )
                         }
                     }
 
-                    // Echo Hero Play/Pause Pill Button
+                    // Hero Play/Pause Button (Large Pure White Circle with black icon)
                     Surface(
-                        shape = RoundedCornerShape(32.dp),
-                        color = Color(0xFF3872FF),
-                        contentColor = Color.White,
+                        shape = CircleShape,
+                        color = Color.White,
+                        contentColor = Color.Black,
+                        shadowElevation = 6.dp,
                         modifier = Modifier
-                            .width(112.dp)
-                            .height(62.dp)
-                            .shadow(16.dp, RoundedCornerShape(32.dp), spotColor = Color(0xFF3872FF).copy(alpha = 0.5f))
-                            .clip(RoundedCornerShape(32.dp))
+                            .size(84.dp)
+                            .clip(CircleShape)
                             .clickable { onPlayPause() }
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = if (isPlaying) "Pause" else "Play",
-                                modifier = Modifier.size(34.dp),
-                                tint = Color.White
+                                modifier = Modifier.size(38.dp),
+                                tint = Color.Black
                             )
                         }
                     }
@@ -477,9 +469,9 @@ fun FullPlayerSheet(
                     // Next Button
                     Surface(
                         shape = CircleShape,
-                        color = Color(0xFF1E1E24),
+                        color = Color.White.copy(alpha = 0.2f),
                         modifier = Modifier
-                            .size(58.dp)
+                            .size(68.dp)
                             .clip(CircleShape)
                             .clickable(enabled = hasNext || repeatMode > 0 || isShuffleActive) { onNext() }
                     ) {
@@ -487,7 +479,7 @@ fun FullPlayerSheet(
                             Icon(
                                 imageVector = Icons.Default.SkipNext,
                                 contentDescription = "Next",
-                                modifier = Modifier.size(28.dp),
+                                modifier = Modifier.size(32.dp),
                                 tint = if (hasNext || repeatMode > 0 || isShuffleActive) Color.White else Color.White.copy(alpha = 0.35f)
                             )
                         }
@@ -497,116 +489,95 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // ==========================================
-                // 6. BOTTOM UTILITY TOOLBAR (6 Icons Matching Echo-Music)
+                // 6. BOTTOM TOOLBAR: 5 Connected Segmented Buttons + 1 White Circle More Button
                 // ==========================================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 6.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 1. Quotes / Lyrics
-                    IconButton(
-                        onClick = { showLyricsSheet = true },
-                        modifier = Modifier.size(42.dp)
+                    val buttonHeight = 44.dp
+                    val itemShape = RoundedCornerShape(8.dp)
+
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.FormatQuote,
+                        // 1. Queue / Up Next
+                        SegmentedToolbarButton(
+                            icon = Icons.AutoMirrored.Filled.QueueMusic,
+                            contentDescription = "Queue",
+                            shape = itemShape,
+                            isActive = showQueueSheet,
+                            onClick = { showQueueSheet = true },
+                            modifier = Modifier.weight(1f).height(buttonHeight)
+                        )
+
+                        // 2. Sleep Timer
+                        SegmentedToolbarButton(
+                            icon = Icons.Default.Bedtime,
+                            contentDescription = "Sleep Timer",
+                            shape = itemShape,
+                            isActive = isSleepTimerActive,
+                            onClick = { showSleepTimerDialog = true },
+                            modifier = Modifier.weight(1f).height(buttonHeight)
+                        )
+
+                        // 3. Equalizer / Sound Tuning
+                        SegmentedToolbarButton(
+                            icon = Icons.Default.Tune,
+                            contentDescription = "Equalizer",
+                            shape = itemShape,
+                            isActive = isEqEnabled,
+                            onClick = { showEqualizerSheet = true },
+                            modifier = Modifier.weight(1f).height(buttonHeight)
+                        )
+
+                        // 4. Fullscreen / Lyrics
+                        SegmentedToolbarButton(
+                            icon = Icons.Default.OpenInFull,
                             contentDescription = "Lyrics",
-                            tint = if (showLyricsSheet) Color(0xFF3872FF) else Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(24.dp)
+                            shape = itemShape,
+                            isActive = showLyricsSheet,
+                            onClick = { showLyricsSheet = true },
+                            modifier = Modifier.weight(1f).height(buttonHeight)
                         )
-                    }
 
-                    // 2. Crescent Moon / Sleep Timer
-                    IconButton(
-                        onClick = { showSleepTimerDialog = true },
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Bedtime,
-                                contentDescription = "Sleep Timer",
-                                tint = if (isSleepTimerActive) Color(0xFF3872FF) else Color.White.copy(alpha = 0.8f),
-                                modifier = Modifier.size(22.dp)
-                            )
-                            if (isSleepTimerActive) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .align(Alignment.TopEnd)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF3872FF))
-                                )
-                            }
-                        }
-                    }
-
-                    // 3. Waveform / Equalizer
-                    IconButton(
-                        onClick = { showEqualizerSheet = true },
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.GraphicEq,
-                                contentDescription = "Equalizer",
-                                tint = if (isEqEnabled) Color(0xFF3872FF) else Color.White.copy(alpha = 0.8f),
-                                modifier = Modifier.size(22.dp)
-                            )
-                            if (isEqEnabled) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .align(Alignment.TopEnd)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF3872FF))
-                                )
-                            }
-                        }
-                    }
-
-                    // 4. Shuffle
-                    IconButton(
-                        onClick = onShuffleToggle,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shuffle,
-                            contentDescription = "Shuffle",
-                            tint = if (isShuffleActive) Color(0xFF3872FF) else Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-
-                    // 5. Repeat
-                    IconButton(
-                        onClick = onRepeatToggle,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Icon(
-                            imageVector = when (repeatMode) {
+                        // 5. Repeat
+                        SegmentedToolbarButton(
+                            icon = when (repeatMode) {
                                 2 -> Icons.Default.RepeatOne
                                 else -> Icons.Default.Repeat
                             },
                             contentDescription = "Repeat",
-                            tint = if (repeatMode > 0) Color(0xFF3872FF) else Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(22.dp)
+                            shape = itemShape,
+                            isActive = repeatMode > 0,
+                            onClick = onRepeatToggle,
+                            modifier = Modifier.weight(1f).height(buttonHeight)
                         )
                     }
 
-                    // 6. More Options (Three Vertical Dots)
-                    IconButton(
-                        onClick = { showMoreMenu = true },
-                        modifier = Modifier.size(42.dp)
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    // 6. White Circular More Menu Button
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White,
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .clickable { showMoreMenu = true }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More Options",
-                            tint = Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More Options",
+                                tint = Color.Black,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -620,6 +591,7 @@ fun FullPlayerSheet(
                     song = song,
                     queueCount = queue.size,
                     playbackSpeed = playbackSpeed,
+                    isShuffleActive = isShuffleActive,
                     onDismiss = { showMoreMenu = false },
                     onOpenQueue = {
                         showMoreMenu = false
@@ -632,6 +604,9 @@ fun FullPlayerSheet(
                     onOpenCodecInfo = {
                         showMoreMenu = false
                         showMediaInfoSheet = true
+                    },
+                    onToggleShuffle = {
+                        onShuffleToggle()
                     },
                     onStartRadio = {
                         showMoreMenu = false
@@ -727,17 +702,51 @@ fun FullPlayerSheet(
 }
 
 /**
- * Echo-style Minimalist Seekbar with vertical blue pill/capsule thumb.
+ * Connected segmented button for the bottom toolbar (Matches Echo's Queue peek bar).
  */
 @Composable
-private fun EchoSeekSlider(
+private fun SegmentedToolbarButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String?,
+    shape: RoundedCornerShape,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val appliedModifier = if (isActive) {
+        modifier
+            .clip(shape)
+            .background(Color.White)
+            .clickable(onClick = onClick)
+    } else {
+        modifier
+            .clip(shape)
+            .border(width = 1.dp, color = Color.White.copy(alpha = 0.35f), shape = shape)
+            .clickable(onClick = onClick)
+    }
+
+    Box(
+        modifier = appliedModifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (isActive) Color.Black else Color.White,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+/**
+ * Echo thick seekbar with white track and circle thumb (Matches user's screenshot).
+ */
+@Composable
+private fun EchoThickSeekSlider(
     progress: Float,
     onSeekProgress: (Float) -> Unit,
     onSeekFinished: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-    activeTrackColor: Color = Color(0xFF3872FF),
-    inactiveTrackColor: Color = Color(0xFF1E2640),
-    thumbColor: Color = Color(0xFF3872FF)
+    modifier: Modifier = Modifier
 ) {
     var isDragging by remember { mutableStateOf(false) }
     var dragRatio by remember { mutableFloatStateOf(0f) }
@@ -747,7 +756,7 @@ private fun EchoSeekSlider(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(26.dp)
+            .height(28.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     val ratio = (offset.x / size.width).coerceIn(0f, 1f)
@@ -786,21 +795,21 @@ private fun EchoSeekSlider(
             val centerY = size.height / 2f
             val totalWidth = size.width
             val progressX = currentRatio * totalWidth
-            val trackHeight = 3.5.dp.toPx()
+            val trackHeight = 6.dp.toPx()
 
-            // Inactive track
+            // Inactive track: translucent white rounded pill
             drawLine(
-                color = inactiveTrackColor,
+                color = Color.White.copy(alpha = 0.35f),
                 start = Offset(0f, centerY),
                 end = Offset(totalWidth, centerY),
                 strokeWidth = trackHeight,
                 cap = StrokeCap.Round
             )
 
-            // Active track
+            // Active track: pure white rounded pill
             if (progressX > 0f) {
                 drawLine(
-                    color = activeTrackColor,
+                    color = Color.White,
                     start = Offset(0f, centerY),
                     end = Offset(progressX, centerY),
                     strokeWidth = trackHeight,
@@ -808,22 +817,18 @@ private fun EchoSeekSlider(
                 )
             }
 
-            // Echo vertical capsule/pill thumb
-            val thumbHalfHeight = 7.dp.toPx()
-            val thumbWidth = 4.5.dp.toPx()
-            drawLine(
-                color = thumbColor,
-                start = Offset(progressX, centerY - thumbHalfHeight),
-                end = Offset(progressX, centerY + thumbHalfHeight),
-                strokeWidth = thumbWidth,
-                cap = StrokeCap.Round
+            // Thumb: pure white circle
+            drawCircle(
+                color = Color.White,
+                radius = 6.dp.toPx(),
+                center = Offset(progressX.coerceIn(0f, totalWidth), centerY)
             )
         }
     }
 }
 
 /**
- * Echo More Menu Modal Bottom Sheet (Opened by 6th More Options icon).
+ * Echo More Menu Modal Bottom Sheet (Opened by the white circular More button).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -831,10 +836,12 @@ private fun EchoPlayerMenuSheet(
     song: SongItem,
     queueCount: Int,
     playbackSpeed: Float,
+    isShuffleActive: Boolean,
     onDismiss: () -> Unit,
     onOpenQueue: () -> Unit,
     onOpenSpeed: () -> Unit,
     onOpenCodecInfo: () -> Unit,
+    onToggleShuffle: () -> Unit,
     onStartRadio: () -> Unit,
     onOpenAudioOutput: () -> Unit,
     onShare: () -> Unit
@@ -907,6 +914,13 @@ private fun EchoPlayerMenuSheet(
             )
 
             MenuActionRow(
+                icon = Icons.Default.Shuffle,
+                title = "Shuffle Queue",
+                badge = if (isShuffleActive) "ON" else "OFF",
+                onClick = onToggleShuffle
+            )
+
+            MenuActionRow(
                 icon = Icons.Default.Speed,
                 title = "Playback Speed",
                 badge = "${playbackSpeed}x",
@@ -928,7 +942,7 @@ private fun EchoPlayerMenuSheet(
             )
 
             MenuActionRow(
-                icon = Icons.Default.VolumeUp,
+                icon = Icons.AutoMirrored.Filled.VolumeUp,
                 title = "Audio Output & Volume",
                 subtitle = "Speaker, Bluetooth, or Cast",
                 onClick = onOpenAudioOutput
@@ -999,13 +1013,13 @@ private fun MenuActionRow(
             if (!badge.isNullOrBlank()) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF3872FF).copy(alpha = 0.15f)
+                    color = Color.White.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = badge,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF3872FF),
+                        color = Color.White,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
