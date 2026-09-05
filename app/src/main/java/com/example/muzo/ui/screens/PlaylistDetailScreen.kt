@@ -52,6 +52,7 @@ import coil.request.SuccessResult
 import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.ui.components.CollageCover
+import com.example.muzo.ui.components.OnlineBlur
 import com.example.muzo.ui.components.ShelfCard
 import com.example.muzo.ui.components.SingleCover
 import com.music.innertube.models.PlaylistItem
@@ -187,12 +188,26 @@ fun PlaylistDetailScreen(
         }
     }
 
+    val coverUrl = remember(playlist.thumbnail) {
+        playlist.thumbnail?.let { getHighResThumbnail(it) } ?: playlist.thumbnail
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(amoledBlack)
-            .background(ambientBrush)
     ) {
+        // Blurred cover art background matching Echo Music
+        if (!coverUrl.isNullOrBlank()) {
+            OnlineBlur(
+                thumbnailUrl = coverUrl,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(550.dp),
+                blurRadius = 50.dp,
+                bottomFade = 220.dp
+            )
+        }
         Scaffold(
             topBar = {
                 if (!isArtist) {
