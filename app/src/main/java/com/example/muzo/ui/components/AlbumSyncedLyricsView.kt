@@ -256,12 +256,15 @@ fun AlbumSyncedLyricsView(
     LaunchedEffect(activeIndex) {
         if (activeIndex in syncedLines.indices) {
             try {
-                listState.animateScrollToItem(index = activeIndex, scrollOffset = -110)
+                listState.animateScrollToItem(
+                    index = (activeIndex - 1).coerceAtLeast(0),
+                    scrollOffset = 0
+                )
             } catch (_: Exception) {}
         }
     }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(song.id) {
@@ -278,66 +281,129 @@ fun AlbumSyncedLyricsView(
                 )
             }
     ) {
-        when {
-            isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp, modifier = Modifier.size(36.dp))
-                        Text(text = "Syncing Lyrics...", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
+        // 1. TOP HEADER: Centered Source Caption + Collapse Chevron (Separate row, never overlaps lyrics!)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 6.dp)
+        ) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .size(36.dp)
+                    .align(Alignment.CenterStart)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Collapse",
+                    modifier = Modifier.size(26.dp),
+                    tint = Color.White.copy(alpha = 0.55f)
+                )
             }
 
-            syncedLines.isNotEmpty() -> {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(top = 44.dp, bottom = 48.dp, start = 8.dp, end = 8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    itemsIndexed(items = syncedLines, key = { idx, item -> "$idx-${item.timeMs}" }) { index, line ->
-                        val isCurrent = index == activeIndex
-                        val textColor by animateColorAsState(targetValue = if (isCurrent) Color.White else Color.White.copy(alpha = 0.38f), animationSpec = tween(180), label = "lyricColor")
-                        
-                        Text(
-                            text = line.text,
-                            fontSize = if (isCurrent) 25.sp else 22.sp,
-                            fontWeight = if (isCurrent) FontWeight.ExtraBold else FontWeight.Bold,
-                            color = textColor,
-                            lineHeight = if (isCurrent) 34.sp else 30.sp,
-                            textAlign = TextAlign.Start,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onSeek(line.timeMs + currentOffsetMs) }
-                                .padding(vertical = 9.dp, horizontal = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            !plainLyrics.isNullOrBlank() -> {
-                val scrollState = rememberScrollState()
-                Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(scrollState).padding(top = 44.dp, bottom = 48.dp)) {
-                    Text(text = plainLyrics, fontSize = 18.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.9f), lineHeight = 28.sp, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
-                }
-            }
-        }
-
-        Box(modifier = Modifier.fillMaxWidth().height(48.dp).align(Alignment.TopCenter).background(Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.50f), Color.Transparent))))
-        Box(modifier = Modifier.fillMaxWidth().height(48.dp).align(Alignment.BottomCenter).background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.60f)))))
-
-        Box(modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp).align(Alignment.TopCenter)) {
-            IconButton(onClick = onClose, modifier = Modifier.size(36.dp).align(Alignment.CenterStart)) {
-                Icon(imageVector = Icons.Default.KeyboardArrowDown, contentDescription = "Collapse", modifier = Modifier.size(26.dp), tint = Color.White.copy(alpha = 0.55f))
-            }
+            val sourceText = currentCandidate?.source ?: "LRCLIB"
             Text(
-                text = "Lyrics from ${currentCandidate?.source ?: "LRCLIB"}",
+                text = "Lyrics from $sourceText",
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.65f),
+                color = Color.White.copy(alpha = 0.60f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center)
             )
+        }
+
+        // 2. MAIN LYRICS CANVAS (No dark masking boxes; clean ambient background)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp, modifier = Modifier.size(36.dp))
+                            Text(text = "Syncing Lyrics...", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+
+                syncedLines.isNotEmpty() -> {
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp, start = 8.dp, end = 8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        itemsIndexed(items = syncedLines, key = { idx, item -> "$idx-${item.timeMs}" }) { index, line ->
+                            val isCurrent = index == activeIndex
+                            val textColor by animateColorAsState(
+                                targetValue = if (isCurrent) Color.White else Color.White.copy(alpha = 0.28f),
+                                animationSpec = tween(220),
+                                label = "lyricColor"
+                            )
+
+                            Text(
+                                text = line.text,
+                                fontSize = if (isCurrent) 28.sp else 23.sp,
+                                fontWeight = if (isCurrent) FontWeight.ExtraBold else FontWeight.Bold,
+                                color = textColor,
+                                lineHeight = if (isCurrent) 38.sp else 32.sp,
+                                textAlign = TextAlign.Start,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onSeek(line.timeMs + currentOffsetMs) }
+                                    .padding(vertical = 14.dp, horizontal = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                !plainLyrics.isNullOrBlank() -> {
+                    val scrollState = rememberScrollState()
+                    Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(scrollState).padding(top = 16.dp, bottom = 32.dp)) {
+                        Text(text = plainLyrics, fontSize = 18.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.9f), lineHeight = 28.sp, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+
+                else -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(horizontal = 24.dp)) {
+                            Text(
+                                text = "Lyrics not available for this track",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.75f),
+                                textAlign = TextAlign.Center
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color.White.copy(alpha = 0.18f),
+                                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { fetchLyrics(true) }
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry", tint = Color.White, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(text = "Retry", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color.White.copy(alpha = 0.18f),
+                                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onCloseLyrics() }
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                                        Icon(imageVector = Icons.Default.Image, contentDescription = "Cover", tint = Color.White, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(text = "Cover", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
