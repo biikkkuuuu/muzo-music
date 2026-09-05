@@ -206,8 +206,10 @@ class PlayerViewModel(
                 if (_isPlaying.value) {
                     _currentPosition.value = player.currentPosition.coerceAtLeast(0L)
                     _duration.value = player.duration.coerceAtLeast(0L)
+                    delay(80)
+                } else {
+                    delay(250)
                 }
-                delay(500)
             }
         }
     }

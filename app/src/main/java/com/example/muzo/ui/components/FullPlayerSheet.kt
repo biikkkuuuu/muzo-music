@@ -285,6 +285,37 @@ fun FullPlayerSheet(
                                 contentScale = ContentScale.Crop
                             )
 
+                            // Floating Lyrics Quick Pill on Cover
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.Black.copy(alpha = 0.55f),
+                                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(12.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable { showLyricsInAlbum = true }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MusicNote,
+                                        contentDescription = "Lyrics",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Lyrics",
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
                             // Double-tap Seek Feedback Bubble Overlay
                             this@Column.AnimatedVisibility(
                                 visible = seekFeedbackText != null,
