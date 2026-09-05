@@ -197,8 +197,8 @@ fun PlaylistDetailScreen(
             .fillMaxSize()
             .background(amoledBlack)
     ) {
-        // Blurred cover art background matching Echo Music
-        if (!coverUrl.isNullOrBlank()) {
+        // Blurred cover art background matching Echo Music (ONLY for playlists/albums, NOT artist)
+        if (!isArtist && !coverUrl.isNullOrBlank()) {
             OnlineBlur(
                 thumbnailUrl = coverUrl,
                 modifier = Modifier
