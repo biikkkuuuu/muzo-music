@@ -64,6 +64,7 @@ fun PlayerWithBottomNav(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

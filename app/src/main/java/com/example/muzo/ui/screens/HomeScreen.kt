@@ -98,47 +98,94 @@ fun HomeScreen(
         }
     }
 
+    var isHeaderVisible by rememberSaveable { mutableStateOf(true) }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                if (delta < -8f && isHeaderVisible) {
+                    isHeaderVisible = false
+                } else if (delta > 8f && !isHeaderVisible) {
+                    isHeaderVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
+    LaunchedEffect(lazyListState) {
+        snapshotFlow { lazyListState.firstVisibleItemIndex to lazyListState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                if (index == 0 && offset < 10) {
+                    isHeaderVisible = true
+                }
+            }
+    }
+
     Scaffold(
         topBar = {
-            // App Header (Fixed height, static background - 0 layout re-measurement during vertical scroll)
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF08080A))
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Muzi Music",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    fontSize = 24.sp
-                )
+                AnimatedVisibility(
+                    visible = isHeaderVisible,
+                    enter = expandVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        expandFrom = Alignment.Top
+                    ) + fadeIn(animationSpec = tween(durationMillis = 200)),
+                    exit = shrinkVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        shrinkTowards = Alignment.Top
+                    ) + fadeOut(animationSpec = tween(durationMillis = 150))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Muzi Music",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            fontSize = 24.sp
+                        )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { onCategoryClick("History") }) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "History",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(onClick = { onCategoryClick("Charts") }) {
-                        Icon(
-                            imageVector = Icons.Default.TrendingUp,
-                            contentDescription = "Charts",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { onCategoryClick("History") }) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = "History",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(onClick = { onCategoryClick("Charts") }) {
+                                Icon(
+                                    imageVector = Icons.Default.TrendingUp,
+                                    contentDescription = "Charts",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(onClick = onOpenSettings) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -154,6 +201,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .nestedScroll(nestedScrollConnection)
         ) {
             val hasRemote = homeShelves.any { it.id != "keep_listening" }
 
