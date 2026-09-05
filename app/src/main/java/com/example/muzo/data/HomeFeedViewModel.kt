@@ -87,7 +87,31 @@ class HomeFeedViewModel(
 
     fun refreshFeed() {
         if (_isRefreshing.value) return
-        loadFeed(isUserRefresh = true)
+        viewModelScope.launch {
+            _isRefreshing.value = true
+
+            // Immediately reshuffle existing items in memory so user gets instant fresh content
+            val current = _remoteShelves.value
+            if (current.isNotEmpty()) {
+                _remoteShelves.value = current.map { shelf ->
+                    shelf.copy(items = shelf.items.shuffled())
+                }
+            }
+
+            // Snappy refresh indicator dismissal: spin for 550ms then smoothly retract
+            launch {
+                kotlinx.coroutines.delay(550L)
+                _isRefreshing.value = false
+            }
+
+            try {
+                loadNetworkData()
+            } catch (e: Exception) {
+                Log.e("HomeFeedVM", "Failed to refresh feed", e)
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
     }
 
     private fun loadFeed(isUserRefresh: Boolean = false) {
@@ -96,7 +120,17 @@ class HomeFeedViewModel(
                 _isRefreshing.value = true
             }
             try {
-                val fetchedShelves = withContext(Dispatchers.IO) {
+                loadNetworkData()
+            } catch (e: Exception) {
+                Log.e("HomeFeedVM", "Failed to load feed", e)
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    private suspend fun loadNetworkData() {
+        val fetchedShelves = withContext(Dispatchers.IO) {
                     val configs = listOf(
                         FeedShelfConfig(
                             id = "shelf_new_releases",
@@ -316,12 +350,6 @@ class HomeFeedViewModel(
                             } catch (_: Exception) {}
                         }
                 }
-            } catch (e: Exception) {
-                Log.e("HomeFeedVM", "Failed to load feed", e)
-            } finally {
-                _isRefreshing.value = false
-            }
-        }
     }
 
     private fun createMoodAndGenresShelf(): HomeShelf {

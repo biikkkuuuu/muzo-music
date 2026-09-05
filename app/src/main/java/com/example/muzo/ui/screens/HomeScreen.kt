@@ -146,7 +146,7 @@ fun HomeScreen(
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val headerBarHeight = 56.dp
     val totalHeaderHeight = statusBarHeight + headerBarHeight
-    val totalHeaderHeightPx = with(density) { totalHeaderHeight.toPx() }
+    val headerBarHeightPx = with(density) { (headerBarHeight + 12.dp).toPx() }
 
     val headerOffsetProgress by animateFloatAsState(
         targetValue = if (isHeaderVisible) 0f else -1f,
@@ -325,12 +325,13 @@ fun HomeScreen(
             }
         }
 
-        // Floating Top Header (GPU hardware translated - zero layout invalidations on LazyColumn!)
+        // 1. Floating Top Header (Slides smoothly in/out beneath the status bar scrim)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = statusBarHeight)
                 .graphicsLayer {
-                    translationY = headerOffsetProgress * totalHeaderHeightPx
+                    translationY = headerOffsetProgress * headerBarHeightPx
                     alpha = (1f + headerOffsetProgress).coerceIn(0f, 1f)
                 }
                 .background(
@@ -343,7 +344,6 @@ fun HomeScreen(
                         )
                     )
                 )
-                .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 6.dp)
         ) {
             Row(
@@ -386,6 +386,20 @@ fun HomeScreen(
                 }
             }
         }
+
+        // 2. Permanent Status Bar Protection Scrim (Battery, Clock, and Wi-Fi stay crisp, protected, and free from card bleed)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(statusBarHeight + 16.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to Color(0xFF08080A),
+                        0.68f to Color(0xFF08080A),
+                        1.0f to Color.Transparent
+                    )
+                )
+        )
     }
 }
 
