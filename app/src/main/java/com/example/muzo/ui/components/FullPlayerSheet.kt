@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,7 +118,7 @@ fun FullPlayerSheet(
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showQueueSheet by remember { mutableStateOf(false) }
     var showEqualizerSheet by remember { mutableStateOf(false) }
-    var showLyricsSheet by remember { mutableStateOf(false) }
+    var showLyricsInAlbum by rememberSaveable { mutableStateOf(false) }
     var showMediaInfoSheet by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showAudioOutputSheet by remember { mutableStateOf(false) }
@@ -213,73 +214,97 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 // ==========================================
-                // 2. ALBUM ARTWORK: 24dp rounded square, swipe gesture & double-tap
+                // 2. ALBUM ARTWORK OR SYNCED LYRICS (Directly in Album Space)
                 // ==========================================
-                Box(
+                AnimatedContent(
+                    targetState = showLyricsInAlbum,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(280)) togetherWith fadeOut(animationSpec = tween(280))
+                    },
+                    label = "AlbumOrLyricsTransition",
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .aspectRatio(1f)
                         .fillMaxWidth(0.92f)
-                        .offset { IntOffset(animatedArtworkOffset.roundToInt(), 0) }
                         .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.75f))
                         .clip(RoundedCornerShape(24.dp))
-                        .pointerInput(song.id) {
-                            detectHorizontalDragGestures(
-                                onHorizontalDrag = { _, dragAmount ->
-                                    swipeOffsetAccumulator = (swipeOffsetAccumulator + dragAmount).coerceIn(-180f, 180f)
-                                },
-                                onDragEnd = {
-                                    if (swipeOffsetAccumulator < -75f && (hasNext || repeatMode > 0 || isShuffleActive)) {
-                                        onNext()
-                                    } else if (swipeOffsetAccumulator > 75f && (hasPrev || repeatMode > 0)) {
-                                        onPrev()
-                                    }
-                                    swipeOffsetAccumulator = 0f
-                                },
-                                onDragCancel = { swipeOffsetAccumulator = 0f }
-                            )
-                        }
-                        .pointerInput(song.id) {
-                            detectTapGestures(
-                                onDoubleTap = { offset ->
-                                    if (offset.x > size.width / 2) {
-                                        onSeek((currentPosition + 10000).coerceAtMost(duration))
-                                        seekFeedbackText = "+10s"
-                                    } else {
-                                        onSeek((currentPosition - 10000).coerceAtLeast(0L))
-                                        seekFeedbackText = "-10s"
-                                    }
-                                },
-                                onTap = { onPlayPause() }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = getHighResThumbnail(song.thumbnail),
-                        contentDescription = song.title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    // Double-tap Seek Feedback Bubble Overlay
-                    this@Column.AnimatedVisibility(
-                        visible = seekFeedbackText != null,
-                        enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                        exit = fadeOut() + scaleOut(targetScale = 0.8f)
-                    ) {
+                ) { isLyricsActive ->
+                    if (isLyricsActive) {
+                        AlbumSyncedLyricsView(
+                            song = song,
+                            currentPosition = currentPosition,
+                            onSeek = onSeek,
+                            onCloseLyrics = { showLyricsInAlbum = false },
+                            onNext = onNext,
+                            onPrev = onPrev,
+                            hasNext = hasNext || repeatMode > 0 || isShuffleActive,
+                            hasPrev = hasPrev || repeatMode > 0,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
                         Box(
                             modifier = Modifier
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.8f))
-                                .padding(horizontal = 22.dp, vertical = 11.dp)
+                                .fillMaxSize()
+                                .offset { IntOffset(animatedArtworkOffset.roundToInt(), 0) }
+                                .pointerInput(song.id) {
+                                    detectHorizontalDragGestures(
+                                        onHorizontalDrag = { _, dragAmount ->
+                                            swipeOffsetAccumulator = (swipeOffsetAccumulator + dragAmount).coerceIn(-180f, 180f)
+                                        },
+                                        onDragEnd = {
+                                            if (swipeOffsetAccumulator < -75f && (hasNext || repeatMode > 0 || isShuffleActive)) {
+                                                onNext()
+                                            } else if (swipeOffsetAccumulator > 75f && (hasPrev || repeatMode > 0)) {
+                                                onPrev()
+                                            }
+                                            swipeOffsetAccumulator = 0f
+                                        },
+                                        onDragCancel = { swipeOffsetAccumulator = 0f }
+                                    )
+                                }
+                                .pointerInput(song.id) {
+                                    detectTapGestures(
+                                        onDoubleTap = { offset ->
+                                            if (offset.x > size.width / 2) {
+                                                onSeek((currentPosition + 10000).coerceAtMost(duration))
+                                                seekFeedbackText = "+10s"
+                                            } else {
+                                                onSeek((currentPosition - 10000).coerceAtLeast(0L))
+                                                seekFeedbackText = "-10s"
+                                            }
+                                        },
+                                        onTap = { onPlayPause() }
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = seekFeedbackText ?: "",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp
+                            AsyncImage(
+                                model = getHighResThumbnail(song.thumbnail),
+                                contentDescription = song.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
+
+                            // Double-tap Seek Feedback Bubble Overlay
+                            this@Column.AnimatedVisibility(
+                                visible = seekFeedbackText != null,
+                                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                                exit = fadeOut() + scaleOut(targetScale = 0.8f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.8f))
+                                        .padding(horizontal = 22.dp, vertical = 11.dp)
+                                ) {
+                                    Text(
+                                        text = seekFeedbackText ?: "",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -535,13 +560,13 @@ fun FullPlayerSheet(
                             modifier = Modifier.weight(1f).height(buttonHeight)
                         )
 
-                        // 4. Fullscreen / Lyrics
+                        // 4. Fullscreen / Lyrics in Album Space
                         SegmentedToolbarButton(
                             icon = Icons.Default.OpenInFull,
                             contentDescription = "Lyrics",
                             shape = itemShape,
-                            isActive = showLyricsSheet,
-                            onClick = { showLyricsSheet = true },
+                            isActive = showLyricsInAlbum,
+                            onClick = { showLyricsInAlbum = !showLyricsInAlbum },
                             modifier = Modifier.weight(1f).height(buttonHeight)
                         )
 
@@ -631,15 +656,7 @@ fun FullPlayerSheet(
                 )
             }
 
-            // Synchronized / Plain Lyrics Bottom Sheet
-            if (showLyricsSheet) {
-                LyricsBottomSheet(
-                    song = song,
-                    currentPosition = currentPosition,
-                    onSeek = onSeek,
-                    onDismiss = { showLyricsSheet = false }
-                )
-            }
+
 
             // Media Info & Stream Quality Sheet
             if (showMediaInfoSheet) {
