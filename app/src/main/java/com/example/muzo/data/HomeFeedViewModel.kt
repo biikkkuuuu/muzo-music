@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class FeedShelfConfig(
+    val id: String,
     val title: String,
     val subtitle: String?,
     val query: String,
@@ -85,6 +86,7 @@ class HomeFeedViewModel(
     }
 
     fun refreshFeed() {
+        if (_isRefreshing.value) return
         loadFeed(isUserRefresh = true)
     }
 
@@ -97,6 +99,7 @@ class HomeFeedViewModel(
                 val fetchedShelves = withContext(Dispatchers.IO) {
                     val configs = listOf(
                         FeedShelfConfig(
+                            id = "shelf_new_releases",
                             title = "New releases",
                             subtitle = null,
                             query = listOf("Bollywood new releases", "Latest Hindi Songs", "New Punjabi Songs", "Fresh Bollywood Hits").random(),
@@ -104,6 +107,7 @@ class HomeFeedViewModel(
                             isPlaylistShelf = false
                         ),
                         FeedShelfConfig(
+                            id = "shelf_rain_therapy",
                             title = "Rain Therapy 🌧️☘️",
                             subtitle = "FOR COZY DAYS AND ENDLESS CUPS OF TEA",
                             query = listOf("Monsoon Hindi acoustic songs", "Cozy rainy day Bollywood", "Rain therapy songs", "Lofi Bollywood Rain").random(),
@@ -111,6 +115,7 @@ class HomeFeedViewModel(
                             isPlaylistShelf = false
                         ),
                         FeedShelfConfig(
+                            id = "shelf_dancing",
                             title = "Dancing on your own",
                             subtitle = "DANCE YOUR STRESS AWAY",
                             query = listOf("Bollywood party dance songs", "Hindi dance hits", "Punjabi dance party", "High energy Bollywood").random(),
@@ -118,6 +123,7 @@ class HomeFeedViewModel(
                             isPlaylistShelf = false
                         ),
                         FeedShelfConfig(
+                            id = "shelf_community",
                             title = "Trending community playlists",
                             subtitle = null,
                             query = listOf("Hindi Hits", "Bollywood Top 50", "Trending Punjabi", "Best of Arijit Singh").random(),
@@ -125,6 +131,7 @@ class HomeFeedViewModel(
                             isPlaylistShelf = true
                         ),
                         FeedShelfConfig(
+                            id = "shelf_featured",
                             title = "Featured playlists for you",
                             subtitle = null,
                             query = listOf("Top Weekly India", "Bollywood Romance", "Chill Hits Hindi", "Viral 50 India").random(),
@@ -132,6 +139,7 @@ class HomeFeedViewModel(
                             isPlaylistShelf = true
                         ),
                         FeedShelfConfig(
+                            id = "shelf_nostalgic",
                             title = "Brb, Being Nostalgic!",
                             subtitle = "THROWBACK TO THE OG ERAS OF MUSIC",
                             query = listOf("90s Bollywood romantic hits", "Retro Hindi Hits", "2000s Bollywood Nostalgia", "Classic Hindi Songs").random(),
@@ -139,6 +147,7 @@ class HomeFeedViewModel(
                             isPlaylistShelf = false
                         ),
                         FeedShelfConfig(
+                            id = "shelf_top_artists",
                             title = "Top Artists",
                             subtitle = "YOUR FAVORITE STARS",
                             query = "Top Artists",
@@ -165,16 +174,21 @@ class HomeFeedViewModel(
                     val deferredList = configs.map { config ->
                         Pair(
                             config,
-                            async {
+                            async(Dispatchers.IO) {
                                 try {
-                                    kotlinx.coroutines.withTimeoutOrNull(5000L) {
+                                    // 2200ms tight timeout for lightning-fast responsive refresh cycle
+                                    kotlinx.coroutines.withTimeoutOrNull(2200L) {
                                         if (config.filter == YouTube.SearchFilter.FILTER_ARTIST) {
-                                            // Fetch 2 completely randomized artist batches to guarantee zero repetition
+                                            // Concurrently fetch 2 artist batches to avoid sequential network delays
                                             val q1 = artistBatches[0]
                                             val q2 = artistBatches[1]
-                                            val res1 = YouTube.search(q1, YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty()
-                                            val res2 = YouTube.search(q2, YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty()
-                                            val combinedArtists = (res1 + res2).filterIsInstance<ArtistItem>().distinctBy { it.id }
+                                            val d1 = async(Dispatchers.IO) {
+                                                YouTube.search(q1, YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty()
+                                            }
+                                            val d2 = async(Dispatchers.IO) {
+                                                YouTube.search(q2, YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty()
+                                            }
+                                            val combinedArtists = (d1.await() + d2.await()).filterIsInstance<ArtistItem>().distinctBy { it.id }
                                             if (combinedArtists.isNotEmpty()) {
                                                 combinedArtists
                                             } else {
@@ -185,7 +199,6 @@ class HomeFeedViewModel(
                                             if (!primary.isNullOrEmpty()) {
                                                 primary
                                             } else {
-                                                // Fallback to song search if category/playlist filter returned empty
                                                 YouTube.search(config.query, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items ?: emptyList()
                                             }
                                         }
@@ -199,11 +212,11 @@ class HomeFeedViewModel(
                     }
 
                     val resultShelves = mutableListOf<HomeShelf>()
-                    for ((index, pair) in deferredList.withIndex()) {
+                    for (pair in deferredList) {
                         val (config, deferred) = pair
                         val rawItems = deferred.await()
 
-                        val shelfItems = rawItems.mapNotNull { raw ->
+                        val parsedItems = rawItems.mapNotNull { raw ->
                             when (raw) {
                                 is SongItem -> {
                                     val thumb = getHighResThumbnail(raw.thumbnail)
@@ -255,6 +268,13 @@ class HomeFeedViewModel(
                             }
                         }.shuffled()
 
+                        // If freshly fetched items exist, use them; otherwise retain previous shelf items so no shelf disappears
+                        val shelfItems = if (parsedItems.isNotEmpty()) {
+                            parsedItems
+                        } else {
+                            _remoteShelves.value.firstOrNull { it.id == config.id }?.items.orEmpty()
+                        }
+
                         if (shelfItems.isNotEmpty()) {
                             val shelfType = if (config.isPlaylistShelf) {
                                 ShelfType.PLAYLIST_CARDS
@@ -264,12 +284,12 @@ class HomeFeedViewModel(
 
                             resultShelves.add(
                                 HomeShelf(
-                                    id = "shelf_$index",
+                                    id = config.id,
                                     title = config.title,
                                     subtitle = config.subtitle,
                                     type = shelfType,
                                     items = shelfItems,
-                                    seeAllRoute = "see_all/$index"
+                                    seeAllRoute = "see_all/${config.id}"
                                 )
                             )
                         }
@@ -279,8 +299,7 @@ class HomeFeedViewModel(
                         resultShelves.add(createMoodAndGenresShelf())
                     }
 
-                    // Randomly shuffle the shelves on every refresh
-                    resultShelves.shuffled()
+                    resultShelves
                 }
 
                 _remoteShelves.value = fetchedShelves

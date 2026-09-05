@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,26 +79,27 @@ fun HomeScreen(
         }
     }
 
-    // Dynamic section reordering matching Echo-Music
+    // Dynamic section reordering matching Echo-Music algorithm
     val orderedShelves = remember(homeShelves, randomSeed) {
         if (homeShelves.isEmpty()) return@remember emptyList()
         homeShelves.sortedByDescending { shelf ->
             val sectionRandom = kotlin.random.Random(randomSeed + shelf.id.hashCode())
-            val base = when {
-                shelf.id == "keep_listening" -> 1000
-                shelf.id == "shelf_0" -> 900 // New releases
-                shelf.id == "shelf_6" -> 800 // Top Artists
-                shelf.id == "shelf_4" -> 700 // Featured playlists
-                shelf.id == "shelf_1" -> 600 // Rain therapy
-                shelf.id == "shelf_2" -> 500 // Dancing on your own
-                shelf.id == "shelf_3" -> 400 // Trending community
-                shelf.id == "shelf_5" -> 350 // Retro nostalgia
-                shelf.id == "mood_and_genres" -> 150
+            val base = when (shelf.id) {
+                "keep_listening" -> 1000 // Keep Listening stays near top when user has history
+                "shelf_new_releases" -> 850
+                "shelf_top_artists" -> 700
+                "shelf_rain_therapy" -> 600
+                "shelf_dancing" -> 550
+                "shelf_featured" -> 450
+                "shelf_community" -> 400
+                "shelf_nostalgic" -> 350
+                "mood_and_genres" -> 150
                 else -> 300
             }
             val modifier = when (shelf.id) {
-                "keep_listening" -> sectionRandom.nextInt(-80, 120)
-                else -> sectionRandom.nextInt(-350, 350)
+                "keep_listening" -> sectionRandom.nextInt(-50, 100)
+                "shelf_new_releases" -> sectionRandom.nextInt(-150, 200)
+                else -> sectionRandom.nextInt(-250, 300)
             }
             base + modifier
         }
@@ -159,11 +162,25 @@ fun HomeScreen(
             .fillMaxSize()
             .background(Color(0xFF08080A))
     ) {
+        val pullRefreshState = rememberPullToRefreshState()
+
         PullToRefreshBox(
+            state = pullRefreshState,
             isRefreshing = isRefreshing,
             onRefresh = {
                 randomSeed = System.currentTimeMillis()
                 onRefresh()
+            },
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullRefreshState,
+                    isRefreshing = isRefreshing,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = totalHeaderHeight + 6.dp),
+                    containerColor = Color(0xFF1E1E24),
+                    color = Color(0xFF6C5CE7)
+                )
             },
             modifier = Modifier
                 .fillMaxSize()
@@ -247,51 +264,62 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    // 2. Dynamic Shelves (Smooth liquid scrolling, zero jitter)
+                    // 2. Dynamic Shelves (Smooth liquid scrolling & fluid reordering animation matching Echo-Music)
                     items(
                         items = orderedShelves,
                         key = { it.id }
                     ) { shelf ->
-                        PlaylistShelfRow(
-                            shelf = shelf,
-                            onItemClick = { item ->
-                                when (item.type) {
-                                    ItemType.SONG -> {
-                                        val songItem = SongItem(
-                                            id = item.id,
-                                            title = item.title,
-                                            artists = listOf(Artist(name = item.subtitle, id = null)),
-                                            album = null,
-                                            duration = 0,
-                                            thumbnail = item.imageUrls.firstOrNull() ?: ""
-                                        )
-                                        val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
-                                            SongItem(
-                                                id = it.id,
-                                                title = it.title,
-                                                artists = listOf(Artist(name = it.subtitle, id = null)),
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem(
+                                    placementSpec = spring(
+                                        stiffness = Spring.StiffnessMediumLow,
+                                        dampingRatio = Spring.DampingRatioNoBouncy
+                                    )
+                                )
+                        ) {
+                            PlaylistShelfRow(
+                                shelf = shelf,
+                                onItemClick = { item ->
+                                    when (item.type) {
+                                        ItemType.SONG -> {
+                                            val songItem = SongItem(
+                                                id = item.id,
+                                                title = item.title,
+                                                artists = listOf(Artist(name = item.subtitle, id = null)),
                                                 album = null,
                                                 duration = 0,
-                                                thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                                thumbnail = item.imageUrls.firstOrNull() ?: ""
                                             )
+                                            val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
+                                                SongItem(
+                                                    id = it.id,
+                                                    title = it.title,
+                                                    artists = listOf(Artist(name = it.subtitle, id = null)),
+                                                    album = null,
+                                                    duration = 0,
+                                                    thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                                )
+                                            }
+                                            onSongSelect(songItem, allSongsInShelf)
                                         }
-                                        onSongSelect(songItem, allSongsInShelf)
+                                        ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
+                                            onPlaylistSelect(item)
+                                        }
+                                        ItemType.CHART -> {
+                                            onCategoryClick(item.title)
+                                        }
                                     }
-                                    ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
-                                        onPlaylistSelect(item)
-                                    }
-                                    ItemType.CHART -> {
-                                        onCategoryClick(item.title)
-                                    }
+                                },
+                                onSeeAllClick = {
+                                    onSeeAllClick(shelf)
+                                },
+                                onItemLongClick = { item ->
+                                    onItemLongClick?.invoke(item, shelf.items)
                                 }
-                            },
-                            onSeeAllClick = {
-                                onSeeAllClick(shelf)
-                            },
-                            onItemLongClick = { item ->
-                                onItemLongClick?.invoke(item, shelf.items)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
