@@ -171,6 +171,8 @@ fun MuziMainScreen(player: ExoPlayer) {
     val statusText by playerViewModel.statusText.collectAsStateWithLifecycle()
     val isCurrentSongLiked by playerViewModel.isCurrentSongLiked.collectAsStateWithLifecycle()
     val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
+    val isShuffleActive by playerViewModel.isShuffleActive.collectAsStateWithLifecycle()
+    val repeatMode by playerViewModel.repeatMode.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -747,6 +749,11 @@ fun MuziMainScreen(player: ExoPlayer) {
                 onSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
                 queue = playbackQueue,
                 currentIndex = currentIndex,
+                isShuffleActive = isShuffleActive,
+                repeatMode = repeatMode,
+                onShuffleToggle = { playerViewModel.toggleShuffle() },
+                onRepeatToggle = { playerViewModel.toggleRepeat() },
+                onStartRadio = { songItem -> playerViewModel.startRadio(songItem) },
                 onLikeToggle = { playerViewModel.toggleLikeCurrentSong() },
                 onClose = { isPlayerExpanded = false },
                 onPlayPause = { playerViewModel.togglePlayPause() },

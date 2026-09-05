@@ -61,6 +61,29 @@ class PlayerViewModel(
     private val _playbackSpeed = MutableStateFlow(1.0f)
     val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
+    private val _isShuffleActive = MutableStateFlow(false)
+    val isShuffleActive: StateFlow<Boolean> = _isShuffleActive.asStateFlow()
+
+    private val _repeatMode = MutableStateFlow(0) // 0 = off, 1 = repeat all, 2 = repeat one
+    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
+
+    fun toggleShuffle() {
+        val next = !_isShuffleActive.value
+        _isShuffleActive.value = next
+        android.widget.Toast.makeText(context, if (next) "Shuffle On 🔀" else "Shuffle Off", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun toggleRepeat() {
+        val next = (_repeatMode.value + 1) % 3
+        _repeatMode.value = next
+        val msg = when (next) {
+            1 -> "Repeat All 🔁"
+            2 -> "Repeat One 🔂"
+            else -> "Repeat Off"
+        }
+        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     fun setPlaybackSpeed(speed: Float) {
         val clamped = speed.coerceIn(0.25f, 2.5f)
         _playbackSpeed.value = clamped
@@ -292,16 +315,44 @@ class PlayerViewModel(
     }
 
     fun playNext() {
+        val queue = _playbackQueue.value
+        if (queue.isEmpty()) return
+
+        if (_repeatMode.value == 2) {
+            seekTo(0L)
+            player.play()
+            return
+        }
+
+        if (_isShuffleActive.value && queue.size > 1) {
+            val unplayedIndices = queue.indices.filter { it != _currentIndex.value }
+            if (unplayedIndices.isNotEmpty()) {
+                val randomIndex = unplayedIndices.random()
+                playTrack(randomIndex, queue)
+                return
+            }
+        }
+
         val nextIndex = _currentIndex.value + 1
-        if (nextIndex in _playbackQueue.value.indices) {
-            playTrack(nextIndex, _playbackQueue.value)
+        if (nextIndex in queue.indices) {
+            playTrack(nextIndex, queue)
+        } else if (_repeatMode.value == 1 && queue.isNotEmpty()) {
+            playTrack(0, queue)
         }
     }
 
     fun playPrevious() {
+        if (_currentPosition.value > 4000L) {
+            seekTo(0L)
+            return
+        }
         val prevIndex = _currentIndex.value - 1
         if (prevIndex >= 0) {
             playTrack(prevIndex, _playbackQueue.value)
+        } else if (_repeatMode.value == 1 && _playbackQueue.value.isNotEmpty()) {
+            playTrack(_playbackQueue.value.lastIndex, _playbackQueue.value)
+        } else {
+            seekTo(0L)
         }
     }
 
