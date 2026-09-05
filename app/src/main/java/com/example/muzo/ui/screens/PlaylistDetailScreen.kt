@@ -248,13 +248,14 @@ fun PlaylistDetailScreen(
                     )
                 }
             },
-            containerColor = Color.Transparent
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
             if (isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(if (isArtist) PaddingValues(0.dp) else paddingValues),
+                        .padding(if (isArtist) PaddingValues(0.dp) else PaddingValues(top = paddingValues.calculateTopPadding())),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = playBtnBg)
@@ -663,8 +664,8 @@ fun PlaylistDetailScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(bottom = 120.dp)
+                    .padding(top = paddingValues.calculateTopPadding()),
+                contentPadding = PaddingValues(bottom = 150.dp)
             ) {
                 // 1. Hero Artwork Section
                 item {

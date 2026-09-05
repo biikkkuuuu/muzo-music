@@ -190,7 +190,8 @@ fun HomeScreen(
                 }
             }
         },
-        containerColor = Color(0xFF08080A)
+        containerColor = Color(0xFF08080A),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -200,7 +201,7 @@ fun HomeScreen(
             },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(top = paddingValues.calculateTopPadding())
                 .nestedScroll(nestedScrollConnection)
         ) {
             val hasRemote = homeShelves.any { it.id != "keep_listening" }
@@ -208,7 +209,7 @@ fun HomeScreen(
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 120.dp),
+                contentPadding = PaddingValues(bottom = 150.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // 1. Mood & Genre Filter Chips inside LazyColumn (Echo-Music pattern - glides smoothly with feed)

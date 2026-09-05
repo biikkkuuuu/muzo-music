@@ -66,13 +66,14 @@ fun SeeAllGridScreen(
                 )
             )
         },
-        containerColor = Color(0xFF08080A)
+        containerColor = Color(0xFF08080A),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         if (isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(top = paddingValues.calculateTopPadding()),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = Color(0xFF2F60FF))
@@ -82,8 +83,8 @@ fun SeeAllGridScreen(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(top = paddingValues.calculateTopPadding()),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 150.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {

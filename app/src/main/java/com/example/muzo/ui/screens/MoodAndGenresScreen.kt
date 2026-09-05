@@ -62,13 +62,14 @@ fun MoodAndGenresScreen(
                 )
             )
         },
-        containerColor = Color(0xFF08080A)
+        containerColor = Color(0xFF08080A),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                .padding(top = paddingValues.calculateTopPadding()),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 150.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // 1. Moods & moments

@@ -260,14 +260,15 @@ fun SettingsScreen(
                 )
             )
         },
-        containerColor = Color(0xFF08080A)
+        containerColor = Color(0xFF08080A),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(top = paddingValues.calculateTopPadding())
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp)
+            contentPadding = PaddingValues(top = 8.dp, bottom = 150.dp)
         ) {
             // Search Bar Pill (Matches Screenshot 2)
             item {
