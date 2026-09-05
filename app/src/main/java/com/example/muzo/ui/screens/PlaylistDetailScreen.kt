@@ -1,5 +1,9 @@
 package com.example.muzo.ui.screens
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,11 +13,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MoreVert
@@ -24,19 +31,24 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.palette.graphics.Palette
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.ui.components.CollageCover
@@ -44,6 +56,8 @@ import com.example.muzo.ui.components.ShelfCard
 import com.example.muzo.ui.components.SingleCover
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,64 +80,171 @@ fun PlaylistDetailScreen(
     onSongActionClick: ((SongItem, List<SongItem>) -> Unit)? = null,
     onPlaylistActionClick: (() -> Unit)? = null
 ) {
-    Scaffold(
-        topBar = {
-            if (!isArtist) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = playlist.title ?: "Playlist",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
-                            )
+    val context = LocalContext.current
+    val fallbackAmbient = Color(0xFF1B2321)
+    val fallbackAccent = Color(0xFFF6A89E)
+
+    var extractedAmbientColor by remember(playlist.thumbnail) { mutableStateOf<Color?>(null) }
+    var extractedPlayButtonColor by remember(playlist.thumbnail) { mutableStateOf<Color?>(null) }
+
+    LaunchedEffect(playlist.thumbnail) {
+        val thumbUrl = playlist.thumbnail?.let { getHighResThumbnail(it) }
+        if (!thumbUrl.isNullOrBlank()) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val loader = ImageLoader(context)
+                    val request = ImageRequest.Builder(context)
+                        .data(thumbUrl)
+                        .allowHardware(false)
+                        .size(120, 120)
+                        .build()
+                    val result = loader.execute(request)
+                    if (result is SuccessResult) {
+                        val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                        if (bitmap != null) {
+                            val palette = withContext(Dispatchers.Default) {
+                                Palette.from(bitmap)
+                                    .maximumColorCount(16)
+                                    .generate()
+                            }
+
+                            val ambientSwatch = palette.vibrantSwatch
+                                ?: palette.dominantSwatch
+                                ?: palette.darkVibrantSwatch
+                                ?: palette.mutedSwatch
+                                ?: palette.lightVibrantSwatch
+
+                            if (ambientSwatch != null) {
+                                val argb = ambientSwatch.rgb
+                                val hsv = FloatArray(3)
+                                android.graphics.Color.colorToHSV(argb, hsv)
+                                hsv[1] = (hsv[1] * 1.25f).coerceIn(0.40f, 0.95f)
+                                hsv[2] = (hsv[2] * 0.70f).coerceIn(0.30f, 0.60f)
+                                extractedAmbientColor = Color(android.graphics.Color.HSVToColor(hsv))
+                            }
+
+                            val playSwatch = palette.lightVibrantSwatch
+                                ?: palette.vibrantSwatch
+                                ?: palette.dominantSwatch
+
+                            if (playSwatch != null) {
+                                val playHsv = FloatArray(3)
+                                android.graphics.Color.colorToHSV(playSwatch.rgb, playHsv)
+                                playHsv[1] = (playHsv[1] * 0.45f).coerceIn(0.20f, 0.45f)
+                                playHsv[2] = 0.98f
+                                extractedPlayButtonColor = Color(android.graphics.Color.HSVToColor(playHsv))
+                            }
                         }
-                    },
-                    actions = {
-                        IconButton(onClick = onSearchClick) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                tint = Color.White
-                            )
-                        }
-                        if (onPlaylistActionClick != null) {
-                            IconButton(onClick = onPlaylistActionClick) {
+                    }
+                } catch (_: Exception) {}
+            }
+        } else {
+            extractedAmbientColor = null
+            extractedPlayButtonColor = null
+        }
+    }
+
+    val animatedAmbientColor by animateColorAsState(
+        targetValue = extractedAmbientColor ?: fallbackAmbient,
+        animationSpec = tween(durationMillis = 600),
+        label = "playlistAmbientBg"
+    )
+
+    val playBtnBg = extractedPlayButtonColor ?: fallbackAccent
+    val amoledBlack = Color(0xFF09080D)
+
+    val ambientBrush = Brush.verticalGradient(
+        0.0f to animatedAmbientColor.copy(alpha = 0.85f),
+        0.35f to animatedAmbientColor.copy(alpha = 0.55f),
+        0.60f to animatedAmbientColor.copy(alpha = 0.20f),
+        0.85f to amoledBlack,
+        1.0f to amoledBlack
+    )
+
+    val listState = rememberLazyListState()
+    val showTopBarTitle by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 }
+    }
+
+    var isSaved by remember { mutableStateOf(false) }
+
+    val totalSeconds = remember(songs) {
+        songs.sumOf { (it.duration ?: 0).toLong() }
+    }
+    val formattedDuration = remember(songs, totalSeconds) {
+        if (totalSeconds > 0) {
+            val hours = totalSeconds / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            if (hours > 0) {
+                "${songs.size} songs • ${hours}h ${minutes}m"
+            } else {
+                "${songs.size} songs • ${minutes}m"
+            }
+        } else if (songs.isNotEmpty()) {
+            "${songs.size} songs"
+        } else {
+            playlist.songCountText ?: "Playlist"
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(amoledBlack)
+            .background(ambientBrush)
+    ) {
+        Scaffold(
+            topBar = {
+                if (!isArtist) {
+                    TopAppBar(
+                        title = {
+                            if (showTopBarTitle) {
+                                Text(
+                                    text = playlist.title ?: "Playlist",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onBack) {
                                 Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "Options",
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
                                     tint = Color.White
                                 )
                             }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color(0xFF08080A)
+                        },
+                        actions = {
+                            IconButton(onClick = onSearchClick) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = Color.White
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = Color(0xEE09080D)
+                        )
                     )
-                )
-            }
-        },
-        containerColor = Color(0xFF08080A)
-    ) { paddingValues ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(if (isArtist) PaddingValues(0.dp) else paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color(0xFFF39C8F))
-            }
-        } else if (isArtist) {
+                }
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(if (isArtist) PaddingValues(0.dp) else paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = playBtnBg)
+                }
+            } else if (isArtist) {
             // ==================== ARTIST PROFILE SCREEN (Screenshots 1, 2, 3) ====================
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -524,6 +645,7 @@ fun PlaylistDetailScreen(
         } else {
             // ==================== NORMAL PLAYLIST SCREEN ====================
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
@@ -534,14 +656,14 @@ fun PlaylistDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 20.dp),
+                            .padding(top = 8.dp, bottom = 20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val thumb = playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""
                         Box(
                             modifier = Modifier
-                                .size(200.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .size(210.dp)
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFF1E1E24))
                         ) {
                             if (playlist.title?.contains("community", ignoreCase = true) == true) {
@@ -551,29 +673,38 @@ fun PlaylistDetailScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         Text(
                             text = playlist.title ?: "Untitled Playlist",
-                            style = MaterialTheme.typography.headlineSmall,
+                            fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 24.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            lineHeight = 30.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        val songCountText = if (songs.isNotEmpty()) "${songs.size} songs" else (playlist.songCountText ?: "Playlist")
-                        Text(
-                            text = songCountText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.LightGray
-                        )
+                        // Duration and Song count pill
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White.copy(alpha = 0.08f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Text(
+                                text = formattedDuration,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFFD4D4D8),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
+                        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(22.dp))
 
-                        // 2. Action Buttons Row ([Save], [Play], [Share/Shuffle])
+                        // Row 1: [Save] [Play] [Share]
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -581,53 +712,209 @@ fun PlaylistDetailScreen(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedButton(
-                                onClick = {},
+                            // Save pill
+                            Surface(
+                                onClick = {
+                                    isSaved = !isSaved
+                                    Toast.makeText(
+                                        context,
+                                        if (isSaved) "Playlist saved to library" else "Playlist removed from library",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
                                 shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                color = Color.White.copy(alpha = 0.12f),
+                                modifier = Modifier.height(44.dp)
                             ) {
-                                Icon(Icons.Default.FavoriteBorder, contentDescription = "Save", modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Save", fontSize = 13.sp)
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 18.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = "Save",
+                                        tint = if (isSaved) Color(0xFFFF4B6E) else Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isSaved) "Saved" else "Save",
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.width(12.dp))
 
-                            Button(
+                            // Play prominent wide pill
+                            Surface(
                                 onClick = {
                                     if (songs.isNotEmpty()) {
                                         onSongSelect(songs[0], songs)
+                                    } else {
+                                        onPlayAll()
                                     }
                                 },
                                 shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF2F60FF),
-                                    contentColor = Color.White
-                                ),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                                color = playBtnBg,
+                                modifier = Modifier.height(44.dp)
                             ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Play", modifier = Modifier.size(20.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Play", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 28.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Play",
+                                        tint = Color(0xFF1E1015),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Play",
+                                        color = Color(0xFF1E1015),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.width(12.dp))
 
-                            OutlinedButton(
+                            // Share circle
+                            Surface(
+                                onClick = {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, playlist.title)
+                                        putExtra(Intent.EXTRA_TEXT, "${playlist.title} - Listen on Muzo\nhttps://music.youtube.com/playlist?list=${playlist.id}")
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Share Playlist"))
+                                },
+                                shape = CircleShape,
+                                color = Color.White.copy(alpha = 0.12f),
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Share",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Row 2: [⬇ Save] [🔀 Shuf...] [⋮ More]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Download / Save
+                            Surface(
+                                onClick = {
+                                    Toast.makeText(context, "Downloading playlist songs...", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White.copy(alpha = 0.08f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = "Save",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Save",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            // Shuffle
+                            Surface(
                                 onClick = {
                                     if (songs.isNotEmpty()) {
                                         val shuffled = songs.shuffled()
                                         onSongSelect(shuffled[0], shuffled)
                                     }
                                 },
-                                shape = RoundedCornerShape(24.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White.copy(alpha = 0.08f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
                             ) {
-                                Icon(Icons.Default.Shuffle, contentDescription = "Shuffle", modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Shuffle", fontSize = 13.sp)
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Shuffle,
+                                        contentDescription = "Shuffle",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Shuf...",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            // More
+                            Surface(
+                                onClick = {
+                                    onPlaylistActionClick?.invoke()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White.copy(alpha = 0.08f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "More",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
@@ -678,7 +965,11 @@ fun PlaylistDetailScreen(
                             )
                         }
 
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = {
+                            if (onSongActionClick != null) {
+                                onSongActionClick(song, songs)
+                            }
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "More",
@@ -712,4 +1003,5 @@ fun PlaylistDetailScreen(
             }
         }
     }
+}
 }
