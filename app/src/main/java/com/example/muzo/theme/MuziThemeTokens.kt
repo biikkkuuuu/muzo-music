@@ -28,8 +28,8 @@ object MuziThemeTokens {
     // Shapes
     val ShapePill = RoundedCornerShape(24.dp)
     val ShapeCard = RoundedCornerShape(16.dp)
-    val ShapeCover = RoundedCornerShape(12.dp)
-    val ShapeThumbnail = RoundedCornerShape(8.dp)
+    val ShapeCover = RoundedCornerShape(14.dp)
+    val ShapeThumbnail = RoundedCornerShape(12.dp)
     val ShapeCircle = CircleShape
     
     // Dimensions

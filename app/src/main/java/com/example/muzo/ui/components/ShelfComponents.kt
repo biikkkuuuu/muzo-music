@@ -76,12 +76,12 @@ fun ShimmerBrush(targetValue: Float = 1000f): Brush {
 
 @Composable
 fun ShelfRowSkeleton(brush: Brush = ShimmerBrush(), hasSubtitle: Boolean = true) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-        // Shelf Header
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        // Shelf Header Skeleton (ViVi NavigationTitle)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -89,7 +89,7 @@ fun ShelfRowSkeleton(brush: Brush = ShimmerBrush(), hasSubtitle: Boolean = true)
                 if (hasSubtitle) {
                     Box(
                         modifier = Modifier
-                            .width(110.dp)
+                            .width(80.dp)
                             .height(10.dp)
                             .clip(RoundedCornerShape(3.dp))
                             .background(brush)
@@ -98,8 +98,8 @@ fun ShelfRowSkeleton(brush: Brush = ShimmerBrush(), hasSubtitle: Boolean = true)
                 Box(
                     modifier = Modifier
                         .width(160.dp)
-                        .height(20.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .height(22.dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .background(brush)
                 )
             }
@@ -111,38 +111,38 @@ fun ShelfRowSkeleton(brush: Brush = ShimmerBrush(), hasSubtitle: Boolean = true)
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Horizontal Row of Cards (matching 140.dp actual card size)
+        // Horizontal Row of ViVi Cards (136.dp width x 136.dp height)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState(), enabled = false)
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             repeat(4) {
                 Column(
-                    modifier = Modifier.width(140.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.width(136.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(140.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(136.dp)
+                            .clip(RoundedCornerShape(14.dp))
                             .background(brush)
                     )
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(0.88f)
-                            .height(13.dp)
+                            .fillMaxWidth(0.9f)
+                            .height(14.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(brush)
                     )
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(11.dp)
+                            .fillMaxWidth(0.55f)
+                            .height(12.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(brush)
                     )
@@ -160,14 +160,212 @@ fun HomeScreenSkeleton() {
             .fillMaxSize()
             .padding(bottom = 120.dp)
     ) {
-        // 1. Shelf 1 Skeleton (Matches Recently Played / Keep Listening!)
+        // 1. Shelf 1 Skeleton
         ShelfRowSkeleton(brush = brush, hasSubtitle = true)
 
-        // 2. Shelf 2 Skeleton (Matches New releases)
+        // 2. Shelf 2 Skeleton
         ShelfRowSkeleton(brush = brush, hasSubtitle = false)
 
-        // 3. Shelf 3 Skeleton (Matches Rain Therapy / Playlists)
+        // 3. Shelf 3 Skeleton
         ShelfRowSkeleton(brush = brush, hasSubtitle = true)
+    }
+}
+
+/**
+ * ViVi Music 1:1 NavigationTitle Component.
+ * Features bold primary title, optional uppercase label, 24dp outlined "Play all" capsule, and navigation arrow.
+ */
+@Composable
+fun NavigationTitle(
+    title: String,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    thumbnail: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    onPlayAllClick: (() -> Unit)? = null,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        thumbnail?.invoke()
+
+        Column(
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.weight(1f)
+        ) {
+            label?.let {
+                Text(
+                    text = it.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    letterSpacing = 1.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
+            )
+        }
+
+        onPlayAllClick?.let { playAll ->
+            OutlinedButton(
+                onClick = playAll,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp)
+            ) {
+                Text(
+                    text = "Play all",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        if (onClick != null) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "See All",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/**
+ * ViVi CommunityPlaylistCard (320dp x 390dp, 28dp radius, 2x2 artwork mosaic, top 3 songs preview).
+ */
+@Composable
+fun CommunityPlaylistCard(
+    shelf: HomeShelf,
+    onClick: () -> Unit,
+    onSongClick: (ShelfItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .width(320.dp)
+            .height(390.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(28.dp),
+        onClick = onClick
+    ) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 2x2 Grid mosaic of thumbnails (92dp, 12dp radius)
+                val images = shelf.items.flatMap { it.imageUrls }.distinct().take(4)
+                Box(
+                    modifier = Modifier
+                        .size(92.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    CollageCover(imageUrls = images)
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = shelf.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (!shelf.subtitle.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = shelf.subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Preview top 3 songs
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                shelf.items.take(3).forEach { song ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onSongClick(song) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SingleCover(
+                                imageUrl = song.imageUrls.firstOrNull() ?: "",
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = song.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = song.subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -176,56 +374,21 @@ fun PlaylistShelfRow(
     shelf: HomeShelf,
     onItemClick: (ShelfItem) -> Unit,
     onSeeAllClick: (String) -> Unit,
+    onPlayAllClick: (() -> Unit)? = null,
     onItemLongClick: ((ShelfItem) -> Unit)? = null
 ) {
     if (shelf.items.isEmpty()) return
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-        // Shelf Header (ALL-CAPS subtitle + Bold Title + Arrow)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { shelf.seeAllRoute?.let(onSeeAllClick) }
-            ) {
-                if (!shelf.subtitle.isNullOrEmpty()) {
-                    Text(
-                        text = shelf.subtitle.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                }
-                Text(
-                    text = shelf.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            if (shelf.seeAllRoute != null) {
-                IconButton(
-                    onClick = { onSeeAllClick(shelf.seeAllRoute) },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "See All",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        // ViVi 1:1 NavigationTitle Header
+        NavigationTitle(
+            title = shelf.title,
+            label = shelf.subtitle,
+            onClick = if (shelf.seeAllRoute != null) { { onSeeAllClick(shelf.seeAllRoute) } } else null,
+            onPlayAllClick = onPlayAllClick
+        )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         when (shelf.type) {
             ShelfType.GENRE_GRID -> {
@@ -241,7 +404,7 @@ fun PlaylistShelfRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(shelf.items.take(12), key = { it.id }) { item ->
+                    items(shelf.items.take(15), key = { it.id }) { item ->
                         ShelfCard(
                             item = item,
                             onClick = { onItemClick(item) },
@@ -389,15 +552,15 @@ fun ShelfCard(
     val isArtist = item.type == ItemType.ARTIST
     Column(
         modifier = Modifier
-            .width(140.dp)
+            .width(136.dp)
             .clickable(onClick = onClick),
         horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start
     ) {
         Box(
             modifier = Modifier
-                .size(140.dp)
-                .clip(if (isArtist) CircleShape else com.example.muzo.theme.MuziThemeTokens.ShapeCover)
-                .background(com.example.muzo.theme.MuziThemeTokens.SurfaceCard)
+                .size(136.dp)
+                .clip(if (isArtist) CircleShape else RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
             if (item.imageUrls.size >= 4 && item.imageUrls.distinct().size >= 4) {
                 CollageCover(imageUrls = item.imageUrls.take(4))
@@ -408,32 +571,32 @@ fun ShelfCard(
                 )
             }
 
-            // Top-left Play Indicator Badge
+            // ViVi-style Play Indicator on Card
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
+                    .align(Alignment.BottomEnd)
                     .padding(8.dp)
-                    .size(26.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.6f)),
+                    .background(Color.Black.copy(alpha = 0.65f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = "Play",
                     tint = Color.White,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = item.title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
@@ -441,14 +604,14 @@ fun ShelfCard(
         )
         Text(
             text = if (isArtist) "Artist" else item.subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 2.dp)
+                .padding(top = 1.dp)
         )
     }
 }

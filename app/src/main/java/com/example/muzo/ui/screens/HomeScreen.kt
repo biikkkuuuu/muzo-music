@@ -70,7 +70,7 @@ fun HomeScreen(
 
     val lazyListState = rememberLazyListState()
 
-    // Echo-Music pattern: Update random seed on refresh to smoothly exchange section positions
+    // ViVi dynamic seed: Update random seed on refresh to smoothly exchange section positions
     var randomSeed by rememberSaveable { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(isRefreshing) {
@@ -79,13 +79,13 @@ fun HomeScreen(
         }
     }
 
-    // Dynamic section reordering matching Echo-Music algorithm
+    // Dynamic section reordering matching ViVi algorithm
     val orderedShelves = remember(homeShelves, randomSeed) {
         if (homeShelves.isEmpty()) return@remember emptyList()
         homeShelves.sortedByDescending { shelf ->
             val sectionRandom = kotlin.random.Random(randomSeed + shelf.id.hashCode())
             val base = when (shelf.id) {
-                "keep_listening" -> 1000 // Keep Listening stays near top when user has history
+                "keep_listening" -> 1000
                 "shelf_new_releases" -> 850
                 "shelf_top_artists" -> 700
                 "shelf_rain_therapy" -> 600
@@ -112,7 +112,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF08080A))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         val pullRefreshState = rememberPullToRefreshState()
 
@@ -130,8 +130,8 @@ fun HomeScreen(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = totalHeaderHeight + 6.dp),
-                    containerColor = com.example.muzo.theme.MuziThemeTokens.SurfacePill,
-                    color = com.example.muzo.theme.MuziThemeTokens.AccentRose
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    color = MaterialTheme.colorScheme.primary
                 )
             },
             modifier = Modifier.fillMaxSize()
@@ -142,22 +142,26 @@ fun HomeScreen(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    top = totalHeaderHeight + 8.dp,
-                    bottom = 150.dp
+                    top = totalHeaderHeight + 6.dp,
+                    bottom = 160.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Mood & Genre Filter Chips inside LazyColumn (Echo-Music pattern - glides smoothly with feed)
-                item(key = "mood_chips_row") {
-                    com.example.muzo.ui.components.AnimatedChipsRow(
-                        chips = moodChips,
-                        selectedChip = selectedMoodChip,
-                        onChipSelect = { chip ->
-                            val isSelected = selectedMoodChip == chip
-                            selectedMoodChip = if (isSelected) null else chip
-                            onCategoryClick(chip)
-                        }
-                    )
+                // 1. ViVi Mood & Genre Filter ChipsRow
+                item(key = "vivi_chips_row") {
+                    if (homeShelves.isEmpty()) {
+                        com.example.muzo.ui.components.ChipsRowSkeleton()
+                    } else {
+                        com.example.muzo.ui.components.AnimatedChipsRow(
+                            chips = moodChips,
+                            selectedChip = selectedMoodChip,
+                            onChipSelect = { chip ->
+                                val isSelected = selectedMoodChip == chip
+                                selectedMoodChip = if (isSelected) null else chip
+                                onCategoryClick(chip)
+                            }
+                        )
+                    }
                 }
 
                 // If remote shelves are still loading:
@@ -197,6 +201,21 @@ fun HomeScreen(
                                 onSeeAllClick = {
                                     onSeeAllClick(keepListeningShelf)
                                 },
+                                onPlayAllClick = {
+                                    val allSongs = keepListeningShelf.items.filter { it.type == ItemType.SONG }.map {
+                                        SongItem(
+                                            id = it.id,
+                                            title = it.title,
+                                            artists = listOf(Artist(name = it.subtitle, id = null)),
+                                            album = null,
+                                            duration = 0,
+                                            thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                        )
+                                    }
+                                    if (allSongs.isNotEmpty()) {
+                                        onSongSelect(allSongs.first(), allSongs)
+                                    }
+                                },
                                 onItemLongClick = { item ->
                                     onItemLongClick?.invoke(item, keepListeningShelf.items)
                                 }
@@ -214,57 +233,116 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    // 2. Dynamic Shelves (Smooth liquid scrolling & fluid reordering animation matching Echo-Music)
+                    // 2. Dynamic Shelves (ViVi NavigationTitle + 14dp Cards + Community Cards)
                     items(
                         items = orderedShelves,
                         key = { it.id }
                     ) { shelf ->
-                        PlaylistShelfRow(
-                            shelf = shelf,
-                            onItemClick = { item ->
-                                when (item.type) {
-                                    ItemType.SONG -> {
-                                        val songItem = SongItem(
-                                            id = item.id,
-                                            title = item.title,
-                                            artists = listOf(Artist(name = item.subtitle, id = null)),
-                                            album = null,
-                                            duration = 0,
-                                            thumbnail = item.imageUrls.firstOrNull() ?: ""
+                        // If community playlist shelf, render ViVi CommunityPlaylistCard
+                        if (shelf.id == "shelf_community" && shelf.items.size >= 3) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                                com.example.muzo.ui.components.NavigationTitle(
+                                    title = shelf.title,
+                                    label = shelf.subtitle,
+                                    onClick = if (shelf.seeAllRoute != null) { { onSeeAllClick(shelf) } } else null
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    item(key = "community_card") {
+                                        com.example.muzo.ui.components.CommunityPlaylistCard(
+                                            shelf = shelf,
+                                            onClick = { onSeeAllClick(shelf) },
+                                            onSongClick = { songItem ->
+                                                val allSongs = shelf.items.filter { it.type == ItemType.SONG }.map {
+                                                    SongItem(
+                                                        id = it.id,
+                                                        title = it.title,
+                                                        artists = listOf(Artist(name = it.subtitle, id = null)),
+                                                        album = null,
+                                                        duration = 0,
+                                                        thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                                    )
+                                                }
+                                                val selected = SongItem(
+                                                    id = songItem.id,
+                                                    title = songItem.title,
+                                                    artists = listOf(Artist(name = songItem.subtitle, id = null)),
+                                                    album = null,
+                                                    duration = 0,
+                                                    thumbnail = songItem.imageUrls.firstOrNull() ?: ""
+                                                )
+                                                onSongSelect(selected, if (allSongs.isNotEmpty()) allSongs else listOf(selected))
+                                            }
                                         )
-                                        val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
-                                            SongItem(
-                                                id = it.id,
-                                                title = it.title,
-                                                artists = listOf(Artist(name = it.subtitle, id = null)),
-                                                album = null,
-                                                duration = 0,
-                                                thumbnail = it.imageUrls.firstOrNull() ?: ""
-                                            )
-                                        }
-                                        onSongSelect(songItem, allSongsInShelf)
-                                    }
-                                    ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
-                                        onPlaylistSelect(item)
-                                    }
-                                    ItemType.CHART -> {
-                                        onCategoryClick(item.title)
                                     }
                                 }
-                            },
-                            onSeeAllClick = {
-                                onSeeAllClick(shelf)
-                            },
-                            onItemLongClick = { item ->
-                                onItemLongClick?.invoke(item, shelf.items)
                             }
-                        )
+                        } else {
+                            PlaylistShelfRow(
+                                shelf = shelf,
+                                onItemClick = { item ->
+                                    when (item.type) {
+                                        ItemType.SONG -> {
+                                            val songItem = SongItem(
+                                                id = item.id,
+                                                title = item.title,
+                                                artists = listOf(Artist(name = item.subtitle, id = null)),
+                                                album = null,
+                                                duration = 0,
+                                                thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                            )
+                                            val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
+                                                SongItem(
+                                                    id = it.id,
+                                                    title = it.title,
+                                                    artists = listOf(Artist(name = it.subtitle, id = null)),
+                                                    album = null,
+                                                    duration = 0,
+                                                    thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                                )
+                                            }
+                                            onSongSelect(songItem, allSongsInShelf)
+                                        }
+                                        ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
+                                            onPlaylistSelect(item)
+                                        }
+                                        ItemType.CHART -> {
+                                            onCategoryClick(item.title)
+                                        }
+                                    }
+                                },
+                                onSeeAllClick = {
+                                    onSeeAllClick(shelf)
+                                },
+                                onPlayAllClick = {
+                                    val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
+                                        SongItem(
+                                            id = it.id,
+                                            title = it.title,
+                                            artists = listOf(Artist(name = it.subtitle, id = null)),
+                                            album = null,
+                                            duration = 0,
+                                            thumbnail = it.imageUrls.firstOrNull() ?: ""
+                                        )
+                                    }
+                                    if (allSongsInShelf.isNotEmpty()) {
+                                        onSongSelect(allSongsInShelf.first(), allSongsInShelf)
+                                    }
+                                },
+                                onItemLongClick = { item ->
+                                    onItemLongClick?.invoke(item, shelf.items)
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // 1. Top Header with Smooth Scrim
+        // ViVi 1:1 Top Bar: Circular App Icon + Bold "Music" Title + Action Icons
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -272,9 +350,9 @@ fun HomeScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF08080A),
-                            Color(0xFF08080A).copy(alpha = 0.96f),
-                            Color(0xFF08080A).copy(alpha = 0.85f),
+                            MaterialTheme.colorScheme.background,
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
                             Color.Transparent
                         )
                     )
@@ -288,15 +366,40 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Muzi Music",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    fontSize = 24.sp
-                )
+                // ViVi App Icon + Title
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.size(34.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = "Logo",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Music",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 24.sp
+                    )
+                }
+
+                // Actions: History, Equalizer/Charts, Settings
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = { onCategoryClick("History") }) {
                         Icon(
                             imageVector = Icons.Default.History,
@@ -322,15 +425,15 @@ fun HomeScreen(
             }
         }
 
-        // 2. Permanent Status Bar Protection Scrim (Battery, Clock, and Wi-Fi stay crisp, protected, and free from card bleed)
+        // Status Bar Protection Scrim
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(statusBarHeight + 16.dp)
+                .height(statusBarHeight + 12.dp)
                 .background(
                     Brush.verticalGradient(
-                        0.0f to Color(0xFF08080A),
-                        0.68f to Color(0xFF08080A),
+                        0.0f to MaterialTheme.colorScheme.background,
+                        0.7f to MaterialTheme.colorScheme.background,
                         1.0f to Color.Transparent
                     )
                 )
