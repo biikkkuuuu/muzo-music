@@ -5,10 +5,10 @@ import android.content.Intent
 import android.widget.Toast
 import com.example.muzo.data.download.SongDownloadManager
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -53,6 +53,7 @@ import com.example.muzo.core.getHighResThumbnail
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * Echo-Music Signature Player Screen (Matches the exact style from user's screenshots).
@@ -623,6 +624,7 @@ fun FullPlayerSheet(
                 ) {
                     EchoThickSeekSlider(
                         progress = if (isDraggingSeek) dragSeekProgress else currentProgress,
+                        isPlaying = isPlaying,
                         onSeekProgress = { ratio ->
                             isDraggingSeek = true
                             dragSeekProgress = ratio
@@ -1003,11 +1005,15 @@ private fun SegmentedToolbarButton(
 }
 
 /**
- * Echo thick seekbar with white track and circle thumb (Matches user's screenshot).
+ * Android 14 Squiggly Waveform Seekbar (Clean White)
+ * - Smooth undulating sine wave on played progress when audio is playing.
+ * - Seamlessly flattens to a clean straight line when paused or scrubbing/dragging.
+ * - Elegant pure crisp white active waveform and clean white circle thumb.
  */
 @Composable
 private fun EchoThickSeekSlider(
     progress: Float,
+    isPlaying: Boolean,
     onSeekProgress: (Float) -> Unit,
     onSeekFinished: (Float) -> Unit,
     modifier: Modifier = Modifier
@@ -1017,10 +1023,30 @@ private fun EchoThickSeekSlider(
 
     val currentRatio = if (isDragging) dragRatio else progress.coerceIn(0f, 1f)
 
+    // Continuous smooth horizontal wave progression
+    val infiniteTransition = rememberInfiniteTransition(label = "squigglyPhase")
+    val phaseOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "wavePhase"
+    )
+
+    // Animate amplitude smoothly down to 0 when paused or dragging
+    val targetAmplitude = if (isPlaying && !isDragging) 4.5f else 0f
+    val animatedAmplitude by animateFloatAsState(
+        targetValue = targetAmplitude,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "squigglyAmplitude"
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(28.dp)
+            .height(32.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     val ratio = (offset.x / size.width).coerceIn(0f, 1f)
@@ -1054,39 +1080,68 @@ private fun EchoThickSeekSlider(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(20.dp)
+                .height(24.dp)
         ) {
             val centerY = size.height / 2f
             val totalWidth = size.width
-            val progressX = currentRatio * totalWidth
-            val trackHeight = 6.dp.toPx()
+            val progressX = (currentRatio * totalWidth).coerceIn(0f, totalWidth)
+            val trackHeight = 5.dp.toPx()
+            val amplitudePx = animatedAmplitude.dp.toPx()
+            val wavelengthPx = 28.dp.toPx()
 
-            // Inactive track: translucent white rounded pill
-            drawLine(
-                color = Color.White.copy(alpha = 0.35f),
-                start = Offset(0f, centerY),
-                end = Offset(totalWidth, centerY),
-                strokeWidth = trackHeight,
-                cap = StrokeCap.Round
-            )
-
-            // Active track: pure white rounded pill
-            if (progressX > 0f) {
+            // 1. Inactive unplayed track (clean straight translucent white)
+            if (progressX < totalWidth) {
                 drawLine(
-                    color = Color.White,
-                    start = Offset(0f, centerY),
-                    end = Offset(progressX, centerY),
+                    color = Color.White.copy(alpha = 0.25f),
+                    start = Offset(progressX, centerY),
+                    end = Offset(totalWidth, centerY),
                     strokeWidth = trackHeight,
                     cap = StrokeCap.Round
                 )
             }
 
-            // Thumb: pure white circle
-            drawCircle(
-                color = Color.White,
-                radius = 6.dp.toPx(),
-                center = Offset(progressX.coerceIn(0f, totalWidth), centerY)
-            )
+            // 2. Active played track: Squiggly Wave or Flat Line
+            if (progressX > 0f) {
+                if (amplitudePx > 0.2f) {
+                    val path = Path()
+                    path.moveTo(0f, centerY)
+                    val stepPx = 3f
+                    var x = 0f
+                    while (x <= progressX) {
+                        // Dampen wave amplitude near thumb so it meets the thumb cleanly at centerY
+                        val distToThumb = progressX - x
+                        val dampFactor = (distToThumb / (wavelengthPx * 0.8f)).coerceIn(0f, 1f)
+                        val y = centerY + sin((x / wavelengthPx) * 2 * Math.PI - phaseOffset).toFloat() * amplitudePx * dampFactor
+                        path.lineTo(x, y)
+                        x += stepPx
+                    }
+                    path.lineTo(progressX, centerY)
+                    drawPath(
+                        path = path,
+                        color = Color.White,
+                        style = Stroke(
+                            width = trackHeight,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                } else {
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(0f, centerY),
+                        end = Offset(progressX, centerY),
+                        strokeWidth = trackHeight,
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                // 3. Thumb: Pure Crisp White Circle
+                drawCircle(
+                    color = Color.White,
+                    radius = 7.dp.toPx(),
+                    center = Offset(progressX, centerY)
+                )
+            }
         }
     }
 }
