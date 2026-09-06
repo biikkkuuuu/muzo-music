@@ -31,6 +31,16 @@ class NewPipeDownloaderImpl(
 ) : Downloader() {
     private val client =
         OkHttpClient.Builder()
+            .connectionPool(okhttp3.ConnectionPool(10, 5, java.util.concurrent.TimeUnit.MINUTES))
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
+            .cache(
+                okhttp3.Cache(
+                    directory = java.io.File(System.getProperty("java.io.tmpdir"), "newpipe_http_cache"),
+                    maxSize = 50L * 1024L * 1024L
+                )
+            )
             .dns(object : Dns {
                 override fun lookup(hostname: String): List<InetAddress> {
                     val addresses = Dns.SYSTEM.lookup(hostname)

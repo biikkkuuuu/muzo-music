@@ -327,6 +327,10 @@ fun MuziMainScreen(player: ExoPlayer) {
                     }
                 }
                 playlistSongs = bundle.songs
+                // Background prefetch: pre-resolve stream URLs for top songs
+                if (bundle.songs.isNotEmpty()) {
+                    com.example.muzo.core.prefetchSongStreams(bundle.songs, limit = 5)
+                }
                 artistPlaylists = bundle.playlists
                 similarArtists = bundle.similarArtists
                 artistSubscribers = bundle.subscribers
@@ -358,6 +362,10 @@ fun MuziMainScreen(player: ExoPlayer) {
                     }
                 }
                 playlistSongs = songs
+                // Background prefetch: pre-resolve stream URLs for top songs
+                if (songs.isNotEmpty()) {
+                    com.example.muzo.core.prefetchSongStreams(songs, limit = 5)
+                }
                 isPlaylistLoading = false
             }
         }
