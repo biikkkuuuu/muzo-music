@@ -6,7 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * Muzi Design System Tokens matching VIVI Music's pure AMOLED Material 3 aesthetic.
+ * Muzi Flow Design System Tokens
+ * Pure AMOLED Material 3 aesthetic with fluid snapping and micro-interactions.
  */
 object MuziThemeTokens {
     // Colors

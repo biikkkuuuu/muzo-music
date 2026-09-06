@@ -512,7 +512,7 @@ fun PlaylistDetailScreen(
                     }
                 }
 
-                // 4. Songs List (VIVI Music Unified Song Row)
+                // 4. Songs List (Muzi Flow Unified Song Row)
                 itemsIndexed(songs, key = { index, song -> "${song.id}_$index" }) { index, song ->
                     MuziSongRow(
                         song = song,
@@ -840,7 +840,7 @@ fun PlaylistDetailScreen(
                     }
                 }
 
-                // 3. Tracklist Items (VIVI Music Unified Song Row)
+                // 3. Tracklist Items (Muzi Flow Unified Song Row)
                 itemsIndexed(songs, key = { index, song -> "${song.id}_$index" }) { index, song ->
                     MuziSongRow(
                         song = song,
