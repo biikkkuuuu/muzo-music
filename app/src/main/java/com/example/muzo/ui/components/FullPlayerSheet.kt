@@ -111,7 +111,11 @@ fun FullPlayerSheet(
     onQueueSongSelect: (Int) -> Unit = {},
     onMoveQueueItem: (Int, Int) -> Unit = { _, _ -> },
     onRemoveQueueItem: (Int) -> Unit = {},
-    onClearUpcomingQueue: () -> Unit = {}
+    onClearUpcomingQueue: () -> Unit = {},
+    crossfadeSeconds: Int = 4,
+    isGaplessEnabled: Boolean = true,
+    onCrossfadeChange: (Int) -> Unit = {},
+    onGaplessToggle: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val downloadManager = remember { SongDownloadManager.getInstance(context.applicationContext) }
@@ -133,6 +137,7 @@ fun FullPlayerSheet(
     var showMediaInfoSheet by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showAudioOutputSheet by remember { mutableStateOf(false) }
+    var showCrossfadeDialog by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
 
     // Double-tap seek feedback overlay
@@ -829,6 +834,12 @@ fun FullPlayerSheet(
                     playbackSpeed = playbackSpeed,
                     isShuffleActive = isShuffleActive,
                     isDownloaded = isSongDownloaded,
+                    crossfadeSeconds = crossfadeSeconds,
+                    isGaplessEnabled = isGaplessEnabled,
+                    onOpenCrossfade = {
+                        showMoreMenu = false
+                        showCrossfadeDialog = true
+                    },
                     onToggleDownload = {
                         downloadManager.toggleDownload(song)
                     },
@@ -868,6 +879,17 @@ fun FullPlayerSheet(
                         }
                         context.startActivity(Intent.createChooser(sendIntent, "Share Song"))
                     }
+                )
+            }
+
+            // Crossfade & Gapless Controller Dialog
+            if (showCrossfadeDialog) {
+                CrossfadeGaplessDialog(
+                    crossfadeSeconds = crossfadeSeconds,
+                    isGaplessEnabled = isGaplessEnabled,
+                    onCrossfadeChange = onCrossfadeChange,
+                    onGaplessToggle = onGaplessToggle,
+                    onDismissRequest = { showCrossfadeDialog = false }
                 )
             }
 
@@ -1080,6 +1102,9 @@ private fun EchoPlayerMenuSheet(
     playbackSpeed: Float,
     isShuffleActive: Boolean,
     isDownloaded: Boolean = false,
+    crossfadeSeconds: Int = 4,
+    isGaplessEnabled: Boolean = true,
+    onOpenCrossfade: () -> Unit = {},
     onToggleDownload: () -> Unit = {},
     onDismiss: () -> Unit,
     onOpenQueue: () -> Unit,
@@ -1166,6 +1191,18 @@ private fun EchoPlayerMenuSheet(
                 title = "Up Next / Queue",
                 badge = "$queueCount songs",
                 onClick = onOpenQueue
+            )
+
+            val crossfadeBadge = buildString {
+                if (crossfadeSeconds > 0) append("${crossfadeSeconds}s") else append("Off")
+                if (isGaplessEnabled) append(" • GAPLESS")
+            }
+            MenuActionRow(
+                icon = Icons.Default.GraphicEq,
+                title = "Gapless & Crossfade",
+                subtitle = "Seamless preloading & smooth volume blend",
+                badge = crossfadeBadge,
+                onClick = onOpenCrossfade
             )
 
             MenuActionRow(
@@ -1281,4 +1318,141 @@ private fun MenuActionRow(
             }
         }
     }
+}
+
+/**
+ * Crossfade & Gapless Playback configuration modal dialog.
+ */
+@Composable
+fun CrossfadeGaplessDialog(
+    crossfadeSeconds: Int,
+    isGaplessEnabled: Boolean,
+    onCrossfadeChange: (Int) -> Unit,
+    onGaplessToggle: (Boolean) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        containerColor = Color(0xFF1E1D24),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.GraphicEq,
+                    contentDescription = null,
+                    tint = Color(0xFF5B8DEF),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Gapless & Crossfade",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Gapless Playback Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onGaplessToggle(!isGaplessEnabled) }
+                        .background(Color(0xFF282732))
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Gapless Playback",
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            fontSize = 15.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Pre-buffers next track for 0ms transition",
+                            color = Color(0xFF9E9EA8),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Switch(
+                        checked = isGaplessEnabled,
+                        onCheckedChange = onGaplessToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF5B8DEF),
+                            uncheckedThumbColor = Color(0xFF8E8E9A),
+                            uncheckedTrackColor = Color(0xFF1C1C24)
+                        )
+                    )
+                }
+
+                // Crossfade Duration
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Audio Crossfade Duration",
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = if (crossfadeSeconds == 0) "Off" else "${crossfadeSeconds}s",
+                            color = Color(0xFF5B8DEF),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Smoothly blends outgoing and incoming audio",
+                        color = Color(0xFF9E9EA8),
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val options = listOf(0, 2, 4, 6, 8, 12)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        options.forEach { sec ->
+                            val isSelected = crossfadeSeconds == sec
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) Color(0xFF5B8DEF) else Color(0xFF282732),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { onCrossfadeChange(sec) }
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        text = if (sec == 0) "Off" else "${sec}s",
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 12.sp,
+                                        color = if (isSelected) Color.White else Color(0xFFCDCDD5)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("Done", color = Color(0xFF5B8DEF), fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }

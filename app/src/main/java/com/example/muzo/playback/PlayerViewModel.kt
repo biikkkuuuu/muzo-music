@@ -67,15 +67,177 @@ class PlayerViewModel(
     private val _repeatMode = MutableStateFlow(0) // 0 = off, 1 = repeat all, 2 = repeat one
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
 
+    private val playbackPrefs = context.getSharedPreferences("muzi_playback_prefs", Context.MODE_PRIVATE)
+
+    private val _crossfadeSeconds = MutableStateFlow(playbackPrefs.getInt("crossfade_seconds", 4))
+    val crossfadeSeconds: StateFlow<Int> = _crossfadeSeconds.asStateFlow()
+
+    private val _isGaplessEnabled = MutableStateFlow(playbackPrefs.getBoolean("gapless_playback", true))
+    val isGaplessEnabled: StateFlow<Boolean> = _isGaplessEnabled.asStateFlow()
+
+    fun setCrossfadeSeconds(seconds: Int) {
+        val clamped = seconds.coerceIn(0, 12)
+        _crossfadeSeconds.value = clamped
+        playbackPrefs.edit().putInt("crossfade_seconds", clamped).apply()
+        val label = if (clamped == 0) "Crossfade: Off" else "Crossfade: ${clamped}s"
+        android.widget.Toast.makeText(context, label, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun setGaplessEnabled(enabled: Boolean) {
+        _isGaplessEnabled.value = enabled
+        playbackPrefs.edit().putBoolean("gapless_playback", enabled).apply()
+        if (!enabled && player.mediaItemCount > 1) {
+            while (player.mediaItemCount > 1) {
+                player.removeMediaItem(player.mediaItemCount - 1)
+            }
+        } else if (enabled) {
+            scheduleGaplessPreload(_currentIndex.value, _playbackQueue.value)
+        }
+        val label = if (enabled) "Gapless Playback: On" else "Gapless Playback: Off"
+        android.widget.Toast.makeText(context, label, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    @Volatile private var isFadingOutForManualSkip = false
+    @Volatile private var isFadingIn = false
+    @Volatile private var fadeInStartTime = 0L
+    @Volatile private var fadeInDurationMs = 1200L
+
+    private fun startFadeIn(durationMs: Long = 1200L) {
+        if (_crossfadeSeconds.value == 0) {
+            player.volume = 1.0f
+            isFadingIn = false
+            return
+        }
+        player.volume = 0.05f
+        fadeInStartTime = System.currentTimeMillis()
+        fadeInDurationMs = durationMs
+        isFadingIn = true
+    }
+
+    private suspend fun quickFadeOut() {
+        if (!_isPlaying.value || _crossfadeSeconds.value == 0) return
+        isFadingOutForManualSkip = true
+        val startVol = player.volume
+        val steps = 4
+        for (i in (steps - 1) downTo 0) {
+            player.volume = (startVol * (i.toFloat() / steps)).coerceAtLeast(0f)
+            delay(35)
+        }
+        isFadingOutForManualSkip = false
+    }
+
+    private fun handleCrossfadeVolume(pos: Long, dur: Long) {
+        if (isFadingOutForManualSkip) return
+
+        if (isFadingIn) {
+            val elapsed = System.currentTimeMillis() - fadeInStartTime
+            if (elapsed >= fadeInDurationMs) {
+                player.volume = 1.0f
+                isFadingIn = false
+            } else {
+                val fraction = (elapsed.toFloat() / fadeInDurationMs).coerceIn(0.05f, 1.0f)
+                player.volume = fraction
+            }
+            return
+        }
+
+        val crossfadeSec = _crossfadeSeconds.value
+        if (crossfadeSec > 0 && dur > 6000L) {
+            val crossfadeMs = crossfadeSec * 1000L
+            val remaining = dur - pos
+            if (remaining in 0L..crossfadeMs) {
+                val fraction = (remaining.toFloat() / crossfadeMs).coerceIn(0.05f, 1.0f)
+                player.volume = fraction
+                return
+            }
+        }
+
+        if (player.volume != 1.0f) {
+            player.volume = 1.0f
+        }
+    }
+
+    fun getNextIndex(current: Int, queue: List<SongItem>): Int? {
+        if (queue.isEmpty()) return null
+        if (_repeatMode.value == 2) return current
+        if (_isShuffleActive.value && queue.size > 1) {
+            val unplayed = queue.indices.filter { it != current }
+            if (unplayed.isNotEmpty()) return unplayed.random()
+        }
+        val next = current + 1
+        if (next in queue.indices) return next
+        if (_repeatMode.value == 1) return 0
+        return null
+    }
+
+    private var preloadJob: kotlinx.coroutines.Job? = null
+
+    private fun scheduleGaplessPreload(currentIndex: Int, queue: List<SongItem>) {
+        if (!_isGaplessEnabled.value) return
+        val nextIdx = getNextIndex(currentIndex, queue) ?: return
+        val nextSong = queue.getOrNull(nextIdx) ?: return
+
+        preloadJob?.cancel()
+        preloadJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val alreadyQueued = withContext(Dispatchers.Main) {
+                    if (player.mediaItemCount > 1) {
+                        player.getMediaItemAt(1).mediaId == nextSong.id
+                    } else false
+                }
+                if (alreadyQueued) return@launch
+
+                val localFile = com.example.muzo.data.download.SongDownloadManager.getInstance(context).getDownloadedFile(nextSong.id)
+                val mediaUri = if (localFile != null && localFile.exists() && localFile.length() > 0) {
+                    Uri.fromFile(localFile)
+                } else {
+                    val streamUrl = resolveStreamUrl(nextSong.id)
+                    if (!streamUrl.isNullOrBlank()) Uri.parse(streamUrl) else null
+                }
+
+                if (mediaUri != null) {
+                    val artistName = nextSong.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
+                    val highResThumb = nextSong.thumbnail?.let { getHighResThumbnail(it) }
+                    val artworkUri = highResThumb?.let { Uri.parse(it) }
+
+                    val metadata = MediaMetadata.Builder()
+                        .setTitle(nextSong.title)
+                        .setArtist(artistName)
+                        .setDisplayTitle(nextSong.title)
+                        .setArtworkUri(artworkUri)
+                        .build()
+
+                    val nextMediaItem = MediaItem.Builder()
+                        .setMediaId(nextSong.id)
+                        .setUri(mediaUri)
+                        .setMediaMetadata(metadata)
+                        .build()
+
+                    withContext(Dispatchers.Main) {
+                        while (player.mediaItemCount > 1) {
+                            player.removeMediaItem(player.mediaItemCount - 1)
+                        }
+                        player.addMediaItem(nextMediaItem)
+                        Log.d("PlayerVM", "Gapless preloaded next song: ${nextSong.title}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("PlayerVM", "Failed to preload gapless media item", e)
+            }
+        }
+    }
+
     fun toggleShuffle() {
         val next = !_isShuffleActive.value
         _isShuffleActive.value = next
+        scheduleGaplessPreload(_currentIndex.value, _playbackQueue.value)
         android.widget.Toast.makeText(context, if (next) "Shuffle On 🔀" else "Shuffle Off", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     fun toggleRepeat() {
         val next = (_repeatMode.value + 1) % 3
         _repeatMode.value = next
+        scheduleGaplessPreload(_currentIndex.value, _playbackQueue.value)
         val msg = when (next) {
             1 -> "Repeat All 🔁"
             2 -> "Repeat One 🔂"
@@ -149,6 +311,49 @@ class PlayerViewModel(
             }
         }
 
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            Log.d("PlayerVM", "onMediaItemTransition: reason=$reason, id=${mediaItem?.mediaId}")
+            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                if (sleepTimer.pauseWhenSongEnd.value) {
+                    sleepTimer.notifySongEnded()
+                    return
+                }
+
+                val currentQueue = _playbackQueue.value
+                val nextIdx = getNextIndex(_currentIndex.value, currentQueue)
+                if (nextIdx != null && nextIdx in currentQueue.indices) {
+                    _currentIndex.value = nextIdx
+                    val newSong = currentQueue[nextIdx]
+                    _currentSong.value = newSong
+                    _currentPosition.value = 0L
+                    _duration.value = player.duration.coerceAtLeast(0L)
+
+                    if (player.mediaItemCount > 1) {
+                        player.removeMediaItem(0)
+                    }
+
+                    startFadeIn(durationMs = (_crossfadeSeconds.value * 600L).coerceIn(800L, 2500L))
+
+                    viewModelScope.launch(Dispatchers.IO) {
+                        val isLiked = likedSongDao.isLiked(newSong.id)
+                        withContext(Dispatchers.Main) {
+                            _isCurrentSongLiked.value = isLiked
+                            MuziMediaSessionService.isSongLiked = isLiked
+                        }
+                        val artistName = newSong.artists.firstOrNull()?.name ?: "Unknown Artist"
+                        historyDao.recordPlay(
+                            videoId = newSong.id,
+                            title = newSong.title,
+                            artist = artistName,
+                            thumbnailUrl = newSong.thumbnail ?: ""
+                        )
+                    }
+
+                    scheduleGaplessPreload(nextIdx, currentQueue)
+                }
+            }
+        }
+
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Log.e("PlayerVM", "ExoPlayer Error: ${error.errorCodeName} - ${error.message}", error)
             val current = _currentSong.value
@@ -204,8 +409,11 @@ class PlayerViewModel(
         viewModelScope.launch {
             while (isActive) {
                 if (_isPlaying.value) {
-                    _currentPosition.value = player.currentPosition.coerceAtLeast(0L)
-                    _duration.value = player.duration.coerceAtLeast(0L)
+                    val pos = player.currentPosition.coerceAtLeast(0L)
+                    val dur = player.duration.coerceAtLeast(0L)
+                    _currentPosition.value = pos
+                    _duration.value = dur
+                    handleCrossfadeVolume(pos, dur)
                     delay(80)
                 } else {
                     delay(250)
@@ -216,12 +424,23 @@ class PlayerViewModel(
 
     fun playTrack(index: Int, queue: List<SongItem>) {
         if (index !in queue.indices) return
+        playJob?.cancel()
+        playJob = viewModelScope.launch {
+            if (_isPlaying.value) {
+                quickFadeOut()
+            }
+            startTrackPlayback(index, queue)
+        }
+    }
+
+    private suspend fun startTrackPlayback(index: Int, queue: List<SongItem>) {
+        if (index !in queue.indices) return
         _playbackQueue.value = queue
         _currentIndex.value = index
         val song = queue[index]
         _currentSong.value = song
         _statusText.value = "Loading ${song.title}..."
-        Log.d("PlayerVM", "playTrack called: index=$index, title=${song.title}, id=${song.id}")
+        Log.d("PlayerVM", "startTrackPlayback: index=$index, title=${song.title}, id=${song.id}")
 
         // Check if song is liked in Room DB
         viewModelScope.launch(Dispatchers.IO) {
@@ -256,66 +475,66 @@ class PlayerViewModel(
             }
         }
 
-        // Cancel any existing stream loading job so rapid clicks don't conflict
-        playJob?.cancel()
-        playJob = viewModelScope.launch {
-            // Check if downloaded offline file exists first
-            val localFile = withContext(Dispatchers.IO) {
-                com.example.muzo.data.download.SongDownloadManager.getInstance(context).getDownloadedFile(song.id)
+        // Check if downloaded offline file exists first
+        val localFile = withContext(Dispatchers.IO) {
+            com.example.muzo.data.download.SongDownloadManager.getInstance(context).getDownloadedFile(song.id)
+        }
+
+        val mediaUri = if (localFile != null && localFile.exists() && localFile.length() > 0) {
+            Log.d("PlayerVM", "Playing from offline download: ${localFile.absolutePath}")
+            Uri.fromFile(localFile)
+        } else {
+            val streamUrl = withContext(Dispatchers.IO) {
+                resolveStreamUrl(song.id)
             }
+            Log.d("PlayerVM", "streamUrl resolved: $streamUrl")
+            if (!streamUrl.isNullOrBlank()) Uri.parse(streamUrl) else null
+        }
 
-            val mediaUri = if (localFile != null && localFile.exists() && localFile.length() > 0) {
-                Log.d("PlayerVM", "Playing from offline download: ${localFile.absolutePath}")
-                Uri.fromFile(localFile)
-            } else {
-                val streamUrl = withContext(Dispatchers.IO) {
-                    resolveStreamUrl(song.id)
-                }
-                Log.d("PlayerVM", "streamUrl resolved: $streamUrl")
-                if (!streamUrl.isNullOrBlank()) Uri.parse(streamUrl) else null
-            }
+        if (mediaUri != null) {
+            val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
+            val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
+            val artworkUri = highResThumb?.let { Uri.parse(it) }
 
-            if (mediaUri != null) {
-                val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
-                val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
-                val artworkUri = highResThumb?.let { Uri.parse(it) }
+            val metadata = MediaMetadata.Builder()
+                .setTitle(song.title)
+                .setArtist(artistName)
+                .setDisplayTitle(song.title)
+                .setArtworkUri(artworkUri)
+                .build()
 
-                val metadata = MediaMetadata.Builder()
-                    .setTitle(song.title)
-                    .setArtist(artistName)
-                    .setDisplayTitle(song.title)
-                    .setArtworkUri(artworkUri)
-                    .build()
+            val mediaItem = MediaItem.Builder()
+                .setMediaId(song.id)
+                .setUri(mediaUri)
+                .setMediaMetadata(metadata)
+                .build()
 
-                val mediaItem = MediaItem.Builder()
-                    .setMediaId(song.id)
-                    .setUri(mediaUri)
-                    .setMediaMetadata(metadata)
-                    .build()
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            player.play()
+            _isPlaying.value = true
+            _statusText.value = ""
+            startFadeIn(durationMs = 600L)
+            Log.d("PlayerVM", "player.play() executed successfully")
 
-                player.setMediaItem(mediaItem)
-                player.prepare()
-                player.play()
-                _isPlaying.value = true
-                _statusText.value = ""
-                Log.d("PlayerVM", "player.play() executed successfully")
-
-                // Pre-fetch next 2 tracks in background for instantaneous next-song playback
-                for (offset in 1..2) {
-                    val prefetchIdx = index + offset
-                    if (prefetchIdx in queue.indices) {
-                        val nextSong = queue[prefetchIdx]
-                        viewModelScope.launch(Dispatchers.IO) {
-                            try {
-                                resolveStreamUrl(nextSong.id)
-                            } catch (_: Exception) {}
-                        }
+            // Pre-fetch next 2 tracks in background for instantaneous next-song playback
+            for (offset in 1..2) {
+                val prefetchIdx = index + offset
+                if (prefetchIdx in queue.indices) {
+                    val nextSong = queue[prefetchIdx]
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            resolveStreamUrl(nextSong.id)
+                        } catch (_: Exception) {}
                     }
                 }
-            } else {
-                Log.e("PlayerVM", "Failed to resolve streamUrl for ${song.id}")
-                _statusText.value = "Unable to load stream"
             }
+
+            // Schedule gapless preload of the next MediaItem into ExoPlayer
+            scheduleGaplessPreload(index, queue)
+        } else {
+            Log.e("PlayerVM", "Failed to resolve streamUrl for ${song.id}")
+            _statusText.value = "Unable to load stream"
         }
     }
 
@@ -377,6 +596,7 @@ class PlayerViewModel(
             val insertIdx = (_currentIndex.value + 1).coerceIn(0, currentQueue.size)
             currentQueue.add(insertIdx, song)
             _playbackQueue.value = currentQueue
+            scheduleGaplessPreload(_currentIndex.value, currentQueue)
         }
         android.widget.Toast.makeText(context, "Playing next: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
     }
@@ -390,6 +610,7 @@ class PlayerViewModel(
             val insertIdx = (_currentIndex.value + 1).coerceIn(0, currentQueue.size)
             currentQueue.addAll(insertIdx, songs)
             _playbackQueue.value = currentQueue
+            scheduleGaplessPreload(_currentIndex.value, currentQueue)
         }
         android.widget.Toast.makeText(context, "Added ${songs.size} songs to play next", android.widget.Toast.LENGTH_SHORT).show()
     }
@@ -401,6 +622,7 @@ class PlayerViewModel(
         } else {
             currentQueue.add(song)
             _playbackQueue.value = currentQueue
+            scheduleGaplessPreload(_currentIndex.value, currentQueue)
         }
         android.widget.Toast.makeText(context, "Added to queue: ${song.title}", android.widget.Toast.LENGTH_SHORT).show()
     }
@@ -413,6 +635,7 @@ class PlayerViewModel(
         } else {
             currentQueue.addAll(songs)
             _playbackQueue.value = currentQueue
+            scheduleGaplessPreload(_currentIndex.value, currentQueue)
         }
         android.widget.Toast.makeText(context, "Added ${songs.size} songs to queue", android.widget.Toast.LENGTH_SHORT).show()
     }
@@ -469,6 +692,7 @@ class PlayerViewModel(
         } else if (fromIndex > current && toIndex <= current) {
             _currentIndex.value = current + 1
         }
+        scheduleGaplessPreload(_currentIndex.value, currentList)
     }
 
     fun removeQueueItem(index: Int) {
@@ -491,6 +715,9 @@ class PlayerViewModel(
             }
         } else if (index < current) {
             _currentIndex.value = current - 1
+            scheduleGaplessPreload(_currentIndex.value, currentList)
+        } else {
+            scheduleGaplessPreload(_currentIndex.value, currentList)
         }
     }
 
@@ -499,7 +726,12 @@ class PlayerViewModel(
         val currentList = _playbackQueue.value
         if (current >= 0 && current < currentList.size) {
             // Keep everything up to current playing song, clear upcoming
-            _playbackQueue.value = currentList.take(current + 1)
+            val newQueue = currentList.take(current + 1)
+            _playbackQueue.value = newQueue
+            // Remove preloaded item since upcoming queue is cleared
+            while (player.mediaItemCount > 1) {
+                player.removeMediaItem(player.mediaItemCount - 1)
+            }
             android.widget.Toast.makeText(context, "Upcoming queue cleared", android.widget.Toast.LENGTH_SHORT).show()
         }
     }

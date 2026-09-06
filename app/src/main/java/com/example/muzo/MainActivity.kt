@@ -174,6 +174,8 @@ fun MuziMainScreen(player: ExoPlayer) {
     val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
     val isShuffleActive by playerViewModel.isShuffleActive.collectAsStateWithLifecycle()
     val repeatMode by playerViewModel.repeatMode.collectAsStateWithLifecycle()
+    val crossfadeSeconds by playerViewModel.crossfadeSeconds.collectAsStateWithLifecycle()
+    val isGaplessEnabled by playerViewModel.isGaplessEnabled.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -450,7 +452,11 @@ fun MuziMainScreen(player: ExoPlayer) {
                         onBack = { isSettingsOpen = false },
                         onOpenAbout = { isAboutDialogOpen = true },
                         onOpenEqualizer = { isEqualizerOpen = true },
-                        onUpdateFound = { updateInfo -> availableUpdate = updateInfo }
+                        onUpdateFound = { updateInfo -> availableUpdate = updateInfo },
+                        crossfadeSeconds = crossfadeSeconds,
+                        isGaplessEnabled = isGaplessEnabled,
+                        onCrossfadeChange = { playerViewModel.setCrossfadeSeconds(it) },
+                        onGaplessToggle = { playerViewModel.setGaplessEnabled(it) }
                     )
                 }
                 selectedPlaylist != null -> {
@@ -752,6 +758,10 @@ fun MuziMainScreen(player: ExoPlayer) {
                 currentIndex = currentIndex,
                 isShuffleActive = isShuffleActive,
                 repeatMode = repeatMode,
+                crossfadeSeconds = crossfadeSeconds,
+                isGaplessEnabled = isGaplessEnabled,
+                onCrossfadeChange = { playerViewModel.setCrossfadeSeconds(it) },
+                onGaplessToggle = { playerViewModel.setGaplessEnabled(it) },
                 onShuffleToggle = { playerViewModel.toggleShuffle() },
                 onRepeatToggle = { playerViewModel.toggleRepeat() },
                 onStartRadio = { songItem -> playerViewModel.startRadio(songItem) },

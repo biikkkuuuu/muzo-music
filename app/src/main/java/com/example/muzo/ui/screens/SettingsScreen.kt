@@ -52,7 +52,11 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenEqualizer: (() -> Unit)? = null,
-    onUpdateFound: ((UpdateInfo) -> Unit)? = null
+    onUpdateFound: ((UpdateInfo) -> Unit)? = null,
+    crossfadeSeconds: Int = 4,
+    isGaplessEnabled: Boolean = true,
+    onCrossfadeChange: (Int) -> Unit = {},
+    onGaplessToggle: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -419,23 +423,130 @@ fun SettingsScreen(
         )
     }
 
-    // Sub-dialog: Audio Quality
+    // Sub-dialog: Audio Quality, Gapless & Crossfade
     if (showAudioQualityDialog) {
         AlertDialog(
             onDismissRequest = { showAudioQualityDialog = false },
-            title = { Text("Player and Audio", fontWeight = FontWeight.Bold, color = Color.White) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color(0xFF5B8DEF),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Player and Audio", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Audio Streaming Quality", color = Color.White, fontWeight = FontWeight.SemiBold)
-                    Text("• High (320 kbps AAC / Opus) - Default\n• Audio Normalization: Enabled\n• Hardware Offload: Active (120Hz smooth)", color = Color.Gray, fontSize = 14.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Audio Streaming Quality Card
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF282732),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text("Streaming Quality", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("• High Fidelity (320 kbps AAC / Opus)\n• Hardware Offload: Active\n• Audio Normalization: Enabled", color = Color(0xFF9E9EA8), fontSize = 12.sp)
+                        }
+                    }
+
+                    // Gapless Playback Toggle
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF282732),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onGaplessToggle(!isGaplessEnabled) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Gapless Playback", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("Pre-buffers next track for zero-silence transition", color = Color(0xFF9E9EA8), fontSize = 12.sp)
+                            }
+                            Switch(
+                                checked = isGaplessEnabled,
+                                onCheckedChange = onGaplessToggle,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF5B8DEF),
+                                    uncheckedThumbColor = Color(0xFF8E8E9A),
+                                    uncheckedTrackColor = Color(0xFF1C1C24)
+                                )
+                            )
+                        }
+                    }
+
+                    // Audio Crossfade Duration
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF282732),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Crossfade Duration", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                Text(
+                                    text = if (crossfadeSeconds == 0) "Off" else "${crossfadeSeconds}s",
+                                    color = Color(0xFF5B8DEF),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Smooth volume fade between consecutive tracks", color = Color(0xFF9E9EA8), fontSize = 12.sp)
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            val options = listOf(0, 2, 4, 6, 8, 12)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                options.forEach { sec ->
+                                    val isSelected = crossfadeSeconds == sec
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSelected) Color(0xFF5B8DEF) else Color(0xFF1C1C24),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { onCrossfadeChange(sec) }
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = if (sec == 0) "Off" else "${sec}s",
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 12.sp,
+                                                color = if (isSelected) Color.White else Color(0xFFB0B0B8)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
                     showAudioQualityDialog = false
-                    Toast.makeText(context, "Audio settings saved", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Audio settings applied", Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("Done", color = Color(0xFF5B8DEF))
+                    Text("Done", color = Color(0xFF5B8DEF), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
