@@ -159,20 +159,26 @@ class MuziMediaSessionService : MediaSessionService() {
         val basePlayer = getPlayer(this)
 
         val forwardingPlayer = object : ForwardingPlayer(basePlayer) {
+            override fun hasNextMediaItem(): Boolean = true
+            override fun hasPreviousMediaItem(): Boolean = true
+
+            override fun getNextMediaItemIndex(): Int = if (currentMediaItemIndex + 1 < mediaItemCount) currentMediaItemIndex + 1 else 0
+            override fun getPreviousMediaItemIndex(): Int = if (currentMediaItemIndex > 0) currentMediaItemIndex - 1 else 0
+
             override fun seekToNext() {
-                onNextCallback?.invoke() ?: super.seekToNext()
+                onNextCallback?.invoke()
             }
 
             override fun seekToNextMediaItem() {
-                onNextCallback?.invoke() ?: super.seekToNextMediaItem()
+                onNextCallback?.invoke()
             }
 
             override fun seekToPrevious() {
-                onPreviousCallback?.invoke() ?: super.seekToPrevious()
+                onPreviousCallback?.invoke()
             }
 
             override fun seekToPreviousMediaItem() {
-                onPreviousCallback?.invoke() ?: super.seekToPreviousMediaItem()
+                onPreviousCallback?.invoke()
             }
 
             override fun getAvailableCommands(): Player.Commands {
@@ -214,6 +220,28 @@ class MuziMediaSessionService : MediaSessionService() {
         )
 
         val sessionCallback = object : MediaSession.Callback {
+            @Deprecated("Deprecated in Java")
+            @Suppress("DEPRECATION")
+            override fun onPlayerCommandRequest(
+                session: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                playerCommand: Int
+            ): Int {
+                when (playerCommand) {
+                    Player.COMMAND_SEEK_TO_NEXT,
+                    Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
+                        onNextCallback?.invoke()
+                        return SessionResult.RESULT_SUCCESS
+                    }
+                    Player.COMMAND_SEEK_TO_PREVIOUS,
+                    Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
+                        onPreviousCallback?.invoke()
+                        return SessionResult.RESULT_SUCCESS
+                    }
+                }
+                return super.onPlayerCommandRequest(session, controller, playerCommand)
+            }
+
             override fun onConnect(
                 session: MediaSession,
                 controller: MediaSession.ControllerInfo

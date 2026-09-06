@@ -10,9 +10,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.muzo.core.artworkBytesCache
 import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.core.loadArtworkBitmapBytes
 import com.example.muzo.core.resolveStreamUrl
+import com.example.muzo.core.streamUrlCache
 import com.example.muzo.data.local.HistoryDao
 import com.example.muzo.data.local.LikedSongDao
 import com.example.muzo.data.local.LikedSongEntity
@@ -98,7 +100,6 @@ class PlayerViewModel(
         android.widget.Toast.makeText(context, label, android.widget.Toast.LENGTH_SHORT).show()
     }
 
-    @Volatile private var isFadingOutForManualSkip = false
     @Volatile private var isFadingIn = false
     @Volatile private var fadeInStartTime = 0L
     @Volatile private var fadeInDurationMs = 1200L
@@ -115,20 +116,7 @@ class PlayerViewModel(
         isFadingIn = true
     }
 
-    private suspend fun quickFadeOut() {
-        if (!_isPlaying.value || _crossfadeSeconds.value == 0) return
-        isFadingOutForManualSkip = true
-        val startVol = player.volume
-        val steps = 4
-        for (i in (steps - 1) downTo 0) {
-            player.volume = (startVol * (i.toFloat() / steps)).coerceAtLeast(0f)
-            delay(35)
-        }
-        isFadingOutForManualSkip = false
-    }
-
     private fun handleCrossfadeVolume(pos: Long, dur: Long) {
-        if (isFadingOutForManualSkip) return
 
         if (isFadingIn) {
             val elapsed = System.currentTimeMillis() - fadeInStartTime
@@ -200,7 +188,7 @@ class PlayerViewModel(
                     val artistName = nextSong.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
                     val highResThumb = nextSong.thumbnail?.let { getHighResThumbnail(it) }
                     val artworkUri = highResThumb?.let { Uri.parse(it) }
-                    val cachedBytes = nextSong.thumbnail?.let { com.example.muzo.core.artworkBytesCache.get(it) }
+                    val cachedBytes = nextSong.thumbnail?.let { artworkBytesCache.get(it) }
 
                     val metadataBuilder = MediaMetadata.Builder()
                         .setTitle(nextSong.title)
@@ -220,15 +208,44 @@ class PlayerViewModel(
                         .build()
 
                     withContext(Dispatchers.Main) {
+                        val activeIndex = player.currentMediaItemIndex
+                        if (activeIndex > 0) {
+                            player.removeMediaItems(0, activeIndex)
+                        }
                         while (player.mediaItemCount > 1) {
-                            player.removeMediaItem(player.mediaItemCount - 1)
+                            player.removeMediaItem(1)
                         }
                         player.addMediaItem(nextMediaItem)
-                        Log.d("PlayerVM", "Gapless preloaded next song: ${nextSong.title}")
+                        Log.d("PlayerVM", "Gapless preloaded next song at index 1: ${nextSong.title}")
                     }
                 }
             } catch (e: Exception) {
                 Log.e("PlayerVM", "Failed to preload gapless media item", e)
+            }
+        }
+    }
+
+    private fun prefetchSurroundingTracks(index: Int, queue: List<SongItem>) {
+        for (offset in 1..4) {
+            val prefetchIdx = index + offset
+            if (prefetchIdx in queue.indices) {
+                val nextSong = queue[prefetchIdx]
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        resolveStreamUrl(nextSong.id)
+                        loadArtworkBitmapBytes(nextSong.thumbnail)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+        val prevIdx = index - 1
+        if (prevIdx in queue.indices) {
+            val prevSong = queue[prevIdx]
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    resolveStreamUrl(prevSong.id)
+                    loadArtworkBitmapBytes(prevSong.thumbnail)
+                } catch (_: Exception) {}
             }
         }
     }
@@ -340,7 +357,29 @@ class PlayerViewModel(
                         player.removeMediaItem(0)
                     }
 
-                    startFadeIn(durationMs = (_crossfadeSeconds.value * 600L).coerceIn(800L, 2500L))
+                    if (_crossfadeSeconds.value > 0) {
+                        startFadeIn(durationMs = (_crossfadeSeconds.value * 600L).coerceIn(800L, 2500L))
+                    } else {
+                        player.volume = 1.0f
+                    }
+
+                    val artistName = newSong.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
+                    val highResThumb = newSong.thumbnail?.let { getHighResThumbnail(it) }
+                    val artworkUri = highResThumb?.let { Uri.parse(it) }
+                    val cachedBytes = newSong.thumbnail?.let { artworkBytesCache.get(it) }
+
+                    val placeholderMetadata = MediaMetadata.Builder()
+                        .setTitle(newSong.title)
+                        .setArtist(artistName)
+                        .setDisplayTitle(newSong.title)
+                        .setArtworkUri(artworkUri)
+                        .apply {
+                            if (cachedBytes != null) {
+                                setArtworkData(cachedBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                            }
+                        }
+                        .build()
+                    player.setPlaylistMetadata(placeholderMetadata)
 
                     viewModelScope.launch(Dispatchers.IO) {
                         val isLiked = likedSongDao.isLiked(newSong.id)
@@ -348,15 +387,24 @@ class PlayerViewModel(
                             _isCurrentSongLiked.value = isLiked
                             MuziMediaSessionService.isSongLiked = isLiked
                         }
-                        val artistName = newSong.artists.firstOrNull()?.name ?: "Unknown Artist"
                         historyDao.recordPlay(
                             videoId = newSong.id,
                             title = newSong.title,
                             artist = artistName,
                             thumbnailUrl = newSong.thumbnail ?: ""
                         )
+                        val artworkBytes = loadArtworkBitmapBytes(newSong.thumbnail)
+                        if (artworkBytes != null && _currentSong.value?.id == newSong.id) {
+                            val enrichedMetadata = placeholderMetadata.buildUpon()
+                                .setArtworkData(artworkBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                                .build()
+                            withContext(Dispatchers.Main) {
+                                player.setPlaylistMetadata(enrichedMetadata)
+                            }
+                        }
                     }
 
+                    prefetchSurroundingTracks(nextIdx, currentQueue)
                     scheduleGaplessPreload(nextIdx, currentQueue)
                 }
             }
@@ -448,9 +496,6 @@ class PlayerViewModel(
         if (index !in queue.indices) return
         playJob?.cancel()
         playJob = viewModelScope.launch {
-            if (_isPlaying.value) {
-                quickFadeOut()
-            }
             startTrackPlayback(index, queue)
         }
     }
@@ -461,38 +506,14 @@ class PlayerViewModel(
         _currentIndex.value = index
         val song = queue[index]
         _currentSong.value = song
-        _statusText.value = "Loading ${song.title}..."
+        _statusText.value = ""
         Log.d("PlayerVM", "startTrackPlayback: index=$index, title=${song.title}, id=${song.id}")
 
-        // Check if song is liked in Room DB
-        viewModelScope.launch(Dispatchers.IO) {
-            val isLiked = likedSongDao.isLiked(song.id)
-            withContext(Dispatchers.Main) {
-                _isCurrentSongLiked.value = isLiked
-                MuziMediaSessionService.isSongLiked = isLiked
-            }
-        }
-
-        // Ensure background MediaSessionService is running
-        MuziMediaSessionService.start(context)
-
-        // Check if next song is already preloaded in ExoPlayer queue for gapless instant transition
-        val isAlreadyPreloaded = player.mediaItemCount > 1 && player.getMediaItemAt(1).mediaId == song.id
-        if (isAlreadyPreloaded) {
-            Log.d("PlayerVM", "Instantly seeking to preloaded gapless track: ${song.title}")
-            player.seekToNextMediaItem()
-            _isPlaying.value = true
-            _statusText.value = ""
-            startFadeIn(durationMs = 600L)
-            scheduleGaplessPreload(index, queue)
-            return
-        }
-
-        // Prepare new song metadata immediately so notification updates without disappearing
+        // 1. Immediately push metadata to player and notification (0ms response)
         val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
         val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
         val artworkUri = highResThumb?.let { Uri.parse(it) }
-        val cachedBytes = song.thumbnail?.let { com.example.muzo.core.artworkBytesCache.get(it) }
+        val cachedBytes = song.thumbnail?.let { artworkBytesCache.get(it) }
 
         val placeholderMetadata = MediaMetadata.Builder()
             .setTitle(song.title)
@@ -507,11 +528,19 @@ class PlayerViewModel(
             .build()
         player.setPlaylistMetadata(placeholderMetadata)
 
-        // Pause current audio while stream resolves (do NOT stop or clearMediaItems to prevent notification dismissal)
-        player.pause()
-        _currentPosition.value = 0L
+        // 2. Check if song is liked in Room DB
+        viewModelScope.launch(Dispatchers.IO) {
+            val isLiked = likedSongDao.isLiked(song.id)
+            withContext(Dispatchers.Main) {
+                _isCurrentSongLiked.value = isLiked
+                MuziMediaSessionService.isSongLiked = isLiked
+            }
+        }
 
-        // Reactive History: Save directly to Room Database with play count tracking
+        // 3. Ensure background MediaSessionService is running
+        MuziMediaSessionService.start(context)
+
+        // 4. Record play history in Room DB
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 historyDao.recordPlay(
@@ -525,19 +554,55 @@ class PlayerViewModel(
             }
         }
 
-        // Check if downloaded offline file exists first
+        // 5. Check if next song is already preloaded in ExoPlayer queue for gapless instant transition
+        val isAlreadyPreloaded = player.mediaItemCount > 1 && player.getMediaItemAt(1).mediaId == song.id
+        if (isAlreadyPreloaded) {
+            Log.d("PlayerVM", "Instantly transitioning to preloaded gapless track: ${song.title}")
+            player.seekToNextMediaItem()
+            player.removeMediaItem(0)
+            _isPlaying.value = true
+            _statusText.value = ""
+            _currentPosition.value = 0L
+            if (_crossfadeSeconds.value > 0) {
+                startFadeIn(durationMs = 300L)
+            } else {
+                player.volume = 1.0f
+            }
+
+            viewModelScope.launch(Dispatchers.IO) {
+                val artworkBytes = loadArtworkBitmapBytes(song.thumbnail)
+                if (artworkBytes != null && _currentSong.value?.id == song.id) {
+                    val enrichedMetadata = placeholderMetadata.buildUpon()
+                        .setArtworkData(artworkBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                        .build()
+                    withContext(Dispatchers.Main) {
+                        player.setPlaylistMetadata(enrichedMetadata)
+                    }
+                }
+            }
+
+            prefetchSurroundingTracks(index, queue)
+            scheduleGaplessPreload(index, queue)
+            return
+        }
+
+        // 6. Fast-path: Check offline download or in-memory streamUrlCache (0ms instant transition)
         val localFile = withContext(Dispatchers.IO) {
             com.example.muzo.data.download.SongDownloadManager.getInstance(context).getDownloadedFile(song.id)
         }
 
-        val mediaUri = if (localFile != null && localFile.exists() && localFile.length() > 0) {
-            Log.d("PlayerVM", "Playing from offline download: ${localFile.absolutePath}")
-            Uri.fromFile(localFile)
+        val cachedStreamUrl = if (localFile != null && localFile.exists() && localFile.length() > 0) {
+            localFile.toURI().toString()
+        } else {
+            streamUrlCache[song.id]
+        }
+
+        val mediaUri = if (!cachedStreamUrl.isNullOrBlank()) {
+            Uri.parse(cachedStreamUrl)
         } else {
             val streamUrl = withContext(Dispatchers.IO) {
                 resolveStreamUrl(song.id)
             }
-            Log.d("PlayerVM", "streamUrl resolved: $streamUrl")
             if (!streamUrl.isNullOrBlank()) Uri.parse(streamUrl) else null
         }
 
@@ -553,10 +618,15 @@ class PlayerViewModel(
             player.play()
             _isPlaying.value = true
             _statusText.value = ""
-            startFadeIn(durationMs = 600L)
-            Log.d("PlayerVM", "player.play() executed successfully")
+            _currentPosition.value = 0L
+            if (_crossfadeSeconds.value > 0) {
+                startFadeIn(durationMs = 300L)
+            } else {
+                player.volume = 1.0f
+            }
+            Log.d("PlayerVM", "player.play() executed successfully for ${song.title}")
 
-            // Asynchronously fetch high-resolution artwork bytes for Android 14 lockscreen & notification
+            // Asynchronously fetch high-resolution artwork bytes
             viewModelScope.launch(Dispatchers.IO) {
                 val artworkBytes = loadArtworkBitmapBytes(song.thumbnail)
                 if (artworkBytes != null && _currentSong.value?.id == song.id) {
@@ -569,20 +639,7 @@ class PlayerViewModel(
                 }
             }
 
-            // Pre-fetch next 2 tracks in background for instantaneous next-song playback
-            for (offset in 1..2) {
-                val prefetchIdx = index + offset
-                if (prefetchIdx in queue.indices) {
-                    val nextSong = queue[prefetchIdx]
-                    viewModelScope.launch(Dispatchers.IO) {
-                        try {
-                            resolveStreamUrl(nextSong.id)
-                        } catch (_: Exception) {}
-                    }
-                }
-            }
-
-            // Schedule gapless preload of the next MediaItem into ExoPlayer
+            prefetchSurroundingTracks(index, queue)
             scheduleGaplessPreload(index, queue)
         } else {
             Log.e("PlayerVM", "Failed to resolve streamUrl for ${song.id}")
