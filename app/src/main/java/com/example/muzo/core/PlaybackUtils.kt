@@ -108,3 +108,34 @@ suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers
 
     null
 }
+
+val artworkBytesCache = android.util.LruCache<String, ByteArray>(25)
+
+suspend fun loadArtworkBitmapBytes(url: String?): ByteArray? {
+    if (url.isNullOrBlank()) return null
+    return withContext(Dispatchers.IO) {
+        val cached = artworkBytesCache.get(url)
+        if (cached != null) return@withContext cached
+
+        try {
+            val highRes = getHighResThumbnail(url)
+            val conn = java.net.URL(highRes).openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+            conn.instanceFollowRedirects = true
+            conn.inputStream.use { input ->
+                val bitmap = android.graphics.BitmapFactory.decodeStream(input)
+                if (bitmap != null) {
+                    val stream = java.io.ByteArrayOutputStream()
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, stream)
+                    val bytes = stream.toByteArray()
+                    artworkBytesCache.put(url, bytes)
+                    bytes
+                } else null
+            }
+        } catch (e: Exception) {
+            Log.w("PlaybackUtils", "Failed to load artwork bitmap bytes: ${e.message}")
+            null
+        }
+    }
+}

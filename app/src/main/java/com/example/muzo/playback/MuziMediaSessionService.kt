@@ -30,6 +30,8 @@ class MuziMediaSessionService : MediaSessionService() {
         const val TAG = "MuziMediaService"
         const val CHANNEL_ID = "androidx.media3.session.media_playback_channel_id"
         const val ACTION_TOGGLE_LIKE = "com.example.muzo.ACTION_TOGGLE_LIKE"
+        const val ACTION_TOGGLE_SHUFFLE = "com.example.muzo.ACTION_TOGGLE_SHUFFLE"
+        const val ACTION_TOGGLE_REPEAT = "com.example.muzo.ACTION_TOGGLE_REPEAT"
 
         private var instance: MuziMediaSessionService? = null
 
@@ -39,7 +41,21 @@ class MuziMediaSessionService : MediaSessionService() {
                 instance?.updateCustomLayout()
             }
 
+        var isShuffleActive: Boolean = false
+            set(value) {
+                field = value
+                instance?.updateCustomLayout()
+            }
+
+        var repeatMode: Int = 0 // 0 = Off, 1 = Repeat All, 2 = Repeat One
+            set(value) {
+                field = value
+                instance?.updateCustomLayout()
+            }
+
         var onLikeToggled: ((Boolean) -> Unit)? = null
+        var onShuffleToggled: (() -> Unit)? = null
+        var onRepeatToggled: (() -> Unit)? = null
         var onNextCallback: (() -> Unit)? = null
         var onPreviousCallback: (() -> Unit)? = null
 
@@ -101,17 +117,36 @@ class MuziMediaSessionService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
 
-    fun getLikeButton(): CommandButton {
-        return CommandButton.Builder()
+    fun getCustomCommandButtons(): List<CommandButton> {
+        val likeButton = CommandButton.Builder()
             .setDisplayName(if (isSongLiked) "Liked" else "Like")
             .setIconResId(if (isSongLiked) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline)
             .setSessionCommand(SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY))
             .build()
+
+        val shuffleButton = CommandButton.Builder()
+            .setDisplayName(if (isShuffleActive) "Shuffle On" else "Shuffle Off")
+            .setIconResId(if (isShuffleActive) R.drawable.ic_shuffle else R.drawable.ic_shuffle_off)
+            .setSessionCommand(SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY))
+            .build()
+
+        val (repeatName, repeatIcon) = when (repeatMode) {
+            1 -> "Repeat All" to R.drawable.ic_repeat
+            2 -> "Repeat One" to R.drawable.ic_repeat_one
+            else -> "Repeat Off" to R.drawable.ic_repeat_off
+        }
+        val repeatButton = CommandButton.Builder()
+            .setDisplayName(repeatName)
+            .setIconResId(repeatIcon)
+            .setSessionCommand(SessionCommand(ACTION_TOGGLE_REPEAT, Bundle.EMPTY))
+            .build()
+
+        return listOf(likeButton, shuffleButton, repeatButton)
     }
 
     fun updateCustomLayout() {
         mediaSession?.let { session ->
-            session.setCustomLayout(listOf(getLikeButton()))
+            session.setCustomLayout(getCustomCommandButtons())
         }
     }
 
@@ -146,6 +181,10 @@ class MuziMediaSessionService : MediaSessionService() {
                     .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
                     .add(Player.COMMAND_SEEK_TO_PREVIOUS)
                     .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                    .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+                    .add(Player.COMMAND_GET_TIMELINE)
+                    .add(Player.COMMAND_PLAY_PAUSE)
                     .build()
             }
 
@@ -154,7 +193,11 @@ class MuziMediaSessionService : MediaSessionService() {
                     Player.COMMAND_SEEK_TO_NEXT,
                     Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
                     Player.COMMAND_SEEK_TO_PREVIOUS,
-                    Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> true
+                    Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                    Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+                    Player.COMMAND_GET_CURRENT_MEDIA_ITEM,
+                    Player.COMMAND_GET_TIMELINE,
+                    Player.COMMAND_PLAY_PAUSE -> true
                     else -> super.isCommandAvailable(command)
                 }
             }
@@ -177,10 +220,12 @@ class MuziMediaSessionService : MediaSessionService() {
             ): MediaSession.ConnectionResult {
                 val availableSessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                     .add(SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_TOGGLE_REPEAT, Bundle.EMPTY))
                     .build()
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(availableSessionCommands)
-                    .setCustomLayout(listOf(getLikeButton()))
+                    .setCustomLayout(getCustomCommandButtons())
                     .build()
             }
 
@@ -190,12 +235,24 @@ class MuziMediaSessionService : MediaSessionService() {
                 customCommand: SessionCommand,
                 args: Bundle
             ): ListenableFuture<SessionResult> {
-                if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
-                    val newLiked = !isSongLiked
-                    isSongLiked = newLiked
-                    onLikeToggled?.invoke(newLiked)
-                    updateCustomLayout()
-                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                when (customCommand.customAction) {
+                    ACTION_TOGGLE_LIKE -> {
+                        val newLiked = !isSongLiked
+                        isSongLiked = newLiked
+                        onLikeToggled?.invoke(newLiked)
+                        updateCustomLayout()
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    ACTION_TOGGLE_SHUFFLE -> {
+                        onShuffleToggled?.invoke()
+                        updateCustomLayout()
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    ACTION_TOGGLE_REPEAT -> {
+                        onRepeatToggled?.invoke()
+                        updateCustomLayout()
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
                 }
                 return super.onCustomCommand(session, controller, customCommand, args)
             }
@@ -204,7 +261,7 @@ class MuziMediaSessionService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
             .setSessionActivity(pendingIntent)
             .setCallback(sessionCallback)
-            .setCustomLayout(listOf(getLikeButton()))
+            .setCustomLayout(getCustomCommandButtons())
             .build()
 
         addSession(mediaSession!!)
@@ -234,6 +291,7 @@ class MuziMediaSessionService : MediaSessionService() {
             ).apply {
                 description = "Music playback notification and controls"
                 setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)

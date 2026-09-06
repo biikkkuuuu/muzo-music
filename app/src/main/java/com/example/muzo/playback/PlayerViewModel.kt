@@ -11,6 +11,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.muzo.core.getHighResThumbnail
+import com.example.muzo.core.loadArtworkBitmapBytes
 import com.example.muzo.core.resolveStreamUrl
 import com.example.muzo.data.local.HistoryDao
 import com.example.muzo.data.local.LikedSongDao
@@ -199,13 +200,18 @@ class PlayerViewModel(
                     val artistName = nextSong.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
                     val highResThumb = nextSong.thumbnail?.let { getHighResThumbnail(it) }
                     val artworkUri = highResThumb?.let { Uri.parse(it) }
+                    val cachedBytes = nextSong.thumbnail?.let { com.example.muzo.core.artworkBytesCache.get(it) }
 
-                    val metadata = MediaMetadata.Builder()
+                    val metadataBuilder = MediaMetadata.Builder()
                         .setTitle(nextSong.title)
                         .setArtist(artistName)
                         .setDisplayTitle(nextSong.title)
                         .setArtworkUri(artworkUri)
-                        .build()
+
+                    if (cachedBytes != null) {
+                        metadataBuilder.setArtworkData(cachedBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    }
+                    val metadata = metadataBuilder.build()
 
                     val nextMediaItem = MediaItem.Builder()
                         .setMediaId(nextSong.id)
@@ -230,6 +236,7 @@ class PlayerViewModel(
     fun toggleShuffle() {
         val next = !_isShuffleActive.value
         _isShuffleActive.value = next
+        MuziMediaSessionService.isShuffleActive = next
         scheduleGaplessPreload(_currentIndex.value, _playbackQueue.value)
         android.widget.Toast.makeText(context, if (next) "Shuffle On" else "Shuffle Off", android.widget.Toast.LENGTH_SHORT).show()
     }
@@ -237,6 +244,7 @@ class PlayerViewModel(
     fun toggleRepeat() {
         val next = (_repeatMode.value + 1) % 3
         _repeatMode.value = next
+        MuziMediaSessionService.repeatMode = next
         scheduleGaplessPreload(_currentIndex.value, _playbackQueue.value)
         val msg = when (next) {
             1 -> "Repeat All"
@@ -393,6 +401,10 @@ class PlayerViewModel(
     init {
         player.addListener(playerListener)
 
+        // Sync initial shuffle and repeat states with media notification
+        MuziMediaSessionService.isShuffleActive = _isShuffleActive.value
+        MuziMediaSessionService.repeatMode = _repeatMode.value
+
         // Connect media notification and bluetooth headphone controls to ViewModel
         MuziMediaSessionService.onNextCallback = {
             viewModelScope.launch(Dispatchers.Main) { playNext() }
@@ -403,6 +415,16 @@ class PlayerViewModel(
         MuziMediaSessionService.onLikeToggled = { newLiked ->
             viewModelScope.launch(Dispatchers.Main) {
                 toggleLikeCurrentSong(newLiked)
+            }
+        }
+        MuziMediaSessionService.onShuffleToggled = {
+            viewModelScope.launch(Dispatchers.Main) {
+                toggleShuffle()
+            }
+        }
+        MuziMediaSessionService.onRepeatToggled = {
+            viewModelScope.launch(Dispatchers.Main) {
+                toggleRepeat()
             }
         }
 
@@ -496,7 +518,7 @@ class PlayerViewModel(
             val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
             val artworkUri = highResThumb?.let { Uri.parse(it) }
 
-            val metadata = MediaMetadata.Builder()
+            val initialMetadata = MediaMetadata.Builder()
                 .setTitle(song.title)
                 .setArtist(artistName)
                 .setDisplayTitle(song.title)
@@ -506,7 +528,7 @@ class PlayerViewModel(
             val mediaItem = MediaItem.Builder()
                 .setMediaId(song.id)
                 .setUri(mediaUri)
-                .setMediaMetadata(metadata)
+                .setMediaMetadata(initialMetadata)
                 .build()
 
             player.setMediaItem(mediaItem)
@@ -516,6 +538,19 @@ class PlayerViewModel(
             _statusText.value = ""
             startFadeIn(durationMs = 600L)
             Log.d("PlayerVM", "player.play() executed successfully")
+
+            // Asynchronously fetch high-resolution artwork bytes for Android 14 lockscreen & notification
+            viewModelScope.launch(Dispatchers.IO) {
+                val artworkBytes = loadArtworkBitmapBytes(song.thumbnail)
+                if (artworkBytes != null && _currentSong.value?.id == song.id) {
+                    val enrichedMetadata = initialMetadata.buildUpon()
+                        .setArtworkData(artworkBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                        .build()
+                    withContext(Dispatchers.Main) {
+                        player.setPlaylistMetadata(enrichedMetadata)
+                    }
+                }
+            }
 
             // Pre-fetch next 2 tracks in background for instantaneous next-song playback
             for (offset in 1..2) {
