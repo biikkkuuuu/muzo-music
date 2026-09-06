@@ -67,6 +67,19 @@ class PlayerViewModel(
     private val _repeatMode = MutableStateFlow(0) // 0 = off, 1 = repeat all, 2 = repeat one
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
 
+    private val _isAutoRadioEnabled = MutableStateFlow(true)
+    val isAutoRadioEnabled: StateFlow<Boolean> = _isAutoRadioEnabled.asStateFlow()
+
+    fun toggleAutoRadio() {
+        val next = !_isAutoRadioEnabled.value
+        _isAutoRadioEnabled.value = next
+        android.widget.Toast.makeText(
+            context,
+            if (next) "Auto-Play Next 📻 ON" else "Auto-Play Next OFF",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
+    }
+
     fun toggleShuffle() {
         val next = !_isShuffleActive.value
         _isShuffleActive.value = next
@@ -351,6 +364,41 @@ class PlayerViewModel(
             playTrack(nextIndex, queue)
         } else if (_repeatMode.value == 1 && queue.isNotEmpty()) {
             playTrack(0, queue)
+        } else if (_isAutoRadioEnabled.value) {
+            val lastSong = queue.lastOrNull() ?: _currentSong.value
+            if (lastSong != null) {
+                fetchAndAppendAutoRadio(lastSong)
+            }
+        }
+    }
+
+    private var isFetchingRadio = false
+    private fun fetchAndAppendAutoRadio(seedSong: SongItem) {
+        if (isFetchingRadio) return
+        isFetchingRadio = true
+        viewModelScope.launch {
+            _statusText.value = "Autoplaying next..."
+            val newTracks = withContext(Dispatchers.IO) {
+                try {
+                    val res = YouTube.next(WatchEndpoint(videoId = seedSong.id)).getOrNull()
+                    val nextSongs = res?.items?.filterIsInstance<SongItem>().orEmpty()
+                    val existingIds = _playbackQueue.value.map { it.id }.toSet()
+                    nextSongs.filter { it.id !in existingIds }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+
+            if (newTracks.isNotEmpty()) {
+                val currentQueue = _playbackQueue.value.toMutableList()
+                val nextPlayIndex = currentQueue.size
+                currentQueue.addAll(newTracks)
+                _playbackQueue.value = currentQueue
+                playTrack(nextPlayIndex, currentQueue)
+            } else {
+                _statusText.value = ""
+            }
+            isFetchingRadio = false
         }
     }
 

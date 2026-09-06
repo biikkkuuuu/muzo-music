@@ -90,6 +90,8 @@ fun FullPlayerSheet(
     hasNext: Boolean,
     queueCount: Int,
     isLiked: Boolean = false,
+    isAutoRadioEnabled: Boolean = true,
+    onToggleAutoRadio: () -> Unit = {},
     playbackSpeed: Float = 1.0f,
     onSpeedChange: (Float) -> Unit = {},
     sleepTimer: com.example.muzo.playback.SleepTimer? = null,
@@ -122,6 +124,7 @@ fun FullPlayerSheet(
 
     var isDraggingSeek by remember { mutableStateOf(false) }
     var dragSeekProgress by remember { mutableFloatStateOf(0f) }
+    var seekbarStyle by rememberSaveable { mutableStateOf("squiggly") } // "squiggly" or "thick"
 
     // Dialog & sheet visibility states
     var showSleepTimerDialog by remember { mutableStateOf(false) }
@@ -609,33 +612,50 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // ==========================================
-                // 4. SEEKBAR & TIMESTAMPS (Echo Thick White Seekbar)
+                // 4. SEEKBAR & TIMESTAMPS (Android 14 Squiggly Waveform vs Echo Thick)
                 // ==========================================
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)
                 ) {
-                    EchoThickSeekSlider(
-                        progress = if (isDraggingSeek) dragSeekProgress else currentProgress,
-                        onSeekProgress = { ratio ->
-                            isDraggingSeek = true
-                            dragSeekProgress = ratio
-                        },
-                        onSeekFinished = { ratio ->
-                            isDraggingSeek = false
-                            onSeek((ratio * duration).toLong())
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (seekbarStyle == "squiggly") {
+                        SquigglySlider(
+                            progress = if (isDraggingSeek) dragSeekProgress else currentProgress,
+                            onSeekProgress = { ratio ->
+                                isDraggingSeek = true
+                                dragSeekProgress = ratio
+                            },
+                            onSeekFinished = { ratio ->
+                                isDraggingSeek = false
+                                onSeek((ratio * duration).toLong())
+                            },
+                            isPlaying = isPlaying,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        EchoThickSeekSlider(
+                            progress = if (isDraggingSeek) dragSeekProgress else currentProgress,
+                            onSeekProgress = { ratio ->
+                                isDraggingSeek = true
+                                dragSeekProgress = ratio
+                            },
+                            onSeekFinished = { ratio ->
+                                isDraggingSeek = false
+                                onSeek((ratio * duration).toLong())
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 2.dp),
-                        horizontalArrangement = Arrangement.Start
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         val posMs = if (isDraggingSeek) (dragSeekProgress * duration).toLong() else currentPosition
                         val totalSec = (posMs / 1000).coerceAtLeast(0)
@@ -643,9 +663,19 @@ fun FullPlayerSheet(
                         val secs = totalSec % 60
                         Text(
                             text = String.format("%d:%02d", mins, secs),
-                            fontSize = 13.sp,
-                            color = Color.White,
+                            fontSize = 12.5.sp,
+                            color = Color.White.copy(alpha = 0.85f),
                             fontWeight = FontWeight.Medium
+                        )
+
+                        val durSec = (duration / 1000).coerceAtLeast(0)
+                        val durMins = durSec / 60
+                        val durSecs = durSec % 60
+                        Text(
+                            text = String.format("%d:%02d", durMins, durSecs),
+                            fontSize = 12.5.sp,
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Normal
                         )
                     }
                 }
@@ -829,6 +859,17 @@ fun FullPlayerSheet(
                     playbackSpeed = playbackSpeed,
                     isShuffleActive = isShuffleActive,
                     isDownloaded = isSongDownloaded,
+                    seekbarStyle = seekbarStyle,
+                    onToggleSeekbarStyle = {
+                        seekbarStyle = if (seekbarStyle == "squiggly") "thick" else "squiggly"
+                        Toast.makeText(
+                            context,
+                            if (seekbarStyle == "squiggly") "Android 14 Squiggly Waveform ~" else "Echo Thick Bar —",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    isAutoRadioEnabled = isAutoRadioEnabled,
+                    onToggleAutoRadio = onToggleAutoRadio,
                     onToggleDownload = {
                         downloadManager.toggleDownload(song)
                     },
@@ -1080,6 +1121,10 @@ private fun EchoPlayerMenuSheet(
     playbackSpeed: Float,
     isShuffleActive: Boolean,
     isDownloaded: Boolean = false,
+    seekbarStyle: String = "squiggly",
+    onToggleSeekbarStyle: () -> Unit = {},
+    isAutoRadioEnabled: Boolean = true,
+    onToggleAutoRadio: () -> Unit = {},
     onToggleDownload: () -> Unit = {},
     onDismiss: () -> Unit,
     onOpenQueue: () -> Unit,
@@ -1150,6 +1195,22 @@ private fun EchoPlayerMenuSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Option Items
+            MenuActionRow(
+                icon = Icons.Default.GraphicEq,
+                title = "Seekbar Style",
+                subtitle = if (seekbarStyle == "squiggly") "Android 14 Squiggly Waveform" else "Echo Thick Rounded Capsule",
+                badge = if (seekbarStyle == "squiggly") "WAVY 〰" else "PILL ━",
+                onClick = onToggleSeekbarStyle
+            )
+
+            MenuActionRow(
+                icon = Icons.Default.AllInclusive,
+                title = "Endless Auto-Play",
+                subtitle = "Keep music playing when queue finishes",
+                badge = if (isAutoRadioEnabled) "ON" else "OFF",
+                onClick = onToggleAutoRadio
+            )
+
             MenuActionRow(
                 icon = if (isDownloaded) Icons.Default.DownloadDone else Icons.Default.Download,
                 title = if (isDownloaded) "Remove Download" else "Download Song",

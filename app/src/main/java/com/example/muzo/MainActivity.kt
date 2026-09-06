@@ -174,6 +174,7 @@ fun MuziMainScreen(player: ExoPlayer) {
     val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
     val isShuffleActive by playerViewModel.isShuffleActive.collectAsStateWithLifecycle()
     val repeatMode by playerViewModel.repeatMode.collectAsStateWithLifecycle()
+    val isAutoRadioEnabled by playerViewModel.isAutoRadioEnabled.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -743,6 +744,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                 hasNext = currentIndex + 1 < playbackQueue.size,
                 queueCount = playbackQueue.size,
                 isLiked = isCurrentSongLiked,
+                isAutoRadioEnabled = isAutoRadioEnabled,
+                onToggleAutoRadio = { playerViewModel.toggleAutoRadio() },
                 sleepTimer = playerViewModel.sleepTimer,
                 equalizerController = playerViewModel.equalizerController,
                 audioSessionId = playerViewModel.player.audioSessionId,

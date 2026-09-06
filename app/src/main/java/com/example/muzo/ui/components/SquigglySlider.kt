@@ -9,18 +9,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SliderColors
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameMillis
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -34,76 +23,61 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.sin
 
+/**
+ * Android 14 Signature Squiggly Waveform Slider (Google Pixel Style).
+ *
+ * Features:
+ * - Active track (left of thumb): Smooth animated sine wave in pure white during playback.
+ * - Inactive track (right of thumb): Smooth straight horizontal line in translucent white.
+ * - Junction: Prominent crisp white circular thumb dot.
+ * - Pause / Drag: Wave smoothly flattens down to a straight bar.
+ * - High touch target (42dp) with tap-to-seek and drag-to-scrub.
+ */
 @Composable
 fun SquigglySlider(
-    value: Float,
-    onValueChange: (Float) -> Unit,
+    progress: Float, // 0f..1f
+    onSeekProgress: (Float) -> Unit,
+    onSeekFinished: (Float) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
-    onValueChangeFinished: (() -> Unit)? = null,
-    colors: SliderColors = SliderDefaults.colors(
-        activeTrackColor = MaterialTheme.colorScheme.primary,
-        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-    ),
     isPlaying: Boolean = true,
+    activeColor: Color = Color.White,
+    inactiveColor: Color = Color.White.copy(alpha = 0.32f),
+    thumbColor: Color = Color.White
 ) {
-    val primaryColor = colors.activeTrackColor
-    val inactiveColor = colors.inactiveTrackColor
-
     var isDragging by remember { mutableStateOf(false) }
-    var dragPosition by remember { mutableFloatStateOf(value) }
-    
-    val currentValue = if (isDragging) dragPosition else value
-    val duration = valueRange.endInclusive - valueRange.start
-    val position = currentValue - valueRange.start
+    var dragRatio by remember { mutableFloatStateOf(0f) }
+
+    val currentRatio = if (isDragging) dragRatio else progress.coerceIn(0f, 1f)
 
     var phaseOffset by remember { mutableFloatStateOf(0f) }
-    var heightFraction by remember { mutableFloatStateOf(if (isPlaying) 1f else 0f) }
+    val heightFraction = remember { Animatable(if (isPlaying) 1f else 0f) }
 
-    val scope = rememberCoroutineScope()
+    val waveLengthPx = 54f
+    val waveAmplitudePx = 9f
+    val waveSpeedPxPerSec = 38f
 
-    val waveLength = 80f
-    val lineAmplitude = 6f
-    val phaseSpeed = 24f 
-    val transitionPeriods = 1.5f
-    val minWaveEndpoint = 0f
-    val matchedWaveEndpoint = 1f
-    val transitionEnabled = true
-
+    // Smoothly flatten wave on pause or drag
     LaunchedEffect(isPlaying, isDragging) {
-        scope.launch {
-            val shouldFlatten = !isPlaying || isDragging
-            val targetHeight = if (shouldFlatten) 0f else 1f
-            val animDuration = if (shouldFlatten) 150 else 200 
-            val startDelay = if (shouldFlatten) 0L else 30L
-
-            delay(startDelay)
-
-            val animator = Animatable(heightFraction)
-            animator.animateTo(
-                targetValue = targetHeight,
-                animationSpec = tween(
-                    durationMillis = animDuration,
-                    easing = LinearEasing,
-                ),
-            ) {
-                heightFraction = this.value
-            }
-        }
+        val shouldFlatten = !isPlaying || isDragging
+        val target = if (shouldFlatten) 0f else 1f
+        heightFraction.animateTo(
+            targetValue = target,
+            animationSpec = tween(durationMillis = 220, easing = LinearEasing)
+        )
     }
 
+    // Continuous wave phase animation while playing
     LaunchedEffect(isPlaying) {
         if (!isPlaying) return@LaunchedEffect
-
-        var lastFrameTime = withFrameMillis { it }
+        var lastTime = withFrameMillis { it }
         while (isActive) {
-            withFrameMillis { frameTimeMillis ->
-                val deltaTime = (frameTimeMillis - lastFrameTime) / 1000f
-                phaseOffset += deltaTime * phaseSpeed
-                phaseOffset %= waveLength
-                lastFrameTime = frameTimeMillis
+            withFrameMillis { now ->
+                val dt = (now - lastTime) / 1000f
+                phaseOffset = (phaseOffset + dt * waveSpeedPxPerSec) % waveLengthPx
+                lastTime = now
             }
         }
     }
@@ -111,174 +85,105 @@ fun SquigglySlider(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .then(
-                if (enabled) {
-                    Modifier
-                        .pointerInput(valueRange) {
-                            detectTapGestures { offset ->
-                                val newPosition = (offset.x / size.width) * duration
-                                val mappedValue = valueRange.start + newPosition.coerceIn(0f, duration)
-                                onValueChange(mappedValue)
-                                onValueChangeFinished?.invoke()
-                            }
-                        }
-                        .pointerInput(valueRange) {
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    isDragging = true
-                                    val newPosition = (offset.x / size.width) * duration
-                                    dragPosition = valueRange.start + newPosition.coerceIn(0f, duration)
-                                    onValueChange(dragPosition)
-                                },
-                                onDragEnd = {
-                                    isDragging = false
-                                    onValueChangeFinished?.invoke()
-                                },
-                                onDragCancel = {
-                                    isDragging = false
-                                },
-                                onDrag = { change, _ ->
-                                    change.consume()
-                                    val newPosition = (change.position.x / size.width) * duration
-                                    dragPosition = valueRange.start + newPosition.coerceIn(0f, duration)
-                                    onValueChange(dragPosition)
-                                }
-                            )
-                        }
-                } else {
-                    Modifier
+            .height(42.dp)
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    val ratio = (offset.x / size.width).coerceIn(0f, 1f)
+                    onSeekProgress(ratio)
+                    onSeekFinished(ratio)
                 }
-            ),
+            }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        isDragging = true
+                        dragRatio = (offset.x / size.width).coerceIn(0f, 1f)
+                        onSeekProgress(dragRatio)
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        dragRatio = (change.position.x / size.width).coerceIn(0f, 1f)
+                        onSeekProgress(dragRatio)
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        onSeekFinished(dragRatio)
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(30.dp)
         ) {
-            val strokeWidth = 4.dp.toPx()
-            val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
-            val totalWidth = size.width
-            val totalProgressPx = totalWidth * progress
             val centerY = size.height / 2f
+            val totalWidth = size.width
+            val progressX = (currentRatio * totalWidth).coerceIn(0f, totalWidth)
 
-            val waveProgressPx = if (!transitionEnabled || progress > matchedWaveEndpoint) {
-                totalWidth * progress
-            } else {
-                val t = (progress / matchedWaveEndpoint).coerceIn(0f, 1f)
-                totalWidth * (minWaveEndpoint + (matchedWaveEndpoint - minWaveEndpoint) * t)
-            }
+            val trackThickness = 4.dp.toPx()
+            val thumbRadius = 5.5.dp.toPx()
+            val currentAmp = waveAmplitudePx * heightFraction.value
 
-            fun computeAmplitude(x: Float, sign: Float): Float {
-                return if (transitionEnabled) {
-                    val length = transitionPeriods * waveLength
-                    val coeff = ((waveProgressPx + length / 2f - x) / length).coerceIn(0f, 1f)
-                    sign * heightFraction * lineAmplitude * coeff
-                } else {
-                    sign * heightFraction * lineAmplitude
+            // 1. Draw Active Wavy Path (0 to progressX)
+            if (progressX > 0f) {
+                val wavePath = Path()
+                val step = 3f
+                var x = 0f
+
+                // Starting point
+                val startY = centerY + currentAmp * sin((0f - phaseOffset) / waveLengthPx * 2f * PI.toFloat())
+                wavePath.moveTo(0f, startY)
+
+                while (x <= progressX) {
+                    val y = centerY + currentAmp * sin((x - phaseOffset) / waveLengthPx * 2f * PI.toFloat())
+                    wavePath.lineTo(x, y)
+                    x += step
                 }
-            }
 
-            val path = Path()
-            val waveStart = -phaseOffset - waveLength / 2f
-            val waveEnd = if (transitionEnabled) totalWidth else waveProgressPx
+                // Connect to exact progress point
+                val endY = centerY + currentAmp * sin((progressX - phaseOffset) / waveLengthPx * 2f * PI.toFloat())
+                wavePath.lineTo(progressX, endY)
 
-            path.moveTo(waveStart, centerY)
-
-            var currentX = waveStart
-            var waveSign = 1f
-            var currentAmp = computeAmplitude(currentX, waveSign)
-            val dist = waveLength / 2f
-
-            while (currentX < waveEnd) {
-                waveSign = -waveSign
-                val nextX = currentX + dist
-                val midX = currentX + dist / 2f
-                val nextAmp = computeAmplitude(nextX, waveSign)
-
-                path.cubicTo(
-                    midX,
-                    centerY + currentAmp,
-                    midX,
-                    centerY + nextAmp,
-                    nextX,
-                    centerY + nextAmp,
-                )
-
-                currentAmp = nextAmp
-                currentX = nextX
-            }
-
-            val clipTop = lineAmplitude + strokeWidth
-            val disabledAlpha = 77f / 255f
-            val inactiveTrackColor = primaryColor.copy(alpha = disabledAlpha)
-            val capRadius = strokeWidth / 2f
-
-            fun drawPathSegment(startX: Float, endX: Float, color: Color) {
-                if (endX <= startX) return
-                clipRect(
-                    left = startX,
-                    top = centerY - clipTop,
-                    right = endX,
-                    bottom = centerY + clipTop,
-                ) {
+                clipRect(left = 0f, top = 0f, right = progressX, bottom = size.height) {
                     drawPath(
-                        path = path,
-                        color = color,
-                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                        path = wavePath,
+                        color = activeColor,
+                        style = Stroke(width = trackThickness, cap = StrokeCap.Round)
                     )
                 }
             }
 
-            drawPathSegment(0f, totalProgressPx, primaryColor)
-            drawPathSegment(totalProgressPx, totalWidth, inactiveTrackColor)
-
-            fun getWaveY(x: Float): Float {
-                val phase = (x - waveStart) / waveLength
-                val waveCycle = phase - kotlin.math.floor(phase)
-                val waveValue = kotlin.math.cos(waveCycle * 2f * kotlin.math.PI.toFloat())
-                val ampCoeff = if (transitionEnabled) {
-                    val length = transitionPeriods * waveLength
-                    ((waveProgressPx + length / 2f - x) / length).coerceIn(0f, 1f)
-                } else {
-                    1f
-                }
-                return centerY + waveValue * lineAmplitude * heightFraction * ampCoeff
-            }
-
-            drawCircle(
-                color = primaryColor,
-                radius = capRadius,
-                center = Offset(0f, getWaveY(0f)),
-            )
-
-            val endWaveY = getWaveY(totalWidth)
-            clipRect(
-                left = totalWidth,
-                top = centerY - clipTop,
-                right = totalWidth + capRadius,
-                bottom = centerY + clipTop,
-            ) {
-                drawCircle(
-                    color = inactiveTrackColor,
-                    radius = capRadius,
-                    center = Offset(totalWidth, endWaveY),
-                )
-            }
-
-            val barHalfHeight = (lineAmplitude + strokeWidth)
-            val barWidth = 4.dp.toPx()
-
-            if (barHalfHeight > 0.5f) {
+            // 2. Draw Inactive Track (progressX to totalWidth) - Straight sleek horizontal line
+            val inactiveStartX = (progressX + thumbRadius).coerceAtMost(totalWidth)
+            if (inactiveStartX < totalWidth) {
                 drawLine(
-                    color = primaryColor,
-                    start = Offset(totalProgressPx, centerY - barHalfHeight),
-                    end = Offset(totalProgressPx, centerY + barHalfHeight),
-                    strokeWidth = barWidth,
-                    cap = StrokeCap.Round,
+                    color = inactiveColor,
+                    start = Offset(inactiveStartX, centerY),
+                    end = Offset(totalWidth, centerY),
+                    strokeWidth = trackThickness,
+                    cap = StrokeCap.Round
                 )
             }
+
+            // 3. Draw Thumb Dot (Android 14 crisp circular scrubber)
+            val thumbY = centerY + currentAmp * sin((progressX - phaseOffset) / waveLengthPx * 2f * PI.toFloat())
+            // Subtle outer glow
+            drawCircle(
+                color = activeColor.copy(alpha = 0.25f),
+                radius = thumbRadius + 2.dp.toPx(),
+                center = Offset(progressX, thumbY)
+            )
+            // Solid white thumb
+            drawCircle(
+                color = thumbColor,
+                radius = thumbRadius,
+                center = Offset(progressX, thumbY)
+            )
         }
     }
 }
