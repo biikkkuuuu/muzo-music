@@ -346,18 +346,17 @@ fun SettingsScreen(
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Icon container with blue tint
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(if (item.isCircleIcon) CircleShape else RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF233660)),
+                                    .background(Color.White.copy(alpha = 0.08f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (item.customBadge != null) {
                                     Text(
                                         text = item.customBadge,
-                                        color = Color(0xFF5B8DEF),
+                                        color = Color.White,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp
                                     )
@@ -365,8 +364,8 @@ fun SettingsScreen(
                                     Icon(
                                         imageVector = item.icon,
                                         contentDescription = null,
-                                        tint = Color(0xFF5B8DEF),
-                                        modifier = Modifier.size(20.dp)
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
@@ -411,12 +410,12 @@ fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Current Profile: Anonymous (Local)", color = Color.White, fontWeight = FontWeight.SemiBold)
                     Text("Streaming direct from YouTube Music with ad-free high fidelity audio.", color = Color.Gray, fontSize = 14.sp)
-                    Text("Developer: Bikash Rana (@biikkkuuuuu)", color = Color(0xFF5B8DEF), fontSize = 13.sp)
+                    Text("Developer: Bikash Rana (@biikkkuuuuu)", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showAccountDialog = false }) {
-                    Text("OK", color = Color(0xFF5B8DEF))
+                    Text("OK", color = MaterialTheme.colorScheme.primary)
                 }
             },
             containerColor = Color(0xFF1E1D24)
@@ -432,7 +431,7 @@ fun SettingsScreen(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        tint = Color(0xFF5B8DEF),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -476,7 +475,7 @@ fun SettingsScreen(
                                 onCheckedChange = onGaplessToggle,
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = Color.White,
-                                    checkedTrackColor = Color(0xFF5B8DEF),
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
                                     uncheckedThumbColor = Color(0xFF8E8E9A),
                                     uncheckedTrackColor = Color(0xFF1C1C24)
                                 )
@@ -499,7 +498,7 @@ fun SettingsScreen(
                                 Text("Crossfade Duration", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                                 Text(
                                     text = if (crossfadeSeconds == 0) "Off" else "${crossfadeSeconds}s",
-                                    color = Color(0xFF5B8DEF),
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 )
@@ -517,7 +516,7 @@ fun SettingsScreen(
                                     val isSelected = crossfadeSeconds == sec
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = if (isSelected) Color(0xFF5B8DEF) else Color(0xFF1C1C24),
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF1C1C24),
                                         modifier = Modifier
                                             .weight(1f)
                                             .clip(RoundedCornerShape(8.dp))
@@ -531,7 +530,7 @@ fun SettingsScreen(
                                                 text = if (sec == 0) "Off" else "${sec}s",
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                                 fontSize = 12.sp,
-                                                color = if (isSelected) Color.White else Color(0xFFB0B0B8)
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color(0xFFB0B0B8)
                                             )
                                         }
                                     }
@@ -546,7 +545,7 @@ fun SettingsScreen(
                     showAudioQualityDialog = false
                     Toast.makeText(context, "Audio settings applied", Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("Done", color = Color(0xFF5B8DEF), fontWeight = FontWeight.Bold)
+                    Text("Done", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -555,7 +554,7 @@ fun SettingsScreen(
                         showAudioQualityDialog = false
                         onOpenEqualizer()
                     }) {
-                        Text("Equalizer", color = Color(0xFF6B9DFE))
+                        Text("Equalizer", color = MaterialTheme.colorScheme.primary)
                     }
                 }
             },
@@ -576,7 +575,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAppearanceDialog = false }) {
-                    Text("Close", color = Color(0xFF5B8DEF))
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             },
             containerColor = Color(0xFF1E1D24)
@@ -658,7 +657,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showContentDialog = false }) {
-                    Text("OK", color = Color(0xFF5B8DEF))
+                    Text("OK", color = MaterialTheme.colorScheme.primary)
                 }
             },
             containerColor = Color(0xFF1E1D24)

@@ -31,6 +31,7 @@ import com.example.muzo.data.model.HomeShelf
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.playback.PlayerViewModel
+import com.example.muzo.theme.DynamicSongTheme
 import com.example.muzo.ui.components.ActionMenuTarget
 import com.example.muzo.ui.components.FullPlayerSheet
 import com.example.muzo.ui.components.PlayerWithBottomNav
@@ -102,18 +103,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val muzoDarkTheme = darkColorScheme(
-                primary = Color(0xFF2F60FF),
-                onPrimary = Color.White,
-                primaryContainer = Color(0xFF1E294B),
-                onPrimaryContainer = Color(0xFFD6E2FF),
+                primary = Color(0xFFE2E4EB),
+                onPrimary = Color(0xFF121216),
+                primaryContainer = Color(0xFF262530),
+                onPrimaryContainer = Color(0xFFEAEAF0),
                 surface = Color(0xFF0F0E13),
-                surfaceContainer = Color(0xFF16151C),
-                surfaceContainerHigh = Color(0xFF1E1D26),
-                surfaceContainerHighest = Color(0xFF282732),
+                surfaceContainer = Color(0xFF14131A),
+                surfaceContainerHigh = Color(0xFF1B1A22),
+                surfaceContainerHighest = Color(0xFF24232E),
                 background = Color(0xFF08080A),
                 onBackground = Color(0xFFEEEEF2),
                 onSurface = Color(0xFFEEEEF2),
-                onSurfaceVariant = Color(0xFF9292A2)
+                onSurfaceVariant = Color(0xFF9EA3B0),
+                outlineVariant = Color(0x2AFFFFFF)
             )
 
             MaterialTheme(colorScheme = muzoDarkTheme) {
@@ -505,7 +507,8 @@ fun MuziMainScreen(player: ExoPlayer) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    DynamicSongTheme(currentSong = currentSong) {
+        Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -914,4 +917,5 @@ fun MuziMainScreen(player: ExoPlayer) {
             )
         }
     }
+}
 }

@@ -706,7 +706,7 @@ private fun MainLibraryScreenContent(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .background(
-                                                Brush.linearGradient(listOf(Color(0xFF2F60FF), Color(0xFF1E294B)))
+                                                Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), MaterialTheme.colorScheme.surfaceContainerHigh))
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -875,7 +875,7 @@ private fun PlaylistDetailLayout(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
-                                Brush.verticalGradient(listOf(Color(0xFF2F60FF), Color(0xFF1E294B)))
+                                Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), MaterialTheme.colorScheme.surfaceContainerHigh))
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1219,7 +1219,7 @@ private fun LibraryPlaceholderDetail(
                     .background(Color(0xFF16151C)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color(0xFF2F60FF), modifier = Modifier.size(40.dp))
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
             }
 
             Spacer(modifier = Modifier.height(20.dp))

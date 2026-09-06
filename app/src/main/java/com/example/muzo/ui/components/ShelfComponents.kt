@@ -199,7 +199,7 @@ fun PlaylistShelfRow(
                         text = shelf.subtitle.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF6B8AFD), // Accent blue as seen in the video
+                        color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
@@ -208,7 +208,7 @@ fun PlaylistShelfRow(
                     text = shelf.title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             if (shelf.seeAllRoute != null) {
@@ -219,7 +219,7 @@ fun PlaylistShelfRow(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "See All",
-                        tint = Color(0xFF6B8AFD)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }

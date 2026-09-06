@@ -72,10 +72,10 @@ fun SettingsBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Section 1: Account (Blue header)
+            // Section 1: Account
             Text(
                 text = "Account",
-                color = Color(0xFF5B8DEF),
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp
             )
@@ -118,10 +118,10 @@ fun SettingsBottomSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Section 2: App (Blue header)
+            // Section 2: App
             Text(
                 text = "App",
-                color = Color(0xFF5B8DEF),
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp
             )
@@ -235,18 +235,18 @@ private fun SettingsSheetItem(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon container matching blue badge in screenshot
+        // Icon container: clean neutral subtle rounded surface
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(if (isCircleIcon) CircleShape else RoundedCornerShape(10.dp))
-                .background(Color(0xFF233660)),
+                .background(Color.White.copy(alpha = 0.08f)),
             contentAlignment = Alignment.Center
         ) {
             if (customBadge != null) {
                 Text(
                     text = customBadge,
-                    color = Color(0xFF5B8DEF),
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -254,7 +254,7 @@ private fun SettingsSheetItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF5B8DEF),
+                    tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
             }

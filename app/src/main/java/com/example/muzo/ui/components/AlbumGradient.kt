@@ -72,18 +72,24 @@ fun AlbumGradient(
     }
 
     val animatedTopColor by animateColorAsState(
-        targetValue = extractedColors?.first?.copy(alpha = 0.55f) ?: fallbackMidColor,
-        animationSpec = tween(durationMillis = 700),
+        targetValue = extractedColors?.first?.copy(alpha = 0.88f) ?: fallbackMidColor,
+        animationSpec = tween(durationMillis = 650),
         label = "ambientTopColor"
     )
 
     val animatedMidColor by animateColorAsState(
-        targetValue = extractedColors?.second?.copy(alpha = 0.28f) ?: fallbackBaseColor,
-        animationSpec = tween(durationMillis = 700),
+        targetValue = extractedColors?.second?.copy(alpha = 0.55f) ?: fallbackBaseColor,
+        animationSpec = tween(durationMillis = 650),
         label = "ambientMidColor"
     )
 
-    val amoledBottom = Color(0xFF0E0D14)
+    val animatedDeepColor by animateColorAsState(
+        targetValue = extractedColors?.second?.copy(alpha = 0.22f) ?: Color(0xFF0C0B10),
+        animationSpec = tween(durationMillis = 650),
+        label = "ambientDeepColor"
+    )
+
+    val amoledBottom = Color(0xFF08070B)
 
     Box(
         modifier = modifier
@@ -92,8 +98,8 @@ fun AlbumGradient(
             .background(
                 Brush.verticalGradient(
                     0.0f to animatedTopColor,
-                    0.45f to animatedMidColor,
-                    0.95f to amoledBottom,
+                    0.38f to animatedMidColor,
+                    0.72f to animatedDeepColor,
                     1.0f to amoledBottom
                 )
             )
@@ -104,19 +110,18 @@ fun AlbumGradient(
 
 private fun extractVibrantColor(palette: Palette): Color {
     val swatch = palette.vibrantSwatch
-        ?: palette.darkVibrantSwatch
         ?: palette.dominantSwatch
-        ?: palette.mutedSwatch
         ?: palette.lightVibrantSwatch
+        ?: palette.darkVibrantSwatch
+        ?: palette.mutedSwatch
 
     if (swatch != null) {
         val argb = swatch.rgb
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(argb, hsv)
-        // Enhance saturation slightly and clamp brightness for elegant AMOLED dark look
-        hsv[1] = (hsv[1] * 1.3f).coerceIn(0.35f, 0.95f)
-        hsv[2] = (hsv[2] * 0.85f).coerceIn(0.45f, 0.85f)
+        hsv[1] = (hsv[1] * 1.25f).coerceIn(0.40f, 0.98f)
+        hsv[2] = (hsv[2] * 0.95f).coerceIn(0.50f, 0.92f)
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
-    return Color(0xFF4C7DE8)
+    return Color(0xFFE65100)
 }

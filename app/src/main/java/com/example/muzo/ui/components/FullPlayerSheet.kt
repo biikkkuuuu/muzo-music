@@ -274,10 +274,11 @@ fun FullPlayerSheet(
                         ) {
                             Box(
                                 modifier = Modifier
+                                    .fillMaxWidth()
                                     .aspectRatio(1f)
-                                    .fillMaxWidth(0.92f)
-                                    .shadow(24.dp, RoundedCornerShape(18.dp), spotColor = Color.Black.copy(alpha = 0.7f))
-                                    .clip(RoundedCornerShape(18.dp))
+                                    .padding(horizontal = 4.dp)
+                                    .shadow(16.dp, RoundedCornerShape(14.dp), spotColor = Color.Black.copy(alpha = 0.55f))
+                                    .clip(RoundedCornerShape(14.dp))
                                     .offset { IntOffset(animatedArtworkOffset.roundToInt(), 0) }
                                     .pointerInput(song.id) {
                                         detectHorizontalDragGestures(
@@ -445,7 +446,8 @@ fun FullPlayerSheet(
                             isDraggingSeek = false
                             onSeek((ratio * duration).toLong())
                         },
-                        height = 8.dp,
+                        height = 6.dp,
+                        showThumb = true,
                         activeColor = Color.White,
                         inactiveColor = Color.White.copy(alpha = 0.25f),
                         modifier = Modifier.fillMaxWidth()
@@ -477,54 +479,84 @@ fun FullPlayerSheet(
                 }
 
                 // ==========================================
-                // 5. MAIN PLAYBACK CONTROLS (vivi_player1.png)
+                // 5. MAIN PLAYBACK CONTROLS (vivi_player1.png & vivi_player2.png)
                 // ==========================================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Skip Previous
-                    IconButton(
-                        onClick = onPrev,
-                        enabled = hasPrev || repeatMode > 0,
-                        modifier = Modifier.size(56.dp)
+                    // Skip Previous: Circular translucent button
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = if (hasPrev || repeatMode > 0) 0.14f else 0.06f),
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .clickable(enabled = hasPrev || repeatMode > 0) { onPrev() }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Previous",
-                            modifier = Modifier.size(42.dp),
-                            tint = if (hasPrev || repeatMode > 0) Color.White else Color.White.copy(alpha = 0.35f)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.SkipPrevious,
+                                contentDescription = "Previous",
+                                modifier = Modifier.size(28.dp),
+                                tint = if (hasPrev || repeatMode > 0) Color.White else Color.White.copy(alpha = 0.35f)
+                            )
+                        }
                     }
 
-                    // Huge Clean White Play/Pause
-                    IconButton(
-                        onClick = onPlayPause,
-                        modifier = Modifier.size(72.dp)
+                    // ViVi Signature Hero Play/Pause Capsule Button (vivi_player2.png)
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        color = Color.White,
+                        shadowElevation = 6.dp,
+                        modifier = Modifier
+                            .height(56.dp)
+                            .width(172.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .clickable { onPlayPause() }
                     ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(56.dp),
-                            tint = Color.White
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                modifier = Modifier.size(26.dp),
+                                tint = Color.Black
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isPlaying) "Pause" else "Play",
+                                color = Color.Black,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.3.sp
+                            )
+                        }
                     }
 
-                    // Skip Next
-                    IconButton(
-                        onClick = onNext,
-                        enabled = hasNext || repeatMode > 0 || isShuffleActive,
-                        modifier = Modifier.size(56.dp)
+                    // Skip Next: Circular translucent button
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = if (hasNext || repeatMode > 0 || isShuffleActive) 0.14f else 0.06f),
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .clickable(enabled = hasNext || repeatMode > 0 || isShuffleActive) { onNext() }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Next",
-                            modifier = Modifier.size(42.dp),
-                            tint = if (hasNext || repeatMode > 0 || isShuffleActive) Color.White else Color.White.copy(alpha = 0.35f)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.SkipNext,
+                                contentDescription = "Next",
+                                modifier = Modifier.size(28.dp),
+                                tint = if (hasNext || repeatMode > 0 || isShuffleActive) Color.White else Color.White.copy(alpha = 0.35f)
+                            )
+                        }
                     }
                 }
 
@@ -536,6 +568,25 @@ fun FullPlayerSheet(
                     val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
                     val cur = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
                     mutableFloatStateOf(if (max > 0) cur / max else 0.5f)
+                }
+
+                DisposableEffect(context) {
+                    val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
+                    val receiver = object : android.content.BroadcastReceiver() {
+                        override fun onReceive(c: Context?, intent: Intent?) {
+                            val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
+                            val cur = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
+                            if (max > 0) {
+                                volumeProgress = (cur / max).coerceIn(0f, 1f)
+                            }
+                        }
+                    }
+                    context.registerReceiver(receiver, filter)
+                    onDispose {
+                        try {
+                            context.unregisterReceiver(receiver)
+                        } catch (_: Exception) {}
+                    }
                 }
 
                 Row(
@@ -560,7 +611,8 @@ fun FullPlayerSheet(
                             val target = (ratio * maxVol).roundToInt()
                             audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, target, 0)
                         },
-                        height = 5.dp,
+                        height = 4.dp,
+                        showThumb = false,
                         activeColor = Color.White,
                         inactiveColor = Color.White.copy(alpha = 0.22f),
                         modifier = Modifier.weight(1f)
@@ -819,6 +871,7 @@ fun ViViCapsuleSlider(
     modifier: Modifier = Modifier,
     onProgressFinished: ((Float) -> Unit)? = null,
     height: androidx.compose.ui.unit.Dp = 8.dp,
+    showThumb: Boolean = true,
     activeColor: Color = Color.White,
     inactiveColor: Color = Color.White.copy(alpha = 0.25f)
 ) {
@@ -869,6 +922,19 @@ fun ViViCapsuleSlider(
                     .height(height)
                     .clip(CircleShape)
                     .background(activeColor)
+            )
+        }
+
+        // 3. Round Thumb Head (vivi_player2.png)
+        if (showThumb) {
+            val thumbSize = (height + 5.dp).coerceAtLeast(13.dp)
+            val thumbOffset = ((totalWidth - thumbSize) * progress.coerceIn(0f, 1f)).coerceAtLeast(0.dp)
+            Box(
+                modifier = Modifier
+                    .offset(x = thumbOffset)
+                    .size(thumbSize)
+                    .clip(CircleShape)
+                    .background(Color.White)
             )
         }
     }
@@ -1122,7 +1188,7 @@ fun CrossfadeGaplessDialog(
                 Icon(
                     imageVector = Icons.Default.GraphicEq,
                     contentDescription = null,
-                    tint = Color(0xFF5B8DEF),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
@@ -1165,7 +1231,7 @@ fun CrossfadeGaplessDialog(
                         onCheckedChange = onGaplessToggle,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF5B8DEF),
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
                             uncheckedThumbColor = Color(0xFF8E8E9A),
                             uncheckedTrackColor = Color(0xFF1C1C24)
                         )
@@ -1187,7 +1253,7 @@ fun CrossfadeGaplessDialog(
                         )
                         Text(
                             text = if (crossfadeSeconds == 0) "Off" else "${crossfadeSeconds}s",
-                            color = Color(0xFF5B8DEF),
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -1209,7 +1275,7 @@ fun CrossfadeGaplessDialog(
                             val isSelected = crossfadeSeconds == sec
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = if (isSelected) Color(0xFF5B8DEF) else Color(0xFF282732),
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF282732),
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(10.dp))
@@ -1223,7 +1289,7 @@ fun CrossfadeGaplessDialog(
                                         text = if (sec == 0) "Off" else "${sec}s",
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                         fontSize = 12.sp,
-                                        color = if (isSelected) Color.White else Color(0xFFCDCDD5)
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color(0xFFCDCDD5)
                                     )
                                 }
                             }
@@ -1234,7 +1300,7 @@ fun CrossfadeGaplessDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("Done", color = Color(0xFF5B8DEF), fontWeight = FontWeight.Bold)
+                Text("Done", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         }
     )

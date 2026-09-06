@@ -101,12 +101,12 @@ fun PlayerWithBottomNav(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // 2. Floating Dock Row (Centered Pill TabBar + Standalone Circular Action Button)
-        Row(
+        // 2. Floating Dock Row (Centered Pill TabBar - 1:1 ViVi Music)
+        Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            contentAlignment = Alignment.Center
         ) {
             // Main Pill Navigation Dock
             Surface(
@@ -191,38 +191,6 @@ fun PlayerWithBottomNav(
                             }
                         }
                     }
-                }
-            }
-
-            // Standalone Circular More/Action Button on the right (Echo-Music signature)
-            Surface(
-                modifier = Modifier
-                    .size(48.dp)
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = CircleShape,
-                        spotColor = Color.Black.copy(alpha = 0.55f)
-                    )
-                    .clip(CircleShape)
-                    .clickable { onMoreClick() },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                border = BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
-                ),
-                tonalElevation = 6.dp
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreHoriz,
-                        contentDescription = "More",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
-                    )
                 }
             }
         }
