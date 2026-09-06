@@ -187,10 +187,10 @@ fun EqualizerBottomSheet(
                     // Presets Horizontal Row
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "PRESETS",
+                            text = "SOUND PROFILES & PRESETS",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
+                            color = Color(0xFF8E8E9A),
                             letterSpacing = 1.sp
                         )
 
@@ -200,20 +200,29 @@ fun EqualizerBottomSheet(
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            equalizerController.presetMap.keys.forEach { presetName ->
+                            equalizerController.presetConfigMap.keys.forEach { presetName ->
                                 val isSelected = currentPreset == presetName
+                                val displayName = when (presetName) {
+                                    "Bass Heavy" -> "Bass Heavy 🔊"
+                                    "Vocal Boost" -> "Vocal Boost 🎙️"
+                                    "Rock" -> "Rock 🎸"
+                                    "Pop" -> "Pop 🎵"
+                                    "Electronic" -> "Electronic ⚡"
+                                    "Custom" -> "Custom 🎚️"
+                                    else -> presetName
+                                }
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
-                                    color = if (isSelected) Color(0xFF4C7DE8) else Color(0xFF22212D),
+                                    color = if (isSelected) Color.White else Color(0xFF22212D),
                                     modifier = Modifier.clickable {
                                         equalizerController.setPreset(presetName)
                                     }
                                 ) {
                                     Text(
-                                        text = presetName,
+                                        text = displayName,
                                         fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color.White else Color(0xFFB0B0BE),
+                                        color = if (isSelected) Color.Black else Color(0xFFD0D0D8),
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                                     )
                                 }
@@ -221,119 +230,243 @@ fun EqualizerBottomSheet(
                         }
                     }
 
-                    // Sound Enhancement Sliders: Bass Boost & Virtualizer
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "SOUND ENHANCEMENTS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
-                            letterSpacing = 1.sp
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    // Hardware Bass Boost Card
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFF1E1D27),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Bass Boost Card
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = Color(0xFF1E1D27),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Headphones,
-                                                contentDescription = null,
-                                                tint = Color(0xFFFF7A8A),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Text(
-                                                text = "Bass Boost",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
-                                            )
-                                        }
+                            val bassPercent = bassBoostStrength / 10
+                            val bassLabel = when {
+                                bassPercent == 0 -> "Off"
+                                bassPercent <= 25 -> "$bassPercent% • Sub"
+                                bassPercent <= 50 -> "$bassPercent% • Punch"
+                                bassPercent <= 75 -> "$bassPercent% • Deep Bass"
+                                else -> "$bassPercent% • Maximum"
+                            }
 
-                                        Text(
-                                            text = "${(bassBoostStrength / 10)}%",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFFF7A8A)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF332028)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Headphones,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFF7A8A),
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
-
-                                    Slider(
-                                        value = bassBoostStrength.toFloat(),
-                                        onValueChange = { equalizerController.setBassBoost(it.roundToInt()) },
-                                        valueRange = 0f..1000f,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = Color(0xFFFF7A8A),
-                                            activeTrackColor = Color(0xFFFF7A8A),
-                                            inactiveTrackColor = Color(0xFF333240)
+                                    Column {
+                                        Text(
+                                            text = "Hardware Bass Boost",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
                                         )
+                                        Text(
+                                            text = "Low-frequency sub-bass acoustic driver",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF8E8E9A)
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (bassPercent > 0) Color(0xFFFF7A8A).copy(alpha = 0.15f) else Color(0xFF282732)
+                                ) {
+                                    Text(
+                                        text = bassLabel,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (bassPercent > 0) Color(0xFFFF7A8A) else Color(0xFF8E8E9A),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
                             }
 
-                            // 3D Virtualizer Card
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = Color(0xFF1E1D27),
-                                modifier = Modifier.weight(1f)
+                            Slider(
+                                value = bassBoostStrength.toFloat(),
+                                onValueChange = { equalizerController.setBassBoost(it.roundToInt()) },
+                                valueRange = 0f..1000f,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Color(0xFFFF7A8A),
+                                    activeTrackColor = Color(0xFFFF7A8A),
+                                    inactiveTrackColor = Color(0xFF333240)
+                                )
+                            )
+
+                            // Quick preset chips row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                val bassSteps = listOf(
+                                    0 to "Off",
+                                    250 to "25%",
+                                    500 to "50%",
+                                    750 to "75%",
+                                    1000 to "Max"
+                                )
+                                bassSteps.forEach { (strength, label) ->
+                                    val isCurrent = (bassBoostStrength in (strength - 50)..(strength + 50))
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isCurrent) Color(0xFFFF7A8A) else Color(0xFF262532),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { equalizerController.setBassBoost(strength) }
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 6.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.SurroundSound,
-                                                contentDescription = null,
-                                                tint = Color(0xFF6B9DFE),
-                                                modifier = Modifier.size(16.dp)
-                                            )
                                             Text(
-                                                text = "Virtualizer",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
+                                                text = label,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isCurrent) Color.Black else Color(0xFFCDCDD5)
                                             )
                                         }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-                                        Text(
-                                            text = "${(virtualizerStrength / 10)}%",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF6B9DFE)
+                    // 3D Surround Virtualizer Card
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFF1E1D27),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            val virtPercent = virtualizerStrength / 10
+                            val virtLabel = when {
+                                virtPercent == 0 -> "Off"
+                                virtPercent <= 25 -> "$virtPercent% • Studio"
+                                virtPercent <= 50 -> "$virtPercent% • Concert"
+                                virtPercent <= 75 -> "$virtPercent% • Stage"
+                                else -> "$virtPercent% • Wide 3D"
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF202B3C)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.SurroundSound,
+                                            contentDescription = null,
+                                            tint = Color(0xFF6B9DFE),
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
-
-                                    Slider(
-                                        value = virtualizerStrength.toFloat(),
-                                        onValueChange = { equalizerController.setVirtualizer(it.roundToInt()) },
-                                        valueRange = 0f..1000f,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = Color(0xFF6B9DFE),
-                                            activeTrackColor = Color(0xFF6B9DFE),
-                                            inactiveTrackColor = Color(0xFF333240)
+                                    Column {
+                                        Text(
+                                            text = "3D Surround Virtualizer",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
                                         )
+                                        Text(
+                                            text = "Expanded spatial soundstage widening",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF8E8E9A)
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (virtPercent > 0) Color(0xFF6B9DFE).copy(alpha = 0.15f) else Color(0xFF282732)
+                                ) {
+                                    Text(
+                                        text = virtLabel,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (virtPercent > 0) Color(0xFF6B9DFE) else Color(0xFF8E8E9A),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
+                                }
+                            }
+
+                            Slider(
+                                value = virtualizerStrength.toFloat(),
+                                onValueChange = { equalizerController.setVirtualizer(it.roundToInt()) },
+                                valueRange = 0f..1000f,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Color(0xFF6B9DFE),
+                                    activeTrackColor = Color(0xFF6B9DFE),
+                                    inactiveTrackColor = Color(0xFF333240)
+                                )
+                            )
+
+                            // Quick preset chips row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                val virtSteps = listOf(
+                                    0 to "Off",
+                                    250 to "Studio",
+                                    500 to "Concert",
+                                    750 to "Stage",
+                                    1000 to "Wide 3D"
+                                )
+                                virtSteps.forEach { (strength, label) ->
+                                    val isCurrent = (virtualizerStrength in (strength - 50)..(strength + 50))
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isCurrent) Color(0xFF6B9DFE) else Color(0xFF262532),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { equalizerController.setVirtualizer(strength) }
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isCurrent) Color.Black else Color(0xFFCDCDD5)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -341,13 +474,30 @@ fun EqualizerBottomSheet(
 
                     // 5-Band Equalizer Section
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "FREQUENCY BANDS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
-                            letterSpacing = 1.sp
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "FREQUENCY BANDS (5-BAND)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF8E8E9A),
+                                letterSpacing = 1.sp
+                            )
+
+                            Text(
+                                text = "Reset to Flat",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF6B9DFE),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { equalizerController.resetToFlat() }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
 
                         Surface(
                             shape = RoundedCornerShape(18.dp),
@@ -378,7 +528,7 @@ fun EqualizerBottomSheet(
                                                 Text(
                                                     text = "(${bandLabels.getOrElse(index) { "" }})",
                                                     fontSize = 12.sp,
-                                                    color = Color.Gray
+                                                    color = Color(0xFF8E8E9A)
                                                 )
                                             }
 
@@ -386,7 +536,7 @@ fun EqualizerBottomSheet(
                                                 text = if (levelDb > 0) "+${levelDb} dB" else "${levelDb} dB",
                                                 fontSize = 13.sp,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = if (levelDb != 0) Color(0xFF6B9DFE) else Color.Gray
+                                                color = if (levelDb != 0) Color.White else Color(0xFF8E8E9A)
                                             )
                                         }
 
@@ -396,8 +546,8 @@ fun EqualizerBottomSheet(
                                             valueRange = -1200f..1200f,
                                             steps = 23,
                                             colors = SliderDefaults.colors(
-                                                thumbColor = Color(0xFF6B9DFE),
-                                                activeTrackColor = Color(0xFF6B9DFE),
+                                                thumbColor = Color.White,
+                                                activeTrackColor = Color.White,
                                                 inactiveTrackColor = Color(0xFF333240)
                                             )
                                         )
@@ -407,7 +557,7 @@ fun EqualizerBottomSheet(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }

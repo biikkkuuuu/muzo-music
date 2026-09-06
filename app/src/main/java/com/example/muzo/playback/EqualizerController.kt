@@ -41,15 +41,24 @@ class EqualizerController(private val context: Context) {
     private val _bandLevels = MutableStateFlow(loadSavedBandLevels())
     val bandLevels: StateFlow<List<Int>> = _bandLevels.asStateFlow()
 
-    val presetMap = mapOf(
-        "Flat" to listOf(0, 0, 0, 0, 0),
-        "Bass Boost" to listOf(700, 450, 100, 0, -150),
-        "Rock" to listOf(500, 250, -150, 250, 500),
-        "Pop" to listOf(-150, 150, 450, 200, -100),
-        "Electronic" to listOf(450, 200, 0, 250, 450),
-        "Vocal" to listOf(-200, 200, 500, 300, 0),
-        "Custom" to defaultBandLevels
+    data class PresetConfig(
+        val bandLevels: List<Int>,
+        val bassBoost: Int = 0,
+        val virtualizer: Int = 0
     )
+
+    val presetConfigMap = mapOf(
+        "Flat" to PresetConfig(listOf(0, 0, 0, 0, 0), bassBoost = 0, virtualizer = 0),
+        "Bass Heavy" to PresetConfig(listOf(900, 650, 200, -100, -200), bassBoost = 750, virtualizer = 200),
+        "Vocal Boost" to PresetConfig(listOf(-200, 150, 650, 450, 100), bassBoost = 100, virtualizer = 350),
+        "Rock" to PresetConfig(listOf(550, 300, -150, 300, 550), bassBoost = 400, virtualizer = 250),
+        "Pop" to PresetConfig(listOf(-150, 200, 500, 250, -100), bassBoost = 300, virtualizer = 200),
+        "Electronic" to PresetConfig(listOf(650, 400, 0, 350, 600), bassBoost = 600, virtualizer = 500),
+        "Custom" to PresetConfig(defaultBandLevels, bassBoost = 0, virtualizer = 0)
+    )
+
+    val presetMap: Map<String, List<Int>>
+        get() = presetConfigMap.mapValues { it.value.bandLevels }
 
     fun attachAudioSession(sessionId: Int) {
         if (sessionId == 0 || sessionId == currentSessionId) return
@@ -62,14 +71,14 @@ class EqualizerController(private val context: Context) {
             }
 
             bassBoost = BassBoost(0, sessionId).apply {
-                enabled = _isEnabled.value
+                enabled = _isEnabled.value && _bassBoostStrength.value > 0
                 if (strengthSupported) {
                     setStrength(_bassBoostStrength.value.toShort())
                 }
             }
 
             virtualizer = Virtualizer(0, sessionId).apply {
-                enabled = _isEnabled.value
+                enabled = _isEnabled.value && _virtualizerStrength.value > 0
                 if (strengthSupported) {
                     setStrength(_virtualizerStrength.value.toShort())
                 }
@@ -88,12 +97,16 @@ class EqualizerController(private val context: Context) {
 
         try {
             equalizer?.enabled = enabled
-            bassBoost?.enabled = enabled
-            virtualizer?.enabled = enabled
+            bassBoost?.enabled = enabled && _bassBoostStrength.value > 0
+            virtualizer?.enabled = enabled && _virtualizerStrength.value > 0
             if (enabled) {
                 applyCurrentBands()
-                bassBoost?.setStrength(_bassBoostStrength.value.toShort())
-                virtualizer?.setStrength(_virtualizerStrength.value.toShort())
+                if (bassBoost?.strengthSupported == true) {
+                    bassBoost?.setStrength(_bassBoostStrength.value.toShort())
+                }
+                if (virtualizer?.strengthSupported == true) {
+                    virtualizer?.setStrength(_virtualizerStrength.value.toShort())
+                }
             }
         } catch (e: Exception) {
             Log.w("EqualizerController", "Error toggling equalizer: ${e.message}")
@@ -104,17 +117,22 @@ class EqualizerController(private val context: Context) {
         _currentPreset.value = presetName
         prefs.edit().putString("eq_preset", presetName).apply()
 
-        val levels = presetMap[presetName] ?: defaultBandLevels
+        val config = presetConfigMap[presetName] ?: return
         if (presetName != "Custom") {
-            _bandLevels.value = levels
-            saveBandLevels(levels)
+            _bandLevels.value = config.bandLevels
+            saveBandLevels(config.bandLevels)
             applyCurrentBands()
 
-            // When Bass Boost preset is chosen, also set bass boost slider to 50%
-            if (presetName == "Bass Boost" && _bassBoostStrength.value < 400) {
-                setBassBoost(500)
-            }
+            // Automatically tune hardware bass boost & virtualizer to match preset
+            setBassBoost(config.bassBoost)
+            setVirtualizer(config.virtualizer)
         }
+    }
+
+    fun resetToFlat() {
+        setPreset("Flat")
+        setBassBoost(0)
+        setVirtualizer(0)
     }
 
     fun setBandLevel(bandIndex: Int, levelMilliBels: Int) {
@@ -144,8 +162,11 @@ class EqualizerController(private val context: Context) {
         prefs.edit().putInt("eq_bass_boost", clamped).apply()
 
         try {
-            if (_isEnabled.value && bassBoost?.strengthSupported == true) {
-                bassBoost?.setStrength(clamped.toShort())
+            if (_isEnabled.value) {
+                bassBoost?.enabled = clamped > 0
+                if (bassBoost?.strengthSupported == true) {
+                    bassBoost?.setStrength(clamped.toShort())
+                }
             }
         } catch (e: Exception) {
             Log.w("EqualizerController", "Error setting bass boost: ${e.message}")
@@ -158,8 +179,11 @@ class EqualizerController(private val context: Context) {
         prefs.edit().putInt("eq_virtualizer", clamped).apply()
 
         try {
-            if (_isEnabled.value && virtualizer?.strengthSupported == true) {
-                virtualizer?.setStrength(clamped.toShort())
+            if (_isEnabled.value) {
+                virtualizer?.enabled = clamped > 0
+                if (virtualizer?.strengthSupported == true) {
+                    virtualizer?.setStrength(clamped.toShort())
+                }
             }
         } catch (e: Exception) {
             Log.w("EqualizerController", "Error setting virtualizer: ${e.message}")
