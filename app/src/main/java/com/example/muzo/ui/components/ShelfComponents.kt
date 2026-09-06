@@ -234,7 +234,12 @@ fun PlaylistShelfRow(
                 )
             }
             else -> {
-                val rowState = rememberLazyListState()
+                val rowState = androidx.compose.runtime.saveable.rememberSaveable(
+                    shelf.id,
+                    saver = androidx.compose.foundation.lazy.LazyListState.Saver
+                ) {
+                    androidx.compose.foundation.lazy.LazyListState()
+                }
                 LazyRow(
                     state = rowState,
                     flingBehavior = rememberSnapFlingBehavior(lazyListState = rowState),
@@ -464,14 +469,18 @@ fun SingleCover(
     modifier: Modifier = Modifier,
     isCircle: Boolean = false
 ) {
-    val painter = rememberAsyncImagePainter(
-        model = ImageRequest.Builder(LocalContext.current)
+    val context = LocalContext.current
+    val imageRequest = androidx.compose.runtime.remember(imageUrl) {
+        ImageRequest.Builder(context)
             .data(imageUrl)
-            .crossfade(150)
+            .crossfade(100)
             .build()
-    )
+    }
+    val painter = rememberAsyncImagePainter(model = imageRequest)
     val state = painter.state
-    val shape = if (isCircle) CircleShape else RoundedCornerShape(10.dp)
+    val shape = androidx.compose.runtime.remember(isCircle) {
+        if (isCircle) CircleShape else RoundedCornerShape(10.dp)
+    }
 
     Box(
         modifier = modifier
@@ -483,7 +492,7 @@ fun SingleCover(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(ShimmerBrush())
+                    .background(Color(0xFF141418))
             )
         } else if (state is AsyncImagePainter.State.Error) {
             Box(

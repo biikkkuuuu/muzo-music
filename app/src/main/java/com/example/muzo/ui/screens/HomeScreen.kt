@@ -135,14 +135,14 @@ fun HomeScreen(
                 if (delta < 0) {
                     if (scrollAccumulator > 0) scrollAccumulator = 0f
                     scrollAccumulator += delta
-                    if (scrollAccumulator < -25f && isHeaderVisible) {
+                    if (scrollAccumulator < -50f && isHeaderVisible) {
                         isHeaderVisible = false
                         scrollAccumulator = 0f
                     }
                 } else if (delta > 0) {
                     if (scrollAccumulator < 0) scrollAccumulator = 0f
                     scrollAccumulator += delta
-                    if (scrollAccumulator > 25f && !isHeaderVisible) {
+                    if (scrollAccumulator > 50f && !isHeaderVisible) {
                         isHeaderVisible = true
                         scrollAccumulator = 0f
                     }
@@ -289,57 +289,46 @@ fun HomeScreen(
                         items = orderedShelves,
                         key = { it.id }
                     ) { shelf ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateItem(
-                                    placementSpec = spring(
-                                        stiffness = Spring.StiffnessMediumLow,
-                                        dampingRatio = Spring.DampingRatioNoBouncy
-                                    )
-                                )
-                        ) {
-                            PlaylistShelfRow(
-                                shelf = shelf,
-                                onItemClick = { item ->
-                                    when (item.type) {
-                                        ItemType.SONG -> {
-                                            val songItem = SongItem(
-                                                id = item.id,
-                                                title = item.title,
-                                                artists = listOf(Artist(name = item.subtitle, id = null)),
+                        PlaylistShelfRow(
+                            shelf = shelf,
+                            onItemClick = { item ->
+                                when (item.type) {
+                                    ItemType.SONG -> {
+                                        val songItem = SongItem(
+                                            id = item.id,
+                                            title = item.title,
+                                            artists = listOf(Artist(name = item.subtitle, id = null)),
+                                            album = null,
+                                            duration = 0,
+                                            thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                        )
+                                        val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
+                                            SongItem(
+                                                id = it.id,
+                                                title = it.title,
+                                                artists = listOf(Artist(name = it.subtitle, id = null)),
                                                 album = null,
                                                 duration = 0,
-                                                thumbnail = item.imageUrls.firstOrNull() ?: ""
+                                                thumbnail = it.imageUrls.firstOrNull() ?: ""
                                             )
-                                            val allSongsInShelf = shelf.items.filter { it.type == ItemType.SONG }.map {
-                                                SongItem(
-                                                    id = it.id,
-                                                    title = it.title,
-                                                    artists = listOf(Artist(name = it.subtitle, id = null)),
-                                                    album = null,
-                                                    duration = 0,
-                                                    thumbnail = it.imageUrls.firstOrNull() ?: ""
-                                                )
-                                            }
-                                            onSongSelect(songItem, allSongsInShelf)
                                         }
-                                        ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
-                                            onPlaylistSelect(item)
-                                        }
-                                        ItemType.CHART -> {
-                                            onCategoryClick(item.title)
-                                        }
+                                        onSongSelect(songItem, allSongsInShelf)
                                     }
-                                },
-                                onSeeAllClick = {
-                                    onSeeAllClick(shelf)
-                                },
-                                onItemLongClick = { item ->
-                                    onItemLongClick?.invoke(item, shelf.items)
+                                    ItemType.PLAYLIST, ItemType.ALBUM, ItemType.ARTIST -> {
+                                        onPlaylistSelect(item)
+                                    }
+                                    ItemType.CHART -> {
+                                        onCategoryClick(item.title)
+                                    }
                                 }
-                            )
-                        }
+                            },
+                            onSeeAllClick = {
+                                onSeeAllClick(shelf)
+                            },
+                            onItemLongClick = { item ->
+                                onItemLongClick?.invoke(item, shelf.items)
+                            }
+                        )
                     }
                 }
             }
