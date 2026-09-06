@@ -7,13 +7,14 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,16 +40,18 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.data.local.DownloadedSongEntity
 import com.example.muzo.data.local.HistoryEntity
 import com.example.muzo.data.local.LikedSongEntity
 import com.example.muzo.data.local.UserPlaylistEntity
 import com.example.muzo.data.local.UserPlaylistSongEntity
-import com.example.muzo.data.local.toSongItem
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
 import com.example.muzo.theme.MuziThemeTokens
+import com.example.muzo.ui.components.AnimatedChipsRow
 import com.example.muzo.ui.components.MuziSongRow
+import com.example.muzo.ui.components.NavigationTitle
 import com.music.innertube.models.Artist
 import com.music.innertube.models.SongItem
 
@@ -71,6 +74,15 @@ fun HistoryEntity.toSongItem(): SongItem = SongItem(
 )
 
 fun UserPlaylistSongEntity.toSongItem(): SongItem = SongItem(
+    id = videoId,
+    title = title,
+    artists = listOf(Artist(name = artist, id = null)),
+    album = null,
+    duration = 0,
+    thumbnail = thumbnailUrl ?: ""
+)
+
+fun DownloadedSongEntity.toSongItem(): SongItem = SongItem(
     id = videoId,
     title = title,
     artists = listOf(Artist(name = artist, id = null)),
@@ -118,7 +130,7 @@ fun LibraryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF08080A))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         AnimatedContent(
             targetState = activeSubScreen,
@@ -134,14 +146,13 @@ fun LibraryScreen(
             if (subScreen != null) {
                 when (subScreen) {
                     LibrarySubScreen.LIKED -> {
-                        // Matches Screenshot 1: Liked Songs Detail
                         val songs = likedSongs.map { it.toSongItem() }
                         val coverUrl = songs.firstOrNull()?.thumbnail
                         PlaylistDetailLayout(
-                            title = "Liked",
-                            subtitle = "${songs.size} song${if (songs.size > 1) "s" else ""} • ${songs.size * 3}:45",
+                            title = "Liked Songs",
+                            subtitle = "${songs.size} song${if (songs.size > 1) "s" else ""}",
                             coverUrl = coverUrl,
-                            aboutText = "Liked is a personalized collection featuring ${songs.size} song${if (songs.size > 1) "s" else ""}. Total listening time is approx ${songs.size * 3} mins. This playlist is automatically curated for your musical enjoyment.",
+                            aboutText = "Liked is a personalized collection featuring ${songs.size} song${if (songs.size > 1) "s" else ""}. Automatically curated for your musical enjoyment.",
                             songs = songs,
                             sortText = "Date added",
                             onBack = { libraryViewModel.setSubScreen(null) },
@@ -153,7 +164,7 @@ fun LibraryScreen(
                                 onPlaylistActionClick?.invoke(
                                     ShelfItem(
                                         id = "liked",
-                                        title = "Liked",
+                                        title = "Liked Songs",
                                         subtitle = "${songs.size} songs",
                                         imageUrls = listOfNotNull(coverUrl),
                                         type = ItemType.PLAYLIST
@@ -164,36 +175,52 @@ fun LibraryScreen(
                     }
 
                     LibrarySubScreen.USER_PLAYLIST -> {
-                        // Matches Screenshot 3: Custom Playlist Detail
                         val playlist = selectedUserPlaylist
-                        val songs = selectedPlaylistSongs.map { it.toSongItem() }
-                        val coverUrl = playlist?.coverUrl ?: songs.firstOrNull()?.thumbnail
-
-                        PlaylistDetailLayout(
-                            title = playlist?.name ?: "Playlist",
-                            subtitle = "${songs.size} song${if (songs.size > 1) "s" else ""} • ${songs.size * 3}:07",
-                            coverUrl = coverUrl,
-                            isCustomPlaylist = true,
-                            aboutText = "${playlist?.name ?: "This"} is a custom playlist featuring ${songs.size} song${if (songs.size > 1) "s" else ""}. Combined duration is ${songs.size * 3}:07.",
-                            songs = songs,
-                            sortText = "Custom order",
-                            onBack = { libraryViewModel.setSubScreen(null) },
-                            onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song ->
-                                if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
-                            },
-                            onPlaylistOptionsClick = {
-                                playlist?.let { pl ->
+                        if (playlist != null) {
+                            val songs = selectedPlaylistSongs.map { it.toSongItem() }
+                            val coverUrl = playlist.coverUrl ?: songs.firstOrNull()?.thumbnail
+                            PlaylistDetailLayout(
+                                title = playlist.name,
+                                subtitle = "${songs.size} song${if (songs.size > 1) "s" else ""}",
+                                coverUrl = coverUrl,
+                                aboutText = "Custom playlist created on ${java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault()).format(java.util.Date(playlist.createdAt))}.",
+                                songs = songs,
+                                sortText = "Custom order",
+                                isCustomPlaylist = true,
+                                onBack = { libraryViewModel.setSubScreen(null) },
+                                onSongPlay = onSongPlay,
+                                onSongOptionsClick = { song ->
+                                    if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
+                                },
+                                onPlaylistOptionsClick = {
                                     onPlaylistActionClick?.invoke(
                                         ShelfItem(
-                                            id = pl.id.toString(),
-                                            title = pl.name,
+                                            id = playlist.id.toString(),
+                                            title = playlist.name,
                                             subtitle = "${songs.size} songs",
                                             imageUrls = listOfNotNull(coverUrl),
                                             type = ItemType.PLAYLIST
                                         )
                                     )
                                 }
+                            )
+                        }
+                    }
+
+                    LibrarySubScreen.HISTORY -> {
+                        val songs = historySongs.map { it.toSongItem() }
+                        val coverUrl = songs.firstOrNull()?.thumbnail
+                        PlaylistDetailLayout(
+                            title = "History",
+                            subtitle = "${songs.size} recently played",
+                            coverUrl = coverUrl,
+                            aboutText = "Your recent listening history. Tracks are automatically saved as you play them.",
+                            songs = songs,
+                            sortText = "Most recent",
+                            onBack = { libraryViewModel.setSubScreen(null) },
+                            onSongPlay = onSongPlay,
+                            onSongOptionsClick = { song ->
+                                if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
                             }
                         )
                     }
@@ -202,56 +229,16 @@ fun LibraryScreen(
                         val songs = top50Songs.map { it.toSongItem() }
                         val coverUrl = songs.firstOrNull()?.thumbnail
                         PlaylistDetailLayout(
-                            title = "My top 50",
-                            subtitle = "Most played songs on Muzi • ${songs.size} tracks",
+                            title = "My Top 50",
+                            subtitle = "${songs.size} top played tracks",
                             coverUrl = coverUrl,
-                            aboutText = "My top 50 is dynamically calculated based on how often you listen to each track on Muzi. Updated continuously with every play.",
+                            aboutText = "Your most played tracks calculated from your playback activity.",
                             songs = songs,
-                            sortText = "Most played",
+                            sortText = "Play count",
                             onBack = { libraryViewModel.setSubScreen(null) },
                             onSongPlay = onSongPlay,
                             onSongOptionsClick = { song ->
                                 if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
-                            },
-                            onPlaylistOptionsClick = {
-                                onPlaylistActionClick?.invoke(
-                                    ShelfItem(
-                                        id = "top_50",
-                                        title = "My top 50",
-                                        subtitle = "${songs.size} songs",
-                                        imageUrls = listOfNotNull(coverUrl),
-                                        type = ItemType.PLAYLIST
-                                    )
-                                )
-                            }
-                        )
-                    }
-
-                    LibrarySubScreen.HISTORY -> {
-                        val songs = historySongs.map { it.toSongItem() }
-                        val coverUrl = songs.firstOrNull()?.thumbnail
-                        PlaylistDetailLayout(
-                            title = "History",
-                            subtitle = "${songs.size} recently played songs",
-                            coverUrl = coverUrl,
-                            aboutText = "A continuous chronological timeline of your recent musical listening sessions on Muzi.",
-                            songs = songs,
-                            sortText = "Recent first",
-                            onBack = { libraryViewModel.setSubScreen(null) },
-                            onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song ->
-                                if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
-                            },
-                            onPlaylistOptionsClick = {
-                                onPlaylistActionClick?.invoke(
-                                    ShelfItem(
-                                        id = "history",
-                                        title = "History",
-                                        subtitle = "${songs.size} songs",
-                                        imageUrls = listOfNotNull(coverUrl),
-                                        type = ItemType.PLAYLIST
-                                    )
-                                )
                             }
                         )
                     }
@@ -270,28 +257,29 @@ fun LibraryScreen(
                             }
                         }
 
-                        PlaylistDetailLayout(
-                            title = "Local",
-                            subtitle = if (isLoadingLocal) "Scanning device..." else "${localSongs.size} songs on device",
-                            coverUrl = localSongs.firstOrNull()?.thumbnail,
-                            aboutText = "Audio files located in your phone's internal storage and SD card.",
-                            songs = localSongs,
-                            sortText = "A to Z",
-                            onBack = { libraryViewModel.setSubScreen(null) },
-                            onSongPlay = onSongPlay,
-                            onSongOptionsClick = { song -> songForPlaylistDialog = song },
-                            onPlaylistOptionsClick = {
-                                onPlaylistActionClick?.invoke(
-                                    ShelfItem(
-                                        id = "local",
-                                        title = "Local",
-                                        subtitle = "${localSongs.size} songs",
-                                        imageUrls = listOfNotNull(localSongs.firstOrNull()?.thumbnail),
-                                        type = ItemType.PLAYLIST
-                                    )
-                                )
-                            }
-                        )
+                        if (localSongs.isEmpty() && !isLoadingLocal) {
+                            LibraryPlaceholderDetail(
+                                title = "Local Audio",
+                                icon = Icons.Default.Folder,
+                                message = "No local audio files found on device storage.",
+                                onBack = { libraryViewModel.setSubScreen(null) }
+                            )
+                        } else {
+                            val coverUrl = localSongs.firstOrNull()?.thumbnail
+                            PlaylistDetailLayout(
+                                title = "Local Audio",
+                                subtitle = "${localSongs.size} song${if (localSongs.size > 1) "s" else ""}",
+                                coverUrl = coverUrl,
+                                aboutText = "Tracks discovered on device internal storage.",
+                                songs = localSongs,
+                                sortText = "File name",
+                                onBack = { libraryViewModel.setSubScreen(null) },
+                                onSongPlay = onSongPlay,
+                                onSongOptionsClick = { song ->
+                                    if (onSongActionClick != null) onSongActionClick(song, localSongs) else songForPlaylistDialog = song
+                                }
+                            )
+                        }
                     }
 
                     LibrarySubScreen.DOWNLOADED -> {
@@ -309,24 +297,13 @@ fun LibraryScreen(
                                 title = "Downloaded",
                                 subtitle = "${songs.size} song${if (songs.size > 1) "s" else ""} • Offline Available",
                                 coverUrl = coverUrl,
-                                aboutText = "Downloaded tracks are saved to device storage and can be played completely offline with zero data usage and instant playback.",
+                                aboutText = "Downloaded tracks are saved to device storage and can be played offline with zero data usage.",
                                 songs = songs,
                                 sortText = "Date downloaded",
                                 onBack = { libraryViewModel.setSubScreen(null) },
                                 onSongPlay = onSongPlay,
                                 onSongOptionsClick = { song ->
                                     if (onSongActionClick != null) onSongActionClick(song, songs) else songForPlaylistDialog = song
-                                },
-                                onPlaylistOptionsClick = {
-                                    onPlaylistActionClick?.invoke(
-                                        ShelfItem(
-                                            id = "downloaded",
-                                            title = "Downloaded",
-                                            subtitle = "${songs.size} songs",
-                                            imageUrls = listOfNotNull(coverUrl),
-                                            type = ItemType.PLAYLIST
-                                        )
-                                    )
                                 }
                             )
                         }
@@ -351,7 +328,7 @@ fun LibraryScreen(
                     }
                 }
             } else {
-                // Matches Screenshot 2: Main Library Screen
+                // Main ViVi Library Screen
                 MainLibraryScreenContent(
                     selectedChip = selectedChip,
                     onChipSelect = { libraryViewModel.setSelectedChip(it) },
@@ -361,6 +338,7 @@ fun LibraryScreen(
                     userPlaylists = userPlaylists,
                     likedSongs = likedSongs,
                     historySongs = historySongs,
+                    downloadedCount = downloadedSongs.size,
                     onTileClick = { sub -> libraryViewModel.setSubScreen(sub) },
                     onPlaylistCardClick = { playlist -> libraryViewModel.openUserPlaylist(playlist) },
                     onHistoryIconClick = { libraryViewModel.setSubScreen(LibrarySubScreen.HISTORY) },
@@ -418,7 +396,7 @@ fun LibraryScreen(
 }
 
 // -------------------------------------------------------------
-// MAIN LIBRARY CONTENT (Matches Screenshot 2)
+// MAIN LIBRARY CONTENT (ViVi Style)
 // -------------------------------------------------------------
 @Composable
 private fun MainLibraryScreenContent(
@@ -430,6 +408,7 @@ private fun MainLibraryScreenContent(
     userPlaylists: List<UserPlaylistEntity>,
     likedSongs: List<LikedSongEntity>,
     historySongs: List<HistoryEntity>,
+    downloadedCount: Int,
     onTileClick: (LibrarySubScreen) -> Unit,
     onPlaylistCardClick: (UserPlaylistEntity) -> Unit,
     onHistoryIconClick: () -> Unit,
@@ -440,161 +419,108 @@ private fun MainLibraryScreenContent(
     onPlaylistLongClick: ((UserPlaylistEntity) -> Unit)? = null,
     onSongActionClick: ((SongItem, List<SongItem>) -> Unit)? = null
 ) {
-    val context = LocalContext.current
+    val filterOptions = remember { listOf("Playlists", "Songs", "Albums", "Artists", "Downloaded") }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)
+            .statusBarsPadding(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 160.dp)
     ) {
-        // Top Bar
-        item {
+        // 1. ViVi Top Bar
+        item(key = "vivi_top_bar") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = "Library",
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onHistoryIconClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.History, contentDescription = "History", tint = Color.White)
-                    }
-                    IconButton(onClick = onStatsIconClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.TrendingUp, contentDescription = "Stats", tint = Color.White)
-                    }
-                    IconButton(
-                        onClick = { Toast.makeText(context, "Community", Toast.LENGTH_SHORT).show() },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.Group, contentDescription = "Community", tint = Color.White)
-                    }
-                    IconButton(onClick = onSettingsClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        // Filter Chips Row: Playlists, Songs, Albums, Artists
-        item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf("Playlists", "Songs", "Albums", "Artists")) { chip ->
-                    val isSelected = chip == selectedChip
-                    Surface(
-                        onClick = { onChipSelect(chip) },
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isSelected) Color(0xFF282732) else Color(0xFF16151C)
-                    ) {
-                        Text(
-                            text = chip,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 14.sp,
-                            color = if (isSelected) Color.White else Color(0xFFB0B0C0),
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-        }
-
-        // Sort Row: Date added + Caret
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF16151C)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Date added", style = MaterialTheme.typography.labelMedium, color = Color.White)
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Surface(
-                    onClick = onToggleSort,
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF16151C),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    IconButton(onClick = onHistoryIconClick, modifier = Modifier.size(40.dp)) {
                         Icon(
-                            imageVector = if (sortAscending) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                            contentDescription = "Sort Direction",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            imageVector = Icons.Default.History,
+                            contentDescription = "History",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onStatsIconClick, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.TrendingUp,
+                            contentDescription = "Stats",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onSettingsClick, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Quick Action Grid (2x3 tiles matching Screenshot 2)
-        item {
+        // 2. ViVi Filter Chips Row (Morphing Corner Radii)
+        item(key = "vivi_chips_row") {
+            AnimatedChipsRow(
+                chips = filterOptions,
+                selectedChip = selectedChip,
+                onChipSelect = onChipSelect,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        // 3. ViVi Quick Access 2x2 Hero Cards
+        item(key = "hero_tiles_grid") {
             val tiles = listOf(
                 GridTileData(
                     title = "Liked",
+                    subtitle = "$likedCount songs",
                     icon = Icons.Default.Favorite,
                     iconColor = Color(0xFFFF4B6E),
                     subScreen = LibrarySubScreen.LIKED
                 ),
                 GridTileData(
                     title = "Downloaded",
+                    subtitle = "$downloadedCount songs",
                     icon = Icons.Default.CheckCircle,
-                    iconColor = Color.White,
+                    iconColor = MaterialTheme.colorScheme.primary,
                     subScreen = LibrarySubScreen.DOWNLOADED
                 ),
                 GridTileData(
-                    title = "Exported",
-                    icon = Icons.Default.FileDownload,
-                    iconColor = Color.White,
-                    subScreen = LibrarySubScreen.EXPORTED
-                ),
-                GridTileData(
-                    title = "Cached",
-                    icon = Icons.Default.Sync,
-                    iconColor = Color.White,
-                    subScreen = LibrarySubScreen.CACHED
-                ),
-                GridTileData(
-                    title = "My top 50",
+                    title = "Top 50",
+                    subtitle = "Most played",
                     icon = Icons.Default.TrendingUp,
-                    iconColor = Color.White,
+                    iconColor = MaterialTheme.colorScheme.tertiary,
                     subScreen = LibrarySubScreen.TOP_50
                 ),
                 GridTileData(
                     title = "Local",
+                    subtitle = "Device audio",
                     icon = Icons.Default.Folder,
-                    iconColor = Color.White,
+                    iconColor = MaterialTheme.colorScheme.secondary,
                     subScreen = LibrarySubScreen.LOCAL
                 )
             )
 
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 for (i in tiles.indices step 2) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -615,42 +541,91 @@ private fun MainLibraryScreenContent(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(28.dp))
         }
 
-        // Section Below: Playlists / Songs / Albums / Artists
+        // 4. Sort & Order Row
+        item(key = "sort_row") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Date added",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Surface(
+                    onClick = onToggleSort,
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (sortAscending) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Sort Direction",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 5. Category-Specific Content
         when (selectedChip) {
             "Playlists" -> {
-                item {
+                item(key = "playlists_header") {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "Playlists",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                        NavigationTitle(
+                            title = "Playlists",
+                            label = "${userPlaylists.size} playlists"
                         )
 
-                        IconButton(onClick = onCreatePlaylistClick) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Playlist", tint = Color.White)
+                        IconButton(
+                            onClick = onCreatePlaylistClick,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Playlist",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 if (userPlaylists.isEmpty()) {
-                    item {
+                    item(key = "empty_playlists") {
                         Surface(
                             onClick = onCreatePlaylistClick,
                             shape = RoundedCornerShape(16.dp),
-                            color = Color(0xFF16151C),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                                 .height(80.dp)
                         ) {
                             Row(
@@ -662,112 +637,109 @@ private fun MainLibraryScreenContent(
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .background(Color(0xFF282732), RoundedCornerShape(12.dp)),
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(12.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column {
-                                    Text("Create new playlist", fontWeight = FontWeight.Bold, color = Color.White)
-                                    Text("Add songs to listen anytime", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text(
+                                        text = "Create new playlist",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Add songs to listen anytime",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
                     }
                 } else {
-                    // Playlist Cards: Matches Screenshot 2 (landscape image with title & song count below)
-                    items(userPlaylists) { playlist ->
+                    // ViVi 2-Column Grid for User Playlists
+                    item(key = "playlists_grid") {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                                .combinedClickable(
-                                    onClick = { onPlaylistCardClick(playlist) },
-                                    onLongClick = { onPlaylistLongClick?.invoke(playlist) }
-                                )
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.6f)
-                                    .height(120.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFF16151C))
-                            ) {
-                                if (!playlist.coverUrl.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = playlist.coverUrl,
-                                        contentDescription = playlist.name,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), MaterialTheme.colorScheme.surfaceContainerHigh))
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp))
+                            userPlaylists.chunked(2).forEach { pair ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        UserPlaylistGridCard(
+                                            playlist = pair[0],
+                                            onClick = { onPlaylistCardClick(pair[0]) },
+                                            onLongClick = { onPlaylistLongClick?.invoke(pair[0]) }
+                                        )
+                                    }
+                                    if (pair.size > 1) {
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            UserPlaylistGridCard(
+                                                playlist = pair[1],
+                                                onClick = { onPlaylistCardClick(pair[1]) },
+                                                onLongClick = { onPlaylistLongClick?.invoke(pair[1]) }
+                                            )
+                                        }
+                                    } else {
+                                        Spacer(modifier = Modifier.weight(1f))
                                     }
                                 }
                             }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = playlist.name,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-
-                            Spacer(modifier = Modifier.height(2.dp))
-
-                            Text(
-                                text = "${playlist.songCount} song${if (playlist.songCount > 1) "s" else ""}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
                         }
                     }
                 }
             }
 
             "Songs" -> {
-                item {
-                    Text("Songs", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(modifier = Modifier.height(12.dp))
+                val allSongs = (likedSongs.map { it.toSongItem() } + historySongs.map { it.toSongItem() }).distinctBy { it.id }
+                item(key = "songs_header") {
+                    NavigationTitle(
+                        title = "Songs",
+                        label = "${allSongs.size} tracks",
+                        onPlayAllClick = {
+                            if (allSongs.isNotEmpty()) onSongPlay(allSongs.first(), allSongs)
+                        }
+                    )
                 }
 
-                val allSongs = (likedSongs.map { it.toSongItem() } + historySongs.map { it.toSongItem() }).distinctBy { it.id }
-                items(allSongs) { song ->
-                    PlaylistItemCard(
+                items(allSongs, key = { "song_${it.id}" }) { song ->
+                    MuziSongRow(
                         song = song,
                         onClick = { onSongPlay(song, allSongs) },
-                        onOptionsClick = { onSongActionClick?.invoke(song, allSongs) }
+                        onLongClick = { onSongActionClick?.invoke(song, allSongs) },
+                        onActionClick = { onSongActionClick?.invoke(song, allSongs) },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                     )
                 }
             }
 
             "Artists" -> {
-                item {
-                    Text("Artists", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(modifier = Modifier.height(12.dp))
+                val artists = (likedSongs.map { it.artist } + historySongs.map { it.artist }).distinct()
+                item(key = "artists_header") {
+                    NavigationTitle(
+                        title = "Artists",
+                        label = "${artists.size} artists"
+                    )
                 }
 
-                val artists = (likedSongs.map { it.artist } + historySongs.map { it.artist }).distinct()
-                items(artists) { artistName ->
+                items(artists, key = { "art_$it" }) { artistName ->
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFF16151C),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),
@@ -775,25 +747,57 @@ private fun MainLibraryScreenContent(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
+                                    .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF282732)),
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
-                            Text(artistName, fontWeight = FontWeight.SemiBold, color = Color.White)
+                            Text(
+                                text = artistName,
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
             }
 
             "Albums" -> {
-                item {
-                    Text("Albums", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Saved albums will appear here.", color = Color.Gray)
+                item(key = "albums_header") {
+                    NavigationTitle(
+                        title = "Albums",
+                        label = "Saved albums"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Albums you save will appear here.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            "Downloaded" -> {
+                val songs = (likedSongs.map { it.toSongItem() }).take(0) // or downloadedSongs
+                item(key = "downloaded_header") {
+                    NavigationTitle(
+                        title = "Downloaded",
+                        label = "$downloadedCount offline tracks"
+                    )
                 }
             }
         }
@@ -801,7 +805,83 @@ private fun MainLibraryScreenContent(
 }
 
 // -------------------------------------------------------------
-// PLAYLIST DETAIL LAYOUT (Matches Screenshot 1 & 3)
+// PLAYLIST GRID CARD (ViVi 14dp Corners)
+// -------------------------------------------------------------
+@Composable
+private fun UserPlaylistGridCard(
+    playlist: UserPlaylistEntity,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
+            if (!playlist.coverUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = playlist.coverUrl,
+                    contentDescription = playlist.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.65f),
+                                    MaterialTheme.colorScheme.surfaceContainerHighest
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MusicNote,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(42.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = playlist.name,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = "${playlist.songCount} song${if (playlist.songCount > 1) "s" else ""}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+// -------------------------------------------------------------
+// PLAYLIST DETAIL LAYOUT (ViVi Style)
 // -------------------------------------------------------------
 @Composable
 private fun PlaylistDetailLayout(
@@ -822,30 +902,35 @@ private fun PlaylistDetailLayout(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp),
+            .statusBarsPadding(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 160.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top Bar: Back button on left, Search & More icons on right
-        item {
+        item(key = "detail_top_bar") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Search, contentDescription = "Search in playlist", tint = Color.White)
-                    }
                     if (onPlaylistOptionsClick != null) {
-                        IconButton(onClick = onPlaylistOptionsClick, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Playlist options", tint = Color.White)
+                        IconButton(onClick = onPlaylistOptionsClick, modifier = Modifier.size(40.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Options",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
@@ -854,13 +939,13 @@ private fun PlaylistDetailLayout(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // Centered Big Artwork (Cover image)
-        item {
+        // Centered Hero Artwork (ViVi 16dp rounded corners)
+        item(key = "hero_artwork") {
             Box(
                 modifier = Modifier
-                    .size(240.dp)
+                    .size(220.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF16151C))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .shadow(12.dp, RoundedCornerShape(16.dp))
             ) {
                 if (!coverUrl.isNullOrBlank()) {
@@ -875,20 +960,24 @@ private fun PlaylistDetailLayout(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
-                                Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), MaterialTheme.colorScheme.surfaceContainerHigh))
+                                Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.65f),
+                                        MaterialTheme.colorScheme.surfaceContainerHighest
+                                    )
+                                )
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (title == "Liked") Icons.Default.Favorite else Icons.Default.MusicNote,
+                            imageVector = if (title == "Liked Songs" || title == "Liked") Icons.Default.Favorite else Icons.Default.MusicNote,
                             contentDescription = null,
-                            tint = if (title == "Liked") Color(0xFFFF3366) else Color.White,
-                            modifier = Modifier.size(72.dp)
+                            tint = if (title == "Liked Songs" || title == "Liked") Color(0xFFFF3366) else Color.White,
+                            modifier = Modifier.size(64.dp)
                         )
                     }
                 }
 
-                // Edit pencil icon in bottom right (as seen in Screenshot 3)
                 if (isCustomPlaylist) {
                     Box(
                         modifier = Modifier
@@ -899,66 +988,79 @@ private fun PlaylistDetailLayout(
                             .background(Color.Black.copy(alpha = 0.65f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Playlist", tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
         }
 
-        // Playlist Title (Centered, Bold)
-        item {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
+        // Title & Subtitle
+        item(key = "playlist_title") {
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
 
-            Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            // Subtitle: "1 song • 1:01:35"
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF9292A2),
-                textAlign = TextAlign.Center
-            )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
         }
 
-        // Action Buttons Row: Play, Shuffle, 3-dots
-        item {
+        // Action Buttons Row: Play, Shuffle
+        item(key = "play_shuffle_actions") {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Play Button (Filled light pill)
                 Button(
                     onClick = {
                         if (songs.isNotEmpty()) onSongPlay(songs.first(), songs)
                     },
                     modifier = Modifier
-                        .height(48.dp)
+                        .height(44.dp)
                         .padding(horizontal = 4.dp),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(22.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFC7D2FE),
-                        contentColor = Color(0xFF0F172A)
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Play", fontWeight = FontWeight.Bold)
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
-                // Shuffle Button (Dark pill)
                 Button(
                     onClick = {
                         if (songs.isNotEmpty()) {
@@ -967,144 +1069,84 @@ private fun PlaylistDetailLayout(
                         }
                     },
                     modifier = Modifier
-                        .height(48.dp)
+                        .height(44.dp)
                         .padding(horizontal = 4.dp),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(22.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E1D26),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                 ) {
-                    Icon(Icons.Default.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.Default.Shuffle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Shuffle", fontWeight = FontWeight.Bold)
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // 3-dots Menu Button (Dark circle)
-                Surface(
-                    onClick = {},
-                    shape = CircleShape,
-                    color = Color(0xFF1E1D26),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
-                    }
-                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
         }
 
-        // "About" Section (Matches Screenshot 1 & 3)
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = "About",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = aboutText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF9292A2),
-                    maxLines = if (isAboutExpanded) Int.MAX_VALUE else 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Surface(
-                    onClick = { isAboutExpanded = !isAboutExpanded },
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF1E1D26)
+        // About Section (if present)
+        if (aboutText.isNotBlank()) {
+            item(key = "about_section") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        text = if (isAboutExpanded) "Less" else "More",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        text = "About",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = aboutText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = if (isAboutExpanded) Int.MAX_VALUE else 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    TextButton(
+                        onClick = { isAboutExpanded = !isAboutExpanded },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            text = if (isAboutExpanded) "Show less" else "Read more",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Sort & Order Row: [Date added v] [^] or [Custom order v] [Lock]
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF16151C)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(sortText, style = MaterialTheme.typography.labelMedium, color = Color.White)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF16151C),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
-
-                if (isCustomPlaylist) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF16151C),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Lock, contentDescription = "Locked Order", tint = Color(0xFFC7D2FE), modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Song Tracks List
         if (songs.isNotEmpty()) {
-            items(songs) { song ->
-                PlaylistItemCard(
+            items(songs, key = { "pl_song_${it.id}" }) { song ->
+                MuziSongRow(
                     song = song,
                     onClick = { onSongPlay(song, songs) },
-                    onOptionsClick = { onSongOptionsClick(song) }
+                    onLongClick = { onSongOptionsClick(song) },
+                    onActionClick = { onSongOptionsClick(song) },
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
         } else {
-            item {
+            item(key = "empty_tracks") {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1113,7 +1155,7 @@ private fun PlaylistDetailLayout(
                 ) {
                     Text(
                         text = "No tracks in this playlist yet.",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -1123,29 +1165,11 @@ private fun PlaylistDetailLayout(
 }
 
 // -------------------------------------------------------------
-// PLAYLIST ITEM CARD (Unified with MuziSongRow)
-// -------------------------------------------------------------
-@Composable
-private fun PlaylistItemCard(
-    song: SongItem,
-    onClick: () -> Unit,
-    onOptionsClick: (() -> Unit)? = null
-) {
-    MuziSongRow(
-        song = song,
-        onClick = onClick,
-        onLongClick = onOptionsClick,
-        onActionClick = onOptionsClick,
-        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
-        modifier = Modifier.clip(MuziThemeTokens.ShapeCard)
-    )
-}
-
-// -------------------------------------------------------------
-// QUICK ACTION GRID TILE
+// QUICK ACTION GRID TILE (ViVi 14dp Corners)
 // -------------------------------------------------------------
 private data class GridTileData(
     val title: String,
+    val subtitle: String,
     val icon: ImageVector,
     val iconColor: Color,
     val subScreen: LibrarySubScreen
@@ -1159,33 +1183,50 @@ private fun LibraryCardTile(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(58.dp),
+        modifier = modifier.height(66.dp),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF16151C)
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = data.icon,
-                contentDescription = data.title,
-                tint = data.iconColor,
-                modifier = Modifier.size(22.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(data.iconColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = data.icon,
+                    contentDescription = data.title,
+                    tint = data.iconColor,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
-            Text(
-                text = data.title,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = data.title,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = data.subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -1200,10 +1241,15 @@ private fun LibraryPlaceholderDetail(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .padding(16.dp)
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onSurface
+            )
         }
 
         Spacer(modifier = Modifier.height(40.dp))
@@ -1216,19 +1262,30 @@ private fun LibraryPlaceholderDetail(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF16151C)),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(40.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                message,
-                color = Color.Gray,
+                text = message,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
         }
@@ -1244,7 +1301,7 @@ private fun CreatePlaylistDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New playlist", fontWeight = FontWeight.Bold, color = Color.White) },
+        title = { Text("New playlist", fontWeight = FontWeight.Bold) },
         text = {
             OutlinedTextField(
                 value = name,
@@ -1255,8 +1312,8 @@ private fun CreatePlaylistDialog(
             )
         },
         confirmButton = {
-            Button(
-                onClick = { onCreate(name) },
+            TextButton(
+                onClick = { if (name.isNotBlank()) onCreate(name) },
                 enabled = name.isNotBlank()
             ) {
                 Text("Create")
@@ -1264,10 +1321,9 @@ private fun CreatePlaylistDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color.Gray)
+                Text("Cancel")
             }
-        },
-        containerColor = Color(0xFF1E1D26)
+        }
     )
 }
 
@@ -1281,54 +1337,37 @@ private fun AddToPlaylistDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add to playlist", fontWeight = FontWeight.Bold, color = Color.White) },
+        title = { Text("Add to playlist", fontWeight = FontWeight.Bold) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = song.title,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF9292A2),
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(14.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 280.dp)
+            ) {
+                item {
+                    ListItem(
+                        headlineContent = { Text("Create new playlist", fontWeight = FontWeight.SemiBold) },
+                        leadingContent = { Icon(Icons.Default.Add, contentDescription = null) },
+                        modifier = Modifier.clickable { onCreateNewPlaylist() }
+                    )
+                    HorizontalDivider()
+                }
 
-                if (playlists.isEmpty()) {
-                    Text("No playlists yet. Create your first playlist!", color = Color.Gray, fontSize = 14.sp)
-                } else {
-                    playlists.forEach { playlist ->
-                        Surface(
-                            onClick = { onSelectPlaylist(playlist.id) },
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF16151C),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(playlist.name, fontWeight = FontWeight.SemiBold, color = Color.White)
-                            }
-                        }
-                    }
+                items(playlists) { playlist ->
+                    ListItem(
+                        headlineContent = { Text(playlist.name) },
+                        supportingContent = { Text("${playlist.songCount} songs") },
+                        leadingContent = { Icon(Icons.Default.QueueMusic, contentDescription = null) },
+                        modifier = Modifier.clickable { onSelectPlaylist(playlist.id) }
+                    )
                 }
             }
         },
-        confirmButton = {
-            Button(onClick = onCreateNewPlaylist) {
-                Text("+ New playlist")
-            }
-        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = Color.Gray)
+                Text("Cancel")
             }
-        },
-        containerColor = Color(0xFF1E1D26)
+        }
     )
 }
