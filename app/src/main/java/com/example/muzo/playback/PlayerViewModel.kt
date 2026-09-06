@@ -476,16 +476,44 @@ class PlayerViewModel(
         // Ensure background MediaSessionService is running
         MuziMediaSessionService.start(context)
 
-        // Stop old playing song immediately on tap for instant response
-        player.stop()
-        player.clearMediaItems()
+        // Check if next song is already preloaded in ExoPlayer queue for gapless instant transition
+        val isAlreadyPreloaded = player.mediaItemCount > 1 && player.getMediaItemAt(1).mediaId == song.id
+        if (isAlreadyPreloaded) {
+            Log.d("PlayerVM", "Instantly seeking to preloaded gapless track: ${song.title}")
+            player.seekToNextMediaItem()
+            _isPlaying.value = true
+            _statusText.value = ""
+            startFadeIn(durationMs = 600L)
+            scheduleGaplessPreload(index, queue)
+            return
+        }
+
+        // Prepare new song metadata immediately so notification updates without disappearing
+        val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
+        val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
+        val artworkUri = highResThumb?.let { Uri.parse(it) }
+        val cachedBytes = song.thumbnail?.let { com.example.muzo.core.artworkBytesCache.get(it) }
+
+        val placeholderMetadata = MediaMetadata.Builder()
+            .setTitle(song.title)
+            .setArtist(artistName)
+            .setDisplayTitle(song.title)
+            .setArtworkUri(artworkUri)
+            .apply {
+                if (cachedBytes != null) {
+                    setArtworkData(cachedBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                }
+            }
+            .build()
+        player.setPlaylistMetadata(placeholderMetadata)
+
+        // Pause current audio while stream resolves (do NOT stop or clearMediaItems to prevent notification dismissal)
+        player.pause()
         _currentPosition.value = 0L
-        _isPlaying.value = false
 
         // Reactive History: Save directly to Room Database with play count tracking
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val artistName = song.artists.firstOrNull()?.name ?: "Unknown Artist"
                 historyDao.recordPlay(
                     videoId = song.id,
                     title = song.title,
@@ -514,21 +542,10 @@ class PlayerViewModel(
         }
 
         if (mediaUri != null) {
-            val artistName = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" }
-            val highResThumb = song.thumbnail?.let { getHighResThumbnail(it) }
-            val artworkUri = highResThumb?.let { Uri.parse(it) }
-
-            val initialMetadata = MediaMetadata.Builder()
-                .setTitle(song.title)
-                .setArtist(artistName)
-                .setDisplayTitle(song.title)
-                .setArtworkUri(artworkUri)
-                .build()
-
             val mediaItem = MediaItem.Builder()
                 .setMediaId(song.id)
                 .setUri(mediaUri)
-                .setMediaMetadata(initialMetadata)
+                .setMediaMetadata(placeholderMetadata)
                 .build()
 
             player.setMediaItem(mediaItem)
@@ -543,7 +560,7 @@ class PlayerViewModel(
             viewModelScope.launch(Dispatchers.IO) {
                 val artworkBytes = loadArtworkBitmapBytes(song.thumbnail)
                 if (artworkBytes != null && _currentSong.value?.id == song.id) {
-                    val enrichedMetadata = initialMetadata.buildUpon()
+                    val enrichedMetadata = placeholderMetadata.buildUpon()
                         .setArtworkData(artworkBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                         .build()
                     withContext(Dispatchers.Main) {
