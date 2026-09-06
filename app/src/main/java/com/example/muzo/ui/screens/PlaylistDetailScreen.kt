@@ -4,6 +4,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,11 +23,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
@@ -58,7 +61,7 @@ import com.example.muzo.ui.components.CollageCover
 import com.example.muzo.ui.components.OnlineBlur
 import com.example.muzo.ui.components.ShelfCard
 import com.example.muzo.ui.components.SingleCover
-import com.example.muzo.theme.MuziThemeTokens
+
 import com.example.muzo.ui.components.MuziSongRow
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
@@ -73,6 +76,10 @@ fun PlaylistDetailScreen(
     isArtist: Boolean = false,
     artistSubscribers: String? = null,
     artistMonthlyListeners: String? = null,
+    artistDescription: String? = null,
+    artistHeroThumbnail: String? = null,
+    currentPlayingSongId: String? = null,
+    isPlaybackPlaying: Boolean = false,
     artistPlaylists: List<ShelfItem> = emptyList(),
     similarArtists: List<ShelfItem> = emptyList(),
     relatedPlaylists: List<ShelfItem> = emptyList(),
@@ -81,6 +88,7 @@ fun PlaylistDetailScreen(
     onSearchClick: () -> Unit = {},
     onSongSelect: (SongItem, List<SongItem>) -> Unit,
     onPlayAll: () -> Unit = {},
+    onRadioClick: (() -> Unit)? = null,
     onRelatedPlaylistClick: (ShelfItem) -> Unit = {},
     onSimilarArtistClick: (ShelfItem) -> Unit = {},
     onSongActionClick: ((SongItem, List<SongItem>) -> Unit)? = null,
@@ -291,41 +299,69 @@ fun PlaylistDetailScreen(
                     CircularProgressIndicator(color = playBtnBg)
                 }
             } else if (isArtist) {
-            // ==================== ARTIST PROFILE SCREEN (Screenshots 1, 2, 3) ====================
+            // ==================== VIVI MUSIC ARTIST PROFILE SCREEN (vivi_3.png) ====================
+            var isBioExpanded by remember { mutableStateOf(false) }
+            var isSubscribed by remember { mutableStateOf(false) }
+
+            val cleanMonthly = remember(artistMonthlyListeners) {
+                artistMonthlyListeners?.let { raw ->
+                    val t = raw.replace(Regex("(?i)monthly listeners"), "").replace(Regex("(?i)monthly"), "").replace(Regex("(?i)listeners"), "").trim()
+                    if (t.isNotEmpty()) "$t Monthly" else null
+                }
+            }
+
+            val cleanSubscribers = remember(artistSubscribers) {
+                val raw = artistSubscribers?.trim().orEmpty()
+                if (raw.isBlank() || raw.equals("Artist", ignoreCase = true)) {
+                    "Artist"
+                } else {
+                    val t = raw.replace(Regex("(?i)subscribers"), "").replace(Regex("(?i)subscriber"), "").trim()
+                    if (t.isNotEmpty()) "$t Subscribers" else raw
+                }
+            }
+
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF070709)),
                 contentPadding = PaddingValues(bottom = 120.dp)
             ) {
-                // 1. Immersive Hero Banner (Screenshot 1)
+                // 1. Immersive Hero Artwork Banner (vivi_3.png)
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(380.dp)
+                            .height(390.dp)
+                            .background(Color(0xFF13151D))
                     ) {
-                        val thumb = playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""
-                        AsyncImage(
-                            model = thumb,
-                            contentDescription = playlist.title,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        // Gradient Fade Scrim
+                        val thumb = (artistHeroThumbnail ?: playlist.thumbnail)?.let { getHighResThumbnail(it) } ?: ""
+                        if (thumb.isNotBlank()) {
+                            AsyncImage(
+                                model = thumb,
+                                contentDescription = playlist.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+
+                        // Vertical Gradient Scrim
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
                                     Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Black.copy(alpha = 0.45f),
-                                            Color.Transparent,
-                                            Color(0xFF08080A).copy(alpha = 0.85f),
-                                            Color(0xFF08080A)
+                                        colorStops = arrayOf(
+                                            0.0f to Color.Black.copy(alpha = 0.40f),
+                                            0.25f to Color.Transparent,
+                                            0.60f to Color(0xFF070709).copy(alpha = 0.20f),
+                                            0.82f to Color(0xFF070709).copy(alpha = 0.88f),
+                                            1.0f to Color(0xFF070709)
                                         )
                                     )
                                 )
                         )
-                        // Top Nav overlay (Back + Share)
+
+                        // Top Nav overlay (Back + Share) - vivi_3.png
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -341,7 +377,18 @@ fun PlaylistDetailScreen(
                                     tint = Color.White
                                 )
                             }
-                            IconButton(onClick = {}) {
+                            IconButton(
+                                onClick = {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(
+                                            Intent.EXTRA_TEXT,
+                                            "Listen to ${playlist.title} on Muzi: https://music.youtube.com/channel/${playlist.id}"
+                                        )
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Share Artist"))
+                                }
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.Share,
                                     contentDescription = "Share",
@@ -349,125 +396,215 @@ fun PlaylistDetailScreen(
                                 )
                             }
                         }
-                        // Bottom Title + Stats on banner
+
+                        // Bottom Title on banner (vivi_3.png)
                         Column(
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             Text(
                                 text = playlist.title ?: "Artist",
-                                fontSize = 28.sp,
+                                fontSize = 34.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            // Stat Pills (Screenshot 1)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // 2. Stat Pills Row (vivi_3.png)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Pill 1: Subscribers (dark capsule)
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xFF232631)
+                        ) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = MuziThemeTokens.SurfaceCardElevated
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = MuziThemeTokens.AccentRose,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = artistSubscribers ?: "2.7M Subscribers",
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD2D5E0),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = cleanSubscribers,
+                                    color = Color(0xFFD2D5E0),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
 
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = MuziThemeTokens.SurfaceCardElevated
+                        // Pill 2: Monthly Listeners (vivi_3.png pastel lavender pill)
+                        if (!cleanMonthly.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFE2D4F7)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.GraphicEq,
-                                            contentDescription = null,
-                                            tint = MuziThemeTokens.AccentRose,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = artistMonthlyListeners ?: "70.9M Monthly",
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.GraphicEq,
+                                        contentDescription = null,
+                                        tint = Color(0xFF2C1948),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = cleanMonthly,
+                                        color = Color(0xFF2C1948),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    // 3. "About" Bio Section (vivi_3.png)
+                    if (!artistDescription.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            Text(
+                                text = "About",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = artistDescription,
+                                color = Color(0xFFA5A9B8),
+                                fontSize = 13.5.sp,
+                                lineHeight = 20.sp,
+                                maxLines = if (isBioExpanded) Int.MAX_VALUE else 3,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.animateContentSize()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFF232631),
+                                modifier = Modifier.clickable { isBioExpanded = !isBioExpanded }
+                            ) {
+                                Text(
+                                    text = if (isBioExpanded) "Less" else "More",
+                                    color = Color(0xFFC8CBD6),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                                )
+                            }
+                        }
+                    }
 
-                    // 2. Action Buttons: [Subscribe], [Radio], [Shuffle] (Screenshot 1)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 4. Action Buttons Row: [Subscribe], [Radio], [Shuffle] (vivi_3.png)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Subscribe
                         Surface(
-                            shape = RoundedCornerShape(24.dp),
-                            color = Color(0xFF1E1E24),
+                            shape = RoundedCornerShape(50),
+                            color = if (isSubscribed) Color(0xFF2E3240) else Color(0xFF1E2029),
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable {}
+                                .height(46.dp)
+                                .clickable {
+                                    isSubscribed = !isSubscribed
+                                    Toast.makeText(
+                                        context,
+                                        if (isSubscribed) "Subscribed to ${playlist.title}" else "Unsubscribed",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                         ) {
                             Row(
-                                modifier = Modifier.padding(vertical = 10.dp),
+                                modifier = Modifier.fillMaxSize(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Person, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Subscribe", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Icon(
+                                    imageVector = if (isSubscribed) Icons.Default.Check else Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD6D8E4),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isSubscribed) "Subscribed" else "Subscribe",
+                                    color = Color.White,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
 
+                        // Radio
                         Surface(
-                            shape = RoundedCornerShape(24.dp),
-                            color = Color(0xFF1E1E24),
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xFF1E2029),
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable {}
+                                .height(46.dp)
+                                .clickable {
+                                    onRadioClick?.invoke() ?: onPlayAll()
+                                }
                         ) {
                             Row(
-                                modifier = Modifier.padding(vertical = 10.dp),
+                                modifier = Modifier.fillMaxSize(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Radio, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Radio", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Icon(
+                                    imageVector = Icons.Default.Radio,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD6D8E4),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Radio",
+                                    color = Color.White,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
 
+                        // Shuffle
                         Surface(
-                            shape = RoundedCornerShape(24.dp),
-                            color = Color(0xFF1E1E24),
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xFF1E2029),
                             modifier = Modifier
                                 .weight(1f)
+                                .height(46.dp)
                                 .clickable {
                                     if (songs.isNotEmpty()) {
                                         val sh = songs.shuffled()
@@ -476,53 +613,167 @@ fun PlaylistDetailScreen(
                                 }
                         ) {
                             Row(
-                                modifier = Modifier.padding(vertical = 10.dp),
+                                modifier = Modifier.fillMaxSize(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Shuffle, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Shuffle", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Icon(
+                                    imageVector = Icons.Default.Shuffle,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD6D8E4),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Shuffle",
+                                    color = Color.White,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // 3. "Top songs" Heading with Arrow (Screenshot 1)
+                    // 5. "Top songs" Heading with Arrow (vivi_3.png)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "Top songs",
-                            fontSize = 20.sp,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "See all songs",
-                            tint = Color.LightGray,
-                            modifier = Modifier.size(20.dp)
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
                         )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                // 6. Song List (vivi_3.png cards with active play capsule)
+                itemsIndexed(songs, key = { index, song -> "${song.id}_$index" }) { _, song ->
+                    val isCurrentlyPlaying = song.id == currentPlayingSongId
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 3.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { onSongSelect(song, songs) },
+                        color = Color(0xFF14161E),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Thumbnail
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF222430)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val thumb = song.thumbnail?.let { getHighResThumbnail(it) } ?: song.thumbnail.orEmpty()
+                                AsyncImage(
+                                    model = thumb,
+                                    contentDescription = song.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Title & Subtitle
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = song.title,
+                                    color = if (isCurrentlyPlaying) Color(0xFFE2D4F7) else Color.White,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (song.explicit == true) {
+                                        Surface(
+                                            shape = RoundedCornerShape(3.dp),
+                                            color = Color(0xFF383A48),
+                                            modifier = Modifier.padding(end = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "E",
+                                                color = Color(0xFFB0B4C4),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
+                                    val artistSubtitle = song.artists.joinToString(", ") { it.name }.ifBlank { playlist.title ?: "Artist" }
+                                    Text(
+                                        text = artistSubtitle,
+                                        color = Color(0xFF8E92A0),
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            // Right action: prominent lavender play/pause pill if active (vivi_3.png), else 3-dots
+                            if (isCurrentlyPlaying) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFFE2D4F7))
+                                        .clickable {
+                                            onSongSelect(song, songs)
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPlaybackPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        contentDescription = "Playing",
+                                        tint = Color(0xFF2C1948),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            } else {
+                                IconButton(
+                                    onClick = { onSongActionClick?.invoke(song, songs) },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
-                // 4. Songs List (Muzi Flow Unified Song Row)
-                itemsIndexed(songs, key = { index, song -> "${song.id}_$index" }) { index, song ->
-                    MuziSongRow(
-                        song = song,
-                        index = index + 1,
-                        onClick = { onSongSelect(song, songs) },
-                        onActionClick = { onSongActionClick?.invoke(song, songs) }
-                    )
-                }
-
-                // 5. "Playlists by [Artist Name]" (Screenshot 2 & 3)
+                // 7. "Playlists & Albums by [Artist Name]"
                 if (artistPlaylists.isNotEmpty()) {
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
@@ -534,7 +785,7 @@ fun PlaylistDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Playlists by ${playlist.title ?: "Artist"}",
+                                text = "Playlists & Albums by ${playlist.title ?: "Artist"}",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -542,7 +793,7 @@ fun PlaylistDetailScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "See playlists",
-                                tint = Color.LightGray,
+                                tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -585,7 +836,7 @@ fun PlaylistDetailScreen(
                     }
                 }
 
-                // 6. "Fans might also like" (Screenshot 2 & 3)
+                // 8. "Fans might also like"
                 if (similarArtists.isNotEmpty()) {
                     item {
                         Spacer(modifier = Modifier.height(24.dp))

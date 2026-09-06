@@ -138,7 +138,9 @@ data class ArtistBundle(
     val playlists: List<ShelfItem>,
     val similarArtists: List<ShelfItem>,
     val subscribers: String?,
-    val monthlyListeners: String?
+    val monthlyListeners: String?,
+    val description: String? = null,
+    val heroThumbnail: String? = null
 )
 
 @Composable
@@ -211,6 +213,8 @@ fun MuziMainScreen(player: ExoPlayer) {
     var similarArtists by remember { mutableStateOf<List<ShelfItem>>(emptyList()) }
     var artistSubscribers by remember { mutableStateOf<String?>(null) }
     var artistMonthlyListeners by remember { mutableStateOf<String?>(null) }
+    var artistDescription by remember { mutableStateOf<String?>(null) }
+    var artistHeroThumbnail by remember { mutableStateOf<String?>(null) }
     val playlistBackStack = remember { mutableStateListOf<ShelfItem>() }
 
     // Instant In-Memory Caches for 0ms Reload
@@ -251,6 +255,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                 similarArtists = cachedBundle.similarArtists
                 artistSubscribers = cachedBundle.subscribers
                 artistMonthlyListeners = cachedBundle.monthlyListeners
+                artistDescription = cachedBundle.description
+                artistHeroThumbnail = cachedBundle.heroThumbnail
                 isPlaylistLoading = false
                 return
             }
@@ -260,6 +266,8 @@ fun MuziMainScreen(player: ExoPlayer) {
             similarArtists = emptyList()
             artistSubscribers = null
             artistMonthlyListeners = null
+            artistDescription = null
+            artistHeroThumbnail = null
 
             scope.launch {
                 val bundle = withContext(Dispatchers.IO) {
@@ -268,6 +276,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                         val artistPageRes = YouTube.artist(item.id).getOrNull()
                         val subsText = artistPageRes?.subscriberCountText ?: "Artist"
                         val monthlyText = artistPageRes?.monthlyListenerCount ?: ""
+                        val artistBio = artistPageRes?.description
+                        val heroThumb = artistPageRes?.artist?.thumbnail
 
                         val fromPageSongs = artistPageRes?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>().orEmpty()
                         val fromPageArtists = artistPageRes?.sections?.flatMap { it.items }?.filterIsInstance<com.music.innertube.models.ArtistItem>().orEmpty()
@@ -342,10 +352,12 @@ fun MuziMainScreen(player: ExoPlayer) {
                             playlists = allPlaylists,
                             similarArtists = allSimilar,
                             subscribers = subsText,
-                            monthlyListeners = monthlyText
+                            monthlyListeners = monthlyText,
+                            description = artistBio,
+                            heroThumbnail = heroThumb
                         )
                     } catch (e: Exception) {
-                        ArtistBundle(emptyList(), emptyList(), emptyList(), null, null)
+                        ArtistBundle(emptyList(), emptyList(), emptyList(), null, null, null, null)
                     }
                 }
 
@@ -358,6 +370,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                 similarArtists = bundle.similarArtists
                 artistSubscribers = bundle.subscribers
                 artistMonthlyListeners = bundle.monthlyListeners
+                artistDescription = bundle.description
+                artistHeroThumbnail = bundle.heroThumbnail
                 isPlaylistLoading = false
             }
         } else {
@@ -529,6 +543,10 @@ fun MuziMainScreen(player: ExoPlayer) {
                         isArtist = isArtist,
                         artistSubscribers = artistSubscribers,
                         artistMonthlyListeners = artistMonthlyListeners,
+                        artistDescription = artistDescription,
+                        artistHeroThumbnail = artistHeroThumbnail,
+                        currentPlayingSongId = currentSong?.id,
+                        isPlaybackPlaying = isPlaying,
                         artistPlaylists = artistPlaylists,
                         similarArtists = similarArtists,
                         relatedPlaylists = related,
@@ -550,6 +568,11 @@ fun MuziMainScreen(player: ExoPlayer) {
                             playerViewModel.playTrack(idx, list)
                         },
                         onPlayAll = {
+                            if (playlistSongs.isNotEmpty()) {
+                                playerViewModel.playTrack(0, playlistSongs)
+                            }
+                        },
+                        onRadioClick = {
                             if (playlistSongs.isNotEmpty()) {
                                 playerViewModel.playTrack(0, playlistSongs)
                             }
