@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -234,15 +235,9 @@ fun PlaylistShelfRow(
                 )
             }
             else -> {
-                val rowState = androidx.compose.runtime.saveable.rememberSaveable(
-                    shelf.id,
-                    saver = androidx.compose.foundation.lazy.LazyListState.Saver
-                ) {
-                    androidx.compose.foundation.lazy.LazyListState()
-                }
+                val rowState = rememberLazyListState()
                 LazyRow(
                     state = rowState,
-                    flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(lazyListState = rowState),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -385,7 +380,6 @@ fun HeroCarousel(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ShelfCard(
     item: ShelfItem,
@@ -396,10 +390,7 @@ fun ShelfCard(
     Column(
         modifier = Modifier
             .width(140.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+            .clickable(onClick = onClick),
         horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start
     ) {
         Box(
@@ -417,7 +408,7 @@ fun ShelfCard(
                 )
             }
 
-            // Top-left Play Indicator Badge (Echo-Music signature)
+            // Top-left Play Indicator Badge
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -468,8 +459,7 @@ fun SingleCover(
     modifier: Modifier = Modifier,
     isCircle: Boolean = false
 ) {
-    val context = LocalContext.current
-    val shape = androidx.compose.runtime.remember(isCircle) {
+    val shape = remember(isCircle) {
         if (isCircle) CircleShape else RoundedCornerShape(10.dp)
     }
 
@@ -482,12 +472,7 @@ fun SingleCover(
     ) {
         if (imageUrl.isNotEmpty()) {
             AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrl)
-                    .crossfade(true)
-                    .memoryCacheKey(imageUrl)
-                    .diskCacheKey(imageUrl)
-                    .build(),
+                model = imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()

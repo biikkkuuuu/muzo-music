@@ -79,11 +79,11 @@ internal val lyricsCache = ConcurrentHashMap<String, LyricsResult>()
 internal val songOffsetMap = ConcurrentHashMap<String, Long>()
 
 /**
- * Echo Music-style Open Canvas Synchronized Lyrics View (Matches Image 2).
+ * Muzi Flow Open Canvas Synchronized Lyrics View
  * Features:
  *  - Edge-to-edge ambient player gradient background (no boxed card frame).
  *  - Centered subtle "Lyrics from Kugou/LRCLIB" header.
- *  - Bold, high-impact synchronized lyrics typography (26sp active, 22sp inactive).
+ *  - Bold, high-impact synchronized lyrics typography with fluid scaling.
  *  - Smooth auto-scroll keeping the active lyric line centered.
  *  - Click-to-seek directly on any lyric line.
  *  - Top & bottom gradient edge fading masks.
@@ -341,6 +341,11 @@ fun AlbumSyncedLyricsView(
                                 animationSpec = tween(220),
                                 label = "lyricColor"
                             )
+                            val lyricScale by animateFloatAsState(
+                                targetValue = if (isCurrent) 1.04f else 1.0f,
+                                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                                label = "lyricScale"
+                            )
 
                             Text(
                                 text = line.text,
@@ -351,6 +356,11 @@ fun AlbumSyncedLyricsView(
                                 textAlign = TextAlign.Start,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .graphicsLayer {
+                                        scaleX = lyricScale
+                                        scaleY = lyricScale
+                                        transformOrigin = TransformOrigin(0f, 0.5f)
+                                    }
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable { onSeek(line.timeMs + currentOffsetMs) }
                                     .padding(vertical = 14.dp, horizontal = 4.dp)

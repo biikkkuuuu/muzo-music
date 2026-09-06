@@ -105,77 +105,9 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(orderedShelves) {
-        val topSongItems = orderedShelves
-            .flatMap { it.items }
-            .filter { it.type == ItemType.SONG }
-            .take(4)
-            .map { shelfItem ->
-                SongItem(
-                    id = shelfItem.id,
-                    title = shelfItem.title,
-                    artists = listOf(Artist(name = shelfItem.subtitle ?: "", id = null)),
-                    album = null,
-                    duration = null,
-                    thumbnail = shelfItem.imageUrls.firstOrNull().orEmpty()
-                )
-            }
-        if (topSongItems.isNotEmpty()) {
-            com.example.muzo.core.prefetchSongStreams(topSongItems, limit = 4)
-        }
-    }
-
-    var isHeaderVisible by rememberSaveable { mutableStateOf(true) }
-    val scrollAccumulator = remember { floatArrayOf(0f) }
-
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                if (delta < 0) {
-                    if (scrollAccumulator[0] > 0) scrollAccumulator[0] = 0f
-                    scrollAccumulator[0] += delta
-                    if (scrollAccumulator[0] < -50f && isHeaderVisible) {
-                        isHeaderVisible = false
-                        scrollAccumulator[0] = 0f
-                    }
-                } else if (delta > 0) {
-                    if (scrollAccumulator[0] < 0) scrollAccumulator[0] = 0f
-                    scrollAccumulator[0] += delta
-                    if (scrollAccumulator[0] > 50f && !isHeaderVisible) {
-                        isHeaderVisible = true
-                        scrollAccumulator[0] = 0f
-                    }
-                }
-                return Offset.Zero
-            }
-        }
-    }
-
-    LaunchedEffect(lazyListState) {
-        snapshotFlow { lazyListState.firstVisibleItemIndex to lazyListState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) ->
-                if (index == 0 && offset < 30) {
-                    isHeaderVisible = true
-                    scrollAccumulator[0] = 0f
-                }
-            }
-    }
-
-    val density = LocalDensity.current
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val headerBarHeight = 56.dp
     val totalHeaderHeight = statusBarHeight + headerBarHeight
-    val headerBarHeightPx = with(density) { (headerBarHeight + 12.dp).toPx() }
-
-    val headerOffsetProgress by animateFloatAsState(
-        targetValue = if (isHeaderVisible) 0f else -1f,
-        animationSpec = tween(
-            durationMillis = 350,
-            easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
-        ),
-        label = "headerOffset"
-    )
 
     Box(
         modifier = Modifier
@@ -202,9 +134,7 @@ fun HomeScreen(
                     color = com.example.muzo.theme.MuziThemeTokens.AccentRose
                 )
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(nestedScrollConnection)
+            modifier = Modifier.fillMaxSize()
         ) {
             val hasRemote = homeShelves.any { it.id != "keep_listening" }
 
@@ -334,15 +264,11 @@ fun HomeScreen(
             }
         }
 
-        // 1. Floating Top Header (Slides smoothly in/out beneath the status bar scrim)
+        // 1. Top Header with Smooth Scrim
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = statusBarHeight)
-                .graphicsLayer {
-                    translationY = headerOffsetProgress * headerBarHeightPx
-                    alpha = (1f + headerOffsetProgress).coerceIn(0f, 1f)
-                }
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(

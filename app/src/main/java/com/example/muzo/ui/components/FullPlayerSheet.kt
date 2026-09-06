@@ -56,7 +56,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * Echo-Music Signature Player Screen (Matches the exact style from user's screenshots).
+ * Muzi Flow Signature Player Screen.
  *
  * Visual Features:
  * - Top Bar: Centered "Now Playing" + song/album title, subtle down chevron on left.
@@ -184,61 +184,63 @@ fun FullPlayerSheet(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 // ==========================================
+                // 1. TOP BAR (vivi_player1.png)
                 // ==========================================
-                // 1. TOP BAR: Centered "Now Playing" + Title (Only in Cover Mode)
-                // ==========================================
-                AnimatedVisibility(
-                    visible = !showLyricsInAlbum,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 2.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        IconButton(
-                            onClick = onClose,
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = "Collapse",
-                                modifier = Modifier.size(28.dp),
-                                tint = Color.White.copy(alpha = 0.85f)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Collapse",
+                            modifier = Modifier.size(30.dp),
+                            tint = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
 
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 40.dp) // Offset the left chevron so title is truly centered
-                        ) {
-                            Text(
-                                text = "Now Playing",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal,
-                                color = Color.White.copy(alpha = 0.7f),
-                                letterSpacing = 0.3.sp
-                            )
-                            Text(
-                                text = song.title,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Now Playing",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.85f),
+                            letterSpacing = 0.2.sp
+                        )
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = song.album?.name?.ifBlank { null } ?: (song.title + " Mix"),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { showAudioOutputSheet = true },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cast,
+                            contentDescription = "Cast / Output",
+                            modifier = Modifier.size(22.dp),
+                            tint = Color.White.copy(alpha = 0.85f)
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
-
                 // ==========================================
-                // 2. ALBUM ARTWORK OR OPEN SYNCED LYRICS (Matches Image 2)
+                // 2. ALBUM ARTWORK OR OPEN SYNCED LYRICS
                 // ==========================================
                 AnimatedContent(
                     targetState = showLyricsInAlbum,
@@ -251,7 +253,6 @@ fun FullPlayerSheet(
                         .fillMaxWidth()
                 ) { isLyricsActive ->
                     if (isLyricsActive) {
-                        // Image 2: Open Edge-to-Edge Synchronized Lyrics on Ambient Canvas
                         AlbumSyncedLyricsView(
                             song = song,
                             currentPosition = currentPosition,
@@ -267,7 +268,6 @@ fun FullPlayerSheet(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        // Big Album Artwork View
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -276,8 +276,8 @@ fun FullPlayerSheet(
                                 modifier = Modifier
                                     .aspectRatio(1f)
                                     .fillMaxWidth(0.92f)
-                                    .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.75f))
-                                    .clip(RoundedCornerShape(24.dp))
+                                    .shadow(24.dp, RoundedCornerShape(18.dp), spotColor = Color.Black.copy(alpha = 0.7f))
+                                    .clip(RoundedCornerShape(18.dp))
                                     .offset { IntOffset(animatedArtworkOffset.roundToInt(), 0) }
                                     .pointerInput(song.id) {
                                         detectHorizontalDragGestures(
@@ -318,37 +318,6 @@ fun FullPlayerSheet(
                                     contentScale = ContentScale.Crop
                                 )
 
-                                // Floating Lyrics Quick Pill on Cover
-                                Surface(
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = Color.Black.copy(alpha = 0.55f),
-                                    border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(12.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .clickable { showLyricsInAlbum = true }
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.Notes,
-                                            contentDescription = "Lyrics",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Lyrics",
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-
                                 // Double-tap Seek Feedback Bubble Overlay
                                 this@Column.AnimatedVisibility(
                                     visible = seekFeedbackText != null,
@@ -374,265 +343,111 @@ fun FullPlayerSheet(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
                 // ==========================================
-                // 3. TRACK TITLE, ARTIST, & ACTION SQUIRCLES (Image 2 exact match)
+                // 3. TRACK TITLE, ARTIST, & CIRCULAR ACTION BUTTONS (vivi_player1.png)
                 // ==========================================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    if (showLyricsInAlbum) {
-                        // Image 2: Mini Album Artwork Thumbnail + Song Title & Artist
-                        Row(
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 16.dp),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = song.title,
+                            fontSize = 23.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            modifier = Modifier.basicMarquee()
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" },
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Translucent Circular 3-Dots More Button (vivi_player1.png)
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.16f),
                             modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .clickable { showMoreMenu = true }
                         ) {
-                            AsyncImage(
-                                model = getHighResThumbnail(song.thumbnail),
-                                contentDescription = song.title,
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = song.title,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Clip,
-                                    modifier = Modifier.basicMarquee()
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" },
-                                    fontSize = 13.5.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More Options",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
 
-                        // Image 2: THREE Pure White Squircles on Right: [Download], [CropFree / Cover] and [... / MoreHoriz / Resync]
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 1. Pure White Squircle Download Button
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White,
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        if (isSongDownloading) {
-                                            Toast.makeText(context, "Download in progress...", Toast.LENGTH_SHORT).show()
-                                        } else if (isSongDownloaded) {
-                                            downloadManager.removeDownload(song.id, song.title)
-                                        } else {
-                                            downloadManager.downloadSong(song)
-                                        }
-                                    }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (isSongDownloading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp,
-                                            color = Color.Black
-                                        )
-                                    } else if (isSongDownloaded) {
-                                        Icon(
-                                            imageVector = Icons.Default.DownloadDone,
-                                            contentDescription = "Downloaded (Tap to remove)",
-                                            tint = Color(0xFF00A844),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Download,
-                                            contentDescription = "Download Song",
-                                            tint = Color.Black,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            // 2. CropFree (Corner brackets) -> Return to Big Cover View
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White,
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { showLyricsInAlbum = false }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.CropFree,
-                                        contentDescription = "Show Album Cover",
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-
-                            // 3. MoreHoriz (...) -> Open Lyrics Resync & Options Bottom Sheet
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White,
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { showLyricsResyncSheet = true }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.MoreHoriz,
-                                        contentDescription = "Lyrics Sync & Options",
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        // Normal Cover View: Large Title & Artist + Download & Heart
-                        Column(
+                        // Translucent Circular Heart Like Button (vivi_player1.png)
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.16f),
                             modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 16.dp),
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Text(
-                                text = song.title,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Clip,
-                                modifier = Modifier.basicMarquee()
-                            )
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Text(
-                                text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown Artist" },
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Normal,
-                                color = Color.White.copy(alpha = 0.75f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Pure White Squircle Download Button
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White,
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        if (isSongDownloading) {
-                                            Toast.makeText(context, "Download in progress...", Toast.LENGTH_SHORT).show()
-                                        } else if (isSongDownloaded) {
-                                            downloadManager.removeDownload(song.id, song.title)
-                                        } else {
-                                            downloadManager.downloadSong(song)
-                                        }
-                                    }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (isSongDownloading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp,
-                                            color = Color.Black
-                                        )
-                                    } else if (isSongDownloaded) {
-                                        Icon(
-                                            imageVector = Icons.Default.DownloadDone,
-                                            contentDescription = "Downloaded (Tap to remove)",
-                                            tint = Color(0xFF00A844),
-                                            modifier = Modifier.size(23.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Download,
-                                            contentDescription = "Download",
-                                            tint = Color.Black,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
+                                .size(46.dp)
+                                .graphicsLayer {
+                                    scaleX = likeScale
+                                    scaleY = likeScale
                                 }
-                            }
-
-                            // Pure White Squircle Heart Like Button
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White,
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .graphicsLayer {
-                                        scaleX = likeScale
-                                        scaleY = likeScale
-                                    }
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { onLikeToggle() }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = if (isLiked) "Liked" else "Like",
-                                        tint = if (isLiked) Color(0xFFFF3B30) else Color.Black,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
+                                .clip(CircleShape)
+                                .clickable { onLikeToggle() }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = if (isLiked) "Liked" else "Like",
+                                    tint = if (isLiked) Color(0xFFFF3B30) else Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
                 // ==========================================
-                // 4. SEEKBAR & TIMESTAMPS (Echo Thick White Seekbar)
+                // 4. CAPSULE SEEKBAR & TIMESTAMPS (vivi_player1.png)
                 // ==========================================
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)
                 ) {
-                    EchoThickSeekSlider(
+                    ViViCapsuleSlider(
                         progress = if (isDraggingSeek) dragSeekProgress else currentProgress,
-                        isPlaying = isPlaying,
-                        onSeekProgress = { ratio ->
+                        onProgressChange = { ratio ->
                             isDraggingSeek = true
                             dragSeekProgress = ratio
                         },
-                        onSeekFinished = { ratio ->
+                        onProgressFinished = { ratio ->
                             isDraggingSeek = false
                             onSeek((ratio * duration).toLong())
                         },
+                        height = 8.dp,
+                        activeColor = Color.White,
+                        inactiveColor = Color.White.copy(alpha = 0.25f),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -642,185 +457,211 @@ fun FullPlayerSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 2.dp),
-                        horizontalArrangement = Arrangement.Start
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         val posMs = if (isDraggingSeek) (dragSeekProgress * duration).toLong() else currentPosition
-                        val totalSec = (posMs / 1000).coerceAtLeast(0)
-                        val mins = totalSec / 60
-                        val secs = totalSec % 60
                         Text(
-                            text = String.format("%d:%02d", mins, secs),
-                            fontSize = 13.sp,
-                            color = Color.White,
+                            text = formatTime(posMs),
+                            fontSize = 12.5.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = formatTime(duration),
+                            fontSize = 12.5.sp,
+                            color = Color.White.copy(alpha = 0.85f),
                             fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-
                 // ==========================================
-                // 5. MAIN CONTROLS: Translucent Prev, Hero White Circle Play/Pause, Translucent Next
+                // 5. MAIN PLAYBACK CONTROLS (vivi_player1.png)
                 // ==========================================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Previous Button
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .clickable(enabled = hasPrev || repeatMode > 0) { onPrev() }
+                    // Skip Previous
+                    IconButton(
+                        onClick = onPrev,
+                        enabled = hasPrev || repeatMode > 0,
+                        modifier = Modifier.size(56.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.SkipPrevious,
-                                contentDescription = "Previous",
-                                modifier = Modifier.size(32.dp),
-                                tint = if (hasPrev || repeatMode > 0) Color.White else Color.White.copy(alpha = 0.35f)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.SkipPrevious,
+                            contentDescription = "Previous",
+                            modifier = Modifier.size(42.dp),
+                            tint = if (hasPrev || repeatMode > 0) Color.White else Color.White.copy(alpha = 0.35f)
+                        )
                     }
 
-                    // Hero Play/Pause Button (Large Pure White Circle with black icon)
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White,
-                        contentColor = Color.Black,
-                        shadowElevation = 6.dp,
-                        modifier = Modifier
-                            .size(84.dp)
-                            .clip(CircleShape)
-                            .clickable { onPlayPause() }
+                    // Huge Clean White Play/Pause
+                    IconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier.size(72.dp)
                     ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
-                                modifier = Modifier.size(38.dp),
-                                tint = Color.Black
-                            )
-                        }
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            modifier = Modifier.size(56.dp),
+                            tint = Color.White
+                        )
                     }
 
-                    // Next Button
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .clickable(enabled = hasNext || repeatMode > 0 || isShuffleActive) { onNext() }
+                    // Skip Next
+                    IconButton(
+                        onClick = onNext,
+                        enabled = hasNext || repeatMode > 0 || isShuffleActive,
+                        modifier = Modifier.size(56.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.SkipNext,
-                                contentDescription = "Next",
-                                modifier = Modifier.size(32.dp),
-                                tint = if (hasNext || repeatMode > 0 || isShuffleActive) Color.White else Color.White.copy(alpha = 0.35f)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.SkipNext,
+                            contentDescription = "Next",
+                            modifier = Modifier.size(42.dp),
+                            tint = if (hasNext || repeatMode > 0 || isShuffleActive) Color.White else Color.White.copy(alpha = 0.35f)
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                // ==========================================
+                // 6. VOLUME SLIDER ROW (vivi_player1.png)
+                // ==========================================
+                val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
+                var volumeProgress by remember {
+                    val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
+                    val cur = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
+                    mutableFloatStateOf(if (max > 0) cur / max else 0.5f)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VolumeMute,
+                        contentDescription = "Volume Down",
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(18.dp)
+                    )
+
+                    ViViCapsuleSlider(
+                        progress = volumeProgress,
+                        onProgressChange = { ratio ->
+                            volumeProgress = ratio
+                            val maxVol = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                            val target = (ratio * maxVol).roundToInt()
+                            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, target, 0)
+                        },
+                        height = 5.dp,
+                        activeColor = Color.White,
+                        inactiveColor = Color.White.copy(alpha = 0.22f),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = "Volume Up",
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
 
                 // ==========================================
-                // 6. BOTTOM TOOLBAR: 5 Connected Segmented Buttons + 1 White Circle More Button
+                // 7. BOTTOM TOOLBAR (vivi_player1.png)
                 // ==========================================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val buttonHeight = 44.dp
-                    val itemShape = RoundedCornerShape(8.dp)
-
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    // Left: Queue Icon
+                    IconButton(
+                        onClick = { showQueueSheet = true },
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        // 1. Queue / Up Next
-                        SegmentedToolbarButton(
-                            icon = Icons.AutoMirrored.Filled.QueueMusic,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                             contentDescription = "Queue",
-                            shape = itemShape,
-                            isActive = showQueueSheet,
-                            onClick = { showQueueSheet = true },
-                            modifier = Modifier.weight(1f).height(buttonHeight)
-                        )
-
-                        // 2. Sleep Timer
-                        SegmentedToolbarButton(
-                            icon = Icons.Default.Bedtime,
-                            contentDescription = "Sleep Timer",
-                            shape = itemShape,
-                            isActive = isSleepTimerActive,
-                            onClick = { showSleepTimerDialog = true },
-                            modifier = Modifier.weight(1f).height(buttonHeight)
-                        )
-
-                        // 3. Lyrics (In Image 2, button 3 is LYRICS with 3 horizontal lines, ACTIVE in pure white!)
-                        SegmentedToolbarButton(
-                            icon = Icons.AutoMirrored.Filled.Notes,
-                            contentDescription = "Lyrics",
-                            shape = itemShape,
-                            isActive = showLyricsInAlbum,
-                            onClick = { showLyricsInAlbum = !showLyricsInAlbum },
-                            modifier = Modifier.weight(1f).height(buttonHeight)
-                        )
-
-                        // 4. Equalizer / Sound Tuning
-                        SegmentedToolbarButton(
-                            icon = Icons.Default.Tune,
-                            contentDescription = "Equalizer",
-                            shape = itemShape,
-                            isActive = isEqEnabled,
-                            onClick = { showEqualizerSheet = true },
-                            modifier = Modifier.weight(1f).height(buttonHeight)
-                        )
-
-                        // 5. Repeat
-                        SegmentedToolbarButton(
-                            icon = when (repeatMode) {
-                                2 -> Icons.Default.RepeatOne
-                                else -> Icons.Default.Repeat
-                            },
-                            contentDescription = "Repeat",
-                            shape = itemShape,
-                            isActive = repeatMode > 0,
-                            onClick = onRepeatToggle,
-                            modifier = Modifier.weight(1f).height(buttonHeight)
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    // 6. White Circular More Menu Button
+                    // Center: Segmented Pill (Equalizer + Sleep Timer)
                     Surface(
-                        shape = CircleShape,
-                        color = Color.White,
+                        shape = RoundedCornerShape(21.dp),
+                        color = Color.White.copy(alpha = 0.18f),
                         modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .clickable { showMoreMenu = true }
+                            .height(42.dp)
+                            .width(112.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More Options",
-                                tint = Color.Black,
-                                modifier = Modifier.size(24.dp)
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Equalizer Segment
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clickable { showEqualizerSheet = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.GraphicEq,
+                                    contentDescription = "Equalizer",
+                                    tint = if (isEqEnabled) Color(0xFF4ADE80) else Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            // Hairline vertical divider
+                            Box(
+                                modifier = Modifier
+                                    .width(0.7.dp)
+                                    .height(20.dp)
+                                    .background(Color.White.copy(alpha = 0.25f))
                             )
+
+                            // Sleep Timer Segment
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clickable { showSleepTimerDialog = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Timer,
+                                    contentDescription = "Sleep Timer",
+                                    tint = if (isSleepTimerActive) Color(0xFF4ADE80) else Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
+                    }
+
+                    // Right: Lyrics Quote Bubble
+                    IconButton(
+                        onClick = { showLyricsInAlbum = !showLyricsInAlbum },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FormatQuote,
+                            contentDescription = "Lyrics",
+                            tint = if (showLyricsInAlbum) Color.White else Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
@@ -828,9 +669,9 @@ fun FullPlayerSheet(
             // ==========================================
             // 7. MODALS & BOTTOM SHEETS
             // ==========================================
-            // Echo More Options Bottom Sheet
+            // Muzi Flow More Options Bottom Sheet
             if (showMoreMenu) {
-                EchoPlayerMenuSheet(
+                MuziPlayerMenuSheet(
                     song = song,
                     queueCount = queue.size,
                     playbackSpeed = playbackSpeed,
@@ -968,190 +809,77 @@ fun FullPlayerSheet(
 }
 
 /**
- * Connected segmented button for the bottom toolbar (Matches Echo's Queue peek bar).
+ * ViVi Music Material 3 Expressive Capsule Slider.
+ * Used for both the main track Seekbar (8dp height) and Volume bar (5dp height).
  */
 @Composable
-private fun SegmentedToolbarButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String?,
-    shape: RoundedCornerShape,
-    isActive: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val appliedModifier = if (isActive) {
-        modifier
-            .clip(shape)
-            .background(Color.White)
-            .clickable(onClick = onClick)
-    } else {
-        modifier
-            .clip(shape)
-            .border(width = 1.dp, color = Color.White.copy(alpha = 0.35f), shape = shape)
-            .clickable(onClick = onClick)
-    }
-
-    Box(
-        modifier = appliedModifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = if (isActive) Color.Black else Color.White,
-            modifier = Modifier.size(22.dp)
-        )
-    }
-}
-
-/**
- * Android 14 Squiggly Waveform Seekbar (Clean White)
- * - Smooth undulating sine wave on played progress when audio is playing.
- * - Seamlessly flattens to a clean straight line when paused or scrubbing/dragging.
- * - Elegant pure crisp white active waveform and clean white circle thumb.
- */
-@Composable
-private fun EchoThickSeekSlider(
+fun ViViCapsuleSlider(
     progress: Float,
-    isPlaying: Boolean,
-    onSeekProgress: (Float) -> Unit,
-    onSeekFinished: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    onProgressChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    onProgressFinished: ((Float) -> Unit)? = null,
+    height: androidx.compose.ui.unit.Dp = 8.dp,
+    activeColor: Color = Color.White,
+    inactiveColor: Color = Color.White.copy(alpha = 0.25f)
 ) {
-    var isDragging by remember { mutableStateOf(false) }
-    var dragRatio by remember { mutableFloatStateOf(0f) }
-
-    val currentRatio = if (isDragging) dragRatio else progress.coerceIn(0f, 1f)
-
-    // Continuous smooth horizontal wave progression
-    val infiniteTransition = rememberInfiniteTransition(label = "squigglyPhase")
-    val phaseOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1800, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wavePhase"
-    )
-
-    // Animate amplitude smoothly down to 0 when paused or dragging
-    val targetAmplitude = if (isPlaying && !isDragging) 4.5f else 0f
-    val animatedAmplitude by animateFloatAsState(
-        targetValue = targetAmplitude,
-        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-        label = "squigglyAmplitude"
-    )
-
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(32.dp)
+            .height(36.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
-                    val ratio = (offset.x / size.width).coerceIn(0f, 1f)
-                    onSeekProgress(ratio)
-                    onSeekFinished(ratio)
+                    val ratio = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
+                    onProgressChange(ratio)
+                    onProgressFinished?.invoke(ratio)
                 }
             }
             .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        isDragging = true
-                        dragRatio = (offset.x / size.width).coerceIn(0f, 1f)
-                        onSeekProgress(dragRatio)
-                    },
-                    onDrag = { change, _ ->
+                detectHorizontalDragGestures(
+                    onHorizontalDrag = { change, _ ->
                         change.consume()
-                        dragRatio = (change.position.x / size.width).coerceIn(0f, 1f)
-                        onSeekProgress(dragRatio)
+                        val ratio = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
+                        onProgressChange(ratio)
                     },
                     onDragEnd = {
-                        isDragging = false
-                        onSeekFinished(dragRatio)
+                        onProgressFinished?.invoke(progress)
                     },
                     onDragCancel = {
-                        isDragging = false
+                        onProgressFinished?.invoke(progress)
                     }
                 )
             },
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.CenterStart
     ) {
-        Canvas(
+        val totalWidth = maxWidth
+
+        // 1. Inactive background capsule
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(24.dp)
-        ) {
-            val centerY = size.height / 2f
-            val totalWidth = size.width
-            val progressX = (currentRatio * totalWidth).coerceIn(0f, totalWidth)
-            val trackHeight = 5.dp.toPx()
-            val amplitudePx = animatedAmplitude.dp.toPx()
-            val wavelengthPx = 28.dp.toPx()
+                .height(height)
+                .clip(CircleShape)
+                .background(inactiveColor)
+        )
 
-            // 1. Inactive unplayed track (clean straight translucent white)
-            if (progressX < totalWidth) {
-                drawLine(
-                    color = Color.White.copy(alpha = 0.25f),
-                    start = Offset(progressX, centerY),
-                    end = Offset(totalWidth, centerY),
-                    strokeWidth = trackHeight,
-                    cap = StrokeCap.Round
-                )
-            }
-
-            // 2. Active played track: Squiggly Wave or Flat Line
-            if (progressX > 0f) {
-                if (amplitudePx > 0.2f) {
-                    val path = Path()
-                    path.moveTo(0f, centerY)
-                    val stepPx = 3f
-                    var x = 0f
-                    while (x <= progressX) {
-                        // Dampen wave amplitude near thumb so it meets the thumb cleanly at centerY
-                        val distToThumb = progressX - x
-                        val dampFactor = (distToThumb / (wavelengthPx * 0.8f)).coerceIn(0f, 1f)
-                        val y = centerY + sin((x / wavelengthPx) * 2 * Math.PI - phaseOffset).toFloat() * amplitudePx * dampFactor
-                        path.lineTo(x, y)
-                        x += stepPx
-                    }
-                    path.lineTo(progressX, centerY)
-                    drawPath(
-                        path = path,
-                        color = Color.White,
-                        style = Stroke(
-                            width = trackHeight,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
-                    )
-                } else {
-                    drawLine(
-                        color = Color.White,
-                        start = Offset(0f, centerY),
-                        end = Offset(progressX, centerY),
-                        strokeWidth = trackHeight,
-                        cap = StrokeCap.Round
-                    )
-                }
-
-                // 3. Thumb: Pure Crisp White Circle
-                drawCircle(
-                    color = Color.White,
-                    radius = 7.dp.toPx(),
-                    center = Offset(progressX, centerY)
-                )
-            }
+        // 2. Active played progress capsule
+        if (progress > 0.002f) {
+            Box(
+                modifier = Modifier
+                    .width(totalWidth * progress.coerceIn(0f, 1f))
+                    .height(height)
+                    .clip(CircleShape)
+                    .background(activeColor)
+            )
         }
     }
 }
 
 /**
- * Echo More Menu Modal Bottom Sheet (Opened by the white circular More button).
+ * Muzi Flow More Menu Modal Bottom Sheet (Opened by the white circular More button).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EchoPlayerMenuSheet(
+private fun MuziPlayerMenuSheet(
     song: SongItem,
     queueCount: Int,
     playbackSpeed: Float,
