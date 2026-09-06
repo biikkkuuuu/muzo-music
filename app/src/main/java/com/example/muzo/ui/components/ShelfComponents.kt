@@ -242,8 +242,9 @@ fun PlaylistShelfRow(
                 }
                 LazyRow(
                     state = rowState,
+                    flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(lazyListState = rowState),
                     contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(18.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(shelf.items.take(12), key = { it.id }) { item ->
                         ShelfCard(
@@ -404,10 +405,10 @@ fun ShelfCard(
         Box(
             modifier = Modifier
                 .size(140.dp)
-                .clip(if (isArtist) CircleShape else RoundedCornerShape(10.dp))
-                .background(Color(0xFF141418))
+                .clip(if (isArtist) CircleShape else com.example.muzo.theme.MuziThemeTokens.ShapeCover)
+                .background(com.example.muzo.theme.MuziThemeTokens.SurfaceCard)
         ) {
-            if (item.imageUrls.size >= 4) {
+            if (item.imageUrls.size >= 4 && item.imageUrls.distinct().size >= 4) {
                 CollageCover(imageUrls = item.imageUrls.take(4))
             } else {
                 SingleCover(

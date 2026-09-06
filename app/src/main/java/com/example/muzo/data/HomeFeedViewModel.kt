@@ -257,24 +257,18 @@ class HomeFeedViewModel(
                                     ShelfItem(
                                         id = raw.id,
                                         title = raw.title,
-                                        subtitle = raw.artists.joinToString(", ") { it.name },
+                                subtitle = raw.artists.joinToString(", ") { it.name },
                                         imageUrls = listOf(thumb),
                                         type = ItemType.SONG
                                     )
                                 }
                                 is PlaylistItem -> {
                                     val thumb = raw.thumbnail?.let { getHighResThumbnail(it) } ?: ""
-                                    val images = if (config.title.contains("community", ignoreCase = true)) {
-                                        // 4-Image collage preview
-                                        listOf(thumb, thumb, thumb, thumb)
-                                    } else {
-                                        listOf(thumb)
-                                    }
                                     ShelfItem(
                                         id = raw.id,
                                         title = raw.title,
                                         subtitle = raw.author?.name ?: "Various Artists",
-                                        imageUrls = images,
+                                        imageUrls = listOf(thumb),
                                         type = ItemType.PLAYLIST
                                     )
                                 }

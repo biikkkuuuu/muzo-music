@@ -106,7 +106,7 @@ fun SeeAllGridScreen(
                             .clip(if (isArtist) CircleShape else RoundedCornerShape(12.dp))
                             .background(Color(0xFF1B1B1F))
                     ) {
-                        if (item.imageUrls.size >= 4) {
+                        if (item.imageUrls.size >= 4 && item.imageUrls.distinct().size >= 4) {
                             CollageCover(imageUrls = item.imageUrls.take(4))
                         } else {
                             SingleCover(imageUrl = item.imageUrls.firstOrNull() ?: "")

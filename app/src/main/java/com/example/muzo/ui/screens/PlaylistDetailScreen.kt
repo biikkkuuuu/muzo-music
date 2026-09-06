@@ -2,8 +2,11 @@ package com.example.muzo.ui.screens
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,6 +58,8 @@ import com.example.muzo.ui.components.CollageCover
 import com.example.muzo.ui.components.OnlineBlur
 import com.example.muzo.ui.components.ShelfCard
 import com.example.muzo.ui.components.SingleCover
+import com.example.muzo.theme.MuziThemeTokens
+import com.example.muzo.ui.components.MuziSongRow
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
@@ -164,8 +169,15 @@ fun PlaylistDetailScreen(
 
     val listState = rememberLazyListState()
     val showTopBarTitle by remember {
-        derivedStateOf { listState.firstVisibleItemIndex > 0 }
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 250
+        }
     }
+    val topBarBgColor by animateColorAsState(
+        targetValue = if (showTopBarTitle) Color(0xF509080D) else Color.Transparent,
+        animationSpec = tween(durationMillis = 250),
+        label = "topBarBg"
+    )
 
     var isSaved by remember { mutableStateOf(false) }
 
@@ -213,12 +225,17 @@ fun PlaylistDetailScreen(
                 if (!isArtist) {
                     TopAppBar(
                         title = {
-                            if (showTopBarTitle) {
+                            AnimatedVisibility(
+                                visible = showTopBarTitle,
+                                enter = fadeIn(tween(200)),
+                                exit = fadeOut(tween(200))
+                            ) {
                                 Text(
                                     text = playlist.title ?: "Playlist",
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.SemiBold,
+                                    fontSize = 18.sp,
                                     color = Color.White
                                 )
                             }
@@ -240,10 +257,23 @@ fun PlaylistDetailScreen(
                                     tint = Color.White
                                 )
                             }
+                            IconButton(onClick = {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_SUBJECT, playlist.title)
+                                    putExtra(Intent.EXTRA_TEXT, "${playlist.title} - Listen on Muzo\nhttps://music.youtube.com/playlist?list=${playlist.id}")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Share Playlist"))
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Share",
+                                    tint = Color.White
+                                )
+                            }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            scrolledContainerColor = Color(0xEE09080D)
+                            containerColor = topBarBgColor
                         )
                     )
                 }
@@ -339,7 +369,7 @@ fun PlaylistDetailScreen(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
-                                    color = Color(0xFF23232A)
+                                    color = MuziThemeTokens.SurfaceCardElevated
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -348,7 +378,7 @@ fun PlaylistDetailScreen(
                                         Icon(
                                             imageVector = Icons.Default.Person,
                                             contentDescription = null,
-                                            tint = Color.LightGray,
+                                            tint = MuziThemeTokens.AccentRose,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
@@ -363,7 +393,7 @@ fun PlaylistDetailScreen(
 
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
-                                    color = Color(0xFFD4BEE4)
+                                    color = MuziThemeTokens.SurfaceCardElevated
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -372,15 +402,15 @@ fun PlaylistDetailScreen(
                                         Icon(
                                             imageVector = Icons.Default.GraphicEq,
                                             contentDescription = null,
-                                            tint = Color(0xFF281335),
+                                            tint = MuziThemeTokens.AccentRose,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = artistMonthlyListeners ?: "70.9M Monthly",
-                                            color = Color(0xFF281335),
+                                            color = Color.White,
                                             fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
@@ -482,59 +512,14 @@ fun PlaylistDetailScreen(
                     }
                 }
 
-                // 4. Songs List
+                // 4. Songs List (VIVI Music Unified Song Row)
                 itemsIndexed(songs, key = { index, song -> "${song.id}_$index" }) { index, song ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = { onSongSelect(song, songs) },
-                                onLongClick = { onSongActionClick?.invoke(song, songs) }
-                            )
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = getHighResThumbnail(song.thumbnail),
-                            contentDescription = song.title,
-                            modifier = Modifier
-                                .size(50.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = song.title,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            val artistName = song.artists.joinToString(", ") { it.name }
-                            val durationSec = song.duration
-                            val durationText = if (durationSec != null && durationSec > 0) {
-                                val m = durationSec / 60
-                                val s = durationSec % 60
-                                String.format(" • %02d:%02d", m, s)
-                            } else ""
-                            Text(
-                                text = "$artistName$durationText",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Gray,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        IconButton(onClick = { onSongActionClick?.invoke(song, songs) }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More",
-                                tint = Color.LightGray
-                            )
-                        }
-                    }
+                    MuziSongRow(
+                        song = song,
+                        index = index + 1,
+                        onClick = { onSongSelect(song, songs) },
+                        onActionClick = { onSongActionClick?.invoke(song, songs) }
+                    )
                 }
 
                 // 5. "Playlists by [Artist Name]" (Screenshot 2 & 3)
@@ -651,19 +636,20 @@ fun PlaylistDetailScreen(
             }
         } else {
             // ==================== NORMAL PLAYLIST SCREEN ====================
+            val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val topContentPadding = statusBarTop + 64.dp + 16.dp
+
             LazyColumn(
                 state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = paddingValues.calculateTopPadding()),
-                contentPadding = PaddingValues(bottom = 150.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = topContentPadding, bottom = 150.dp)
             ) {
                 // 1. Hero Artwork Section
                 item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 20.dp),
+                            .padding(bottom = 20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val thumb = playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""
@@ -673,11 +659,7 @@ fun PlaylistDetailScreen(
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFF1E1E24))
                         ) {
-                            if (playlist.title?.contains("community", ignoreCase = true) == true) {
-                                CollageCover(imageUrls = listOf(thumb, thumb, thumb, thumb))
-                            } else {
-                                SingleCover(imageUrl = thumb)
-                            }
+                            SingleCover(imageUrl = thumb)
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -711,145 +693,42 @@ fun PlaylistDetailScreen(
 
                         Spacer(modifier = Modifier.height(22.dp))
 
-                        // Row 1: [Save] [Play] [Share]
+                        // Unified Action Buttons: [Play], [Shuffle], [Save], [More]
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.Center,
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Save pill
+                            // 1. Play
                             Surface(
-                                onClick = {
-                                    isSaved = !isSaved
-                                    Toast.makeText(
-                                        context,
-                                        if (isSaved) "Playlist saved to library" else "Playlist removed from library",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                },
                                 shape = RoundedCornerShape(24.dp),
-                                color = Color.White.copy(alpha = 0.12f),
-                                modifier = Modifier.height(44.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 18.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = "Save",
-                                        tint = if (isSaved) Color(0xFFFF4B6E) else Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (isSaved) "Saved" else "Save",
-                                        color = Color.White,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // Play prominent wide pill
-                            Surface(
-                                onClick = {
-                                    if (songs.isNotEmpty()) {
-                                        onSongSelect(songs[0], songs)
-                                    } else {
-                                        onPlayAll()
+                                color = Color(0xFF1E1E24),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        if (songs.isNotEmpty()) {
+                                            onSongSelect(songs[0], songs)
+                                        } else {
+                                            onPlayAll()
+                                        }
                                     }
-                                },
-                                shape = RoundedCornerShape(24.dp),
-                                color = playBtnBg,
-                                modifier = Modifier.height(44.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 28.dp),
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.PlayArrow,
                                         contentDescription = "Play",
-                                        tint = Color(0xFF1E1015),
-                                        modifier = Modifier.size(22.dp)
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "Play",
-                                        color = Color(0xFF1E1015),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // Share circle
-                            Surface(
-                                onClick = {
-                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_SUBJECT, playlist.title)
-                                        putExtra(Intent.EXTRA_TEXT, "${playlist.title} - Listen on Muzo\nhttps://music.youtube.com/playlist?list=${playlist.id}")
-                                    }
-                                    context.startActivity(Intent.createChooser(shareIntent, "Share Playlist"))
-                                },
-                                shape = CircleShape,
-                                color = Color.White.copy(alpha = 0.12f),
-                                modifier = Modifier.size(44.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = "Share",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Row 2: [⬇ Save] [🔀 Shuf...] [⋮ More]
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Download / Save
-                            Surface(
-                                onClick = {
-                                    Toast.makeText(context, "Downloading playlist songs...", Toast.LENGTH_SHORT).show()
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White.copy(alpha = 0.08f),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(42.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Download,
-                                        contentDescription = "Save",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Save",
                                         color = Color.White,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium
@@ -857,34 +736,33 @@ fun PlaylistDetailScreen(
                                 }
                             }
 
-                            // Shuffle
+                            // 2. Shuffle
                             Surface(
-                                onClick = {
-                                    if (songs.isNotEmpty()) {
-                                        val shuffled = songs.shuffled()
-                                        onSongSelect(shuffled[0], shuffled)
-                                    }
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White.copy(alpha = 0.08f),
+                                shape = RoundedCornerShape(24.dp),
+                                color = Color(0xFF1E1E24),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(42.dp)
+                                    .clickable {
+                                        if (songs.isNotEmpty()) {
+                                            val shuffled = songs.shuffled()
+                                            onSongSelect(shuffled[0], shuffled)
+                                        }
+                                    }
                             ) {
                                 Row(
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier.padding(vertical = 10.dp),
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Shuffle,
                                         contentDescription = "Shuffle",
-                                        tint = Color.White,
+                                        tint = Color.LightGray,
                                         modifier = Modifier.size(18.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Shuf...",
+                                        text = "Shuffle",
                                         color = Color.White,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium
@@ -892,29 +770,64 @@ fun PlaylistDetailScreen(
                                 }
                             }
 
-                            // More
+                            // 3. Save
                             Surface(
-                                onClick = {
-                                    onPlaylistActionClick?.invoke()
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White.copy(alpha = 0.08f),
+                                shape = RoundedCornerShape(24.dp),
+                                color = Color(0xFF1E1E24),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(42.dp)
+                                    .clickable {
+                                        isSaved = !isSaved
+                                        Toast.makeText(
+                                            context,
+                                            if (isSaved) "Playlist saved to library" else "Playlist removed from library",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                             ) {
                                 Row(
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = "Save",
+                                        tint = if (isSaved) Color(0xFFFF4B6E) else Color.LightGray,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (isSaved) "Saved" else "Save",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            // 4. More
+                            Surface(
+                                shape = RoundedCornerShape(24.dp),
+                                color = Color(0xFF1E1E24),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        onPlaylistActionClick?.invoke()
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 10.dp),
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.MoreVert,
                                         contentDescription = "More",
-                                        tint = Color.White,
+                                        tint = Color.LightGray,
                                         modifier = Modifier.size(18.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "More",
                                         color = Color.White,
@@ -927,59 +840,14 @@ fun PlaylistDetailScreen(
                     }
                 }
 
-                // 3. Tracklist Items
+                // 3. Tracklist Items (VIVI Music Unified Song Row)
                 itemsIndexed(songs, key = { index, song -> "${song.id}_$index" }) { index, song ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSongSelect(song, songs) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SingleCover(
-                            imageUrl = getHighResThumbnail(song.thumbnail),
-                            modifier = Modifier.size(48.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(14.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = song.title,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            val artistName = song.artists.joinToString(", ") { it.name }
-                            val durationSec = song.duration
-                            val durationText = if (durationSec != null && durationSec > 0) {
-                                val m = durationSec / 60
-                                val s = durationSec % 60
-                                String.format(" • %02d:%02d", m, s)
-                            } else ""
-                            Text(
-                                text = "$artistName$durationText",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Gray,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            if (onSongActionClick != null) {
-                                onSongActionClick(song, songs)
-                            }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More",
-                                tint = Color.LightGray
-                            )
-                        }
-                    }
+                    MuziSongRow(
+                        song = song,
+                        index = index + 1,
+                        onClick = { onSongSelect(song, songs) },
+                        onActionClick = { onSongActionClick?.invoke(song, songs) }
+                    )
                 }
 
                 // 4. "Related Playlist" Shelf at Bottom

@@ -198,8 +198,8 @@ fun HomeScreen(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = totalHeaderHeight + 6.dp),
-                    containerColor = Color(0xFF1E1E24),
-                    color = Color(0xFF6C5CE7)
+                    containerColor = com.example.muzo.theme.MuziThemeTokens.SurfacePill,
+                    color = com.example.muzo.theme.MuziThemeTokens.AccentRose
                 )
             },
             modifier = Modifier

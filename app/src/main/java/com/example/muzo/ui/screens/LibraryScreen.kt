@@ -47,6 +47,8 @@ import com.example.muzo.data.local.UserPlaylistSongEntity
 import com.example.muzo.data.local.toSongItem
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
+import com.example.muzo.theme.MuziThemeTokens
+import com.example.muzo.ui.components.MuziSongRow
 import com.music.innertube.models.Artist
 import com.music.innertube.models.SongItem
 
@@ -1121,107 +1123,22 @@ private fun PlaylistDetailLayout(
 }
 
 // -------------------------------------------------------------
-// PLAYLIST ITEM CARD (Matches Track Card in Screenshot 1 & 3)
+// PLAYLIST ITEM CARD (Unified with MuziSongRow)
 // -------------------------------------------------------------
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PlaylistItemCard(
     song: SongItem,
     onClick: () -> Unit,
     onOptionsClick: (() -> Unit)? = null
 ) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF16151C),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 5.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onOptionsClick
-            )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Thumbnail with Play overlay on bottom left
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(8.dp))
-            ) {
-                AsyncImage(
-                    model = song.thumbnail,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(3.dp)
-                        .size(18.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.6f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Title & Subtitle (Heart + artist name + duration)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = song.title,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(3.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Favorite,
-                        contentDescription = "Liked",
-                        tint = Color(0xFFFF3366),
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = song.artists.joinToString(", ") { it.name },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF9292A2),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // 3-dots Menu Button
-            IconButton(onClick = { onOptionsClick?.invoke() }) {
-                Icon(
-                    Icons.Default.MoreVert,
-                    contentDescription = "Song options",
-                    tint = Color(0xFF9292A2),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
+    MuziSongRow(
+        song = song,
+        onClick = onClick,
+        onLongClick = onOptionsClick,
+        onActionClick = onOptionsClick,
+        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
+        modifier = Modifier.clip(MuziThemeTokens.ShapeCard)
+    )
 }
 
 // -------------------------------------------------------------

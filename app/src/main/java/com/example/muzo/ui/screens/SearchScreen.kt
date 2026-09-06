@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -45,6 +47,8 @@ import coil.compose.AsyncImage
 import com.example.muzo.core.getHighResThumbnail
 import com.example.muzo.data.model.ItemType
 import com.example.muzo.data.model.ShelfItem
+import com.example.muzo.theme.MuziThemeTokens
+import com.example.muzo.ui.components.MuziSongRow
 import com.example.muzo.ui.components.ShimmerBrush
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
@@ -99,12 +103,12 @@ fun SearchScreen(
     var isLiveLoading by remember { mutableStateOf(false) }
     var isLiveRefreshing by remember { mutableStateOf(false) }
 
-    // Match HomeScreen color palette (Deep Dark 0xFF08080A)
-    val darkBackground = Color(0xFF08080A)
-    val cardBackground = Color(0xFF141418)
-    val coralAccent = Color(0xFFF39C8F)
-    val textMuted = Color(0xFF9E8E8F)
-    val searchBarBg = Color(0xFF18181E)
+    // Unified design tokens (Deep Dark AMOLED + Accent)
+    val darkBackground = MuziThemeTokens.AmoledCanvas
+    val cardBackground = MuziThemeTokens.SurfaceCard
+    val coralAccent = MuziThemeTokens.AccentRose
+    val textMuted = MuziThemeTokens.TextSecondary
+    val searchBarBg = MuziThemeTokens.SurfacePill
 
     // Execute active text query search (Instant fast paint + silent background enrichment)
     val performQuerySearch: (String) -> Unit = { q ->
@@ -518,53 +522,14 @@ fun SearchScreen(
                             )
                         }
                         items(topSongs, key = { "top_${it.id}" }) { song ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .combinedClickable(
-                                        onClick = { onSongSelect(song, searchResults) },
-                                        onLongClick = { onSongActionClick?.invoke(song, searchResults) }
-                                    )
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AsyncImage(
-                                    model = getHighResThumbnail(song.thumbnail),
-                                    contentDescription = song.title,
-                                    modifier = Modifier
-                                        .size(54.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(cardBackground),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = song.title,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 15.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = song.artists.joinToString(", ") { it.name },
-                                        color = textMuted,
-                                        fontSize = 13.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play",
-                                    tint = Color.LightGray,
-                                    modifier = Modifier
-                                        .padding(horizontal = 8.dp)
-                                        .size(24.dp)
-                                )
-                            }
+                            MuziSongRow(
+                                song = song,
+                                onClick = { onSongSelect(song, searchResults) },
+                                onLongClick = { onSongActionClick?.invoke(song, searchResults) },
+                                onActionClick = { onSongActionClick?.invoke(song, searchResults) },
+                                contentPadding = PaddingValues(vertical = 4.dp),
+                                modifier = Modifier.clip(MuziThemeTokens.ShapeCard)
+                            )
                         }
                     }
 
@@ -712,53 +677,14 @@ fun SearchScreen(
                             )
                         }
                         items(remainingSongs, key = { "rem_${it.id}" }) { song ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .combinedClickable(
-                                        onClick = { onSongSelect(song, searchResults) },
-                                        onLongClick = { onSongActionClick?.invoke(song, searchResults) }
-                                    )
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AsyncImage(
-                                    model = getHighResThumbnail(song.thumbnail),
-                                    contentDescription = song.title,
-                                    modifier = Modifier
-                                        .size(54.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(cardBackground),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = song.title,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 15.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = song.artists.joinToString(", ") { it.name },
-                                        color = textMuted,
-                                        fontSize = 13.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play",
-                                    tint = Color.LightGray,
-                                    modifier = Modifier
-                                        .padding(horizontal = 8.dp)
-                                        .size(24.dp)
-                                )
-                            }
+                            MuziSongRow(
+                                song = song,
+                                onClick = { onSongSelect(song, searchResults) },
+                                onLongClick = { onSongActionClick?.invoke(song, searchResults) },
+                                onActionClick = { onSongActionClick?.invoke(song, searchResults) },
+                                contentPadding = PaddingValues(vertical = 4.dp),
+                                modifier = Modifier.clip(MuziThemeTokens.ShapeCard)
+                            )
                         }
                     }
 
@@ -1330,53 +1256,14 @@ fun SearchScreen(
                                     )
                                 }
                                 items(liveSongs) { song ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .combinedClickable(
-                                                onClick = { onSongSelect(song, liveSongs) },
-                                                onLongClick = { onSongActionClick?.invoke(song, liveSongs) }
-                                            )
-                                            .padding(vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        AsyncImage(
-                                            model = getHighResThumbnail(song.thumbnail),
-                                            contentDescription = song.title,
-                                            modifier = Modifier
-                                                .size(54.dp)
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .background(cardBackground),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                        Spacer(modifier = Modifier.width(14.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = song.title,
-                                                color = Color.White,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 15.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = song.artists.joinToString(", ") { it.name },
-                                                color = textMuted,
-                                                fontSize = 13.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                        Icon(
-                                            imageVector = Icons.Default.PlayArrow,
-                                            contentDescription = "Play",
-                                            tint = Color.LightGray,
-                                            modifier = Modifier
-                                                .padding(horizontal = 8.dp)
-                                                .size(24.dp)
-                                        )
-                                    }
+                                    MuziSongRow(
+                                        song = song,
+                                        onClick = { onSongSelect(song, liveSongs) },
+                                        onLongClick = { onSongActionClick?.invoke(song, liveSongs) },
+                                        onActionClick = { onSongActionClick?.invoke(song, liveSongs) },
+                                        contentPadding = PaddingValues(vertical = 4.dp),
+                                        modifier = Modifier.clip(MuziThemeTokens.ShapeCard)
+                                    )
                                 }
                             }
 
