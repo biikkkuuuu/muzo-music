@@ -126,25 +126,25 @@ fun HomeScreen(
     }
 
     var isHeaderVisible by rememberSaveable { mutableStateOf(true) }
-    var scrollAccumulator by remember { mutableFloatStateOf(0f) }
+    val scrollAccumulator = remember { floatArrayOf(0f) }
 
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val delta = available.y
                 if (delta < 0) {
-                    if (scrollAccumulator > 0) scrollAccumulator = 0f
-                    scrollAccumulator += delta
-                    if (scrollAccumulator < -50f && isHeaderVisible) {
+                    if (scrollAccumulator[0] > 0) scrollAccumulator[0] = 0f
+                    scrollAccumulator[0] += delta
+                    if (scrollAccumulator[0] < -50f && isHeaderVisible) {
                         isHeaderVisible = false
-                        scrollAccumulator = 0f
+                        scrollAccumulator[0] = 0f
                     }
                 } else if (delta > 0) {
-                    if (scrollAccumulator < 0) scrollAccumulator = 0f
-                    scrollAccumulator += delta
-                    if (scrollAccumulator > 50f && !isHeaderVisible) {
+                    if (scrollAccumulator[0] < 0) scrollAccumulator[0] = 0f
+                    scrollAccumulator[0] += delta
+                    if (scrollAccumulator[0] > 50f && !isHeaderVisible) {
                         isHeaderVisible = true
-                        scrollAccumulator = 0f
+                        scrollAccumulator[0] = 0f
                     }
                 }
                 return Offset.Zero
@@ -157,7 +157,7 @@ fun HomeScreen(
             .collect { (index, offset) ->
                 if (index == 0 && offset < 30) {
                     isHeaderVisible = true
-                    scrollAccumulator = 0f
+                    scrollAccumulator[0] = 0f
                 }
             }
     }

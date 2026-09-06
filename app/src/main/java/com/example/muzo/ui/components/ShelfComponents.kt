@@ -242,7 +242,6 @@ fun PlaylistShelfRow(
                 }
                 LazyRow(
                     state = rowState,
-                    flingBehavior = rememberSnapFlingBehavior(lazyListState = rowState),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
@@ -405,7 +404,6 @@ fun ShelfCard(
         Box(
             modifier = Modifier
                 .size(140.dp)
-                .shadow(4.dp, if (isArtist) CircleShape else RoundedCornerShape(10.dp), spotColor = Color.Black.copy(alpha = 0.35f))
                 .clip(if (isArtist) CircleShape else RoundedCornerShape(10.dp))
                 .background(Color(0xFF141418))
         ) {
@@ -470,14 +468,6 @@ fun SingleCover(
     isCircle: Boolean = false
 ) {
     val context = LocalContext.current
-    val imageRequest = androidx.compose.runtime.remember(imageUrl) {
-        ImageRequest.Builder(context)
-            .data(imageUrl)
-            .crossfade(100)
-            .build()
-    }
-    val painter = rememberAsyncImagePainter(model = imageRequest)
-    val state = painter.state
     val shape = androidx.compose.runtime.remember(isCircle) {
         if (isCircle) CircleShape else RoundedCornerShape(10.dp)
     }
@@ -485,37 +475,30 @@ fun SingleCover(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(shape),
+            .clip(shape)
+            .background(Color(0xFF141418)),
         contentAlignment = Alignment.Center
     ) {
-        if (state is AsyncImagePainter.State.Loading || state is AsyncImagePainter.State.Empty) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF141418))
+        if (imageUrl.isNotEmpty()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .memoryCacheKey(imageUrl)
+                    .diskCacheKey(imageUrl)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
-        } else if (state is AsyncImagePainter.State.Error) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF1B1B22)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isCircle) Icons.Default.Person else Icons.Default.MusicNote,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.25f),
-                    modifier = Modifier.size(36.dp)
-                )
-            }
+        } else {
+            Icon(
+                imageVector = if (isCircle) Icons.Default.Person else Icons.Default.MusicNote,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.25f),
+                modifier = Modifier.size(36.dp)
+            )
         }
-
-        Image(
-            painter = painter,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }
 
