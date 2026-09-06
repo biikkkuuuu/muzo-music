@@ -41,6 +41,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -810,7 +811,7 @@ fun PlaylistDetailScreen(
                                     Box(
                                         modifier = Modifier
                                             .size(135.dp)
-                                            .clip(RoundedCornerShape(12.dp))
+                                            .clip(RoundedCornerShape(14.dp))
                                             .background(Color(0xFF1E1E24))
                                     ) {
                                         SingleCover(imageUrl = item.imageUrls.firstOrNull() ?: "")
@@ -900,15 +901,16 @@ fun PlaylistDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 20.dp),
+                            .padding(bottom = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val thumb = playlist.thumbnail?.let { getHighResThumbnail(it) } ?: ""
                         Box(
                             modifier = Modifier
-                                .size(210.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF1E1E24))
+                                .size(220.dp)
+                                .shadow(14.dp, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         ) {
                             SingleCover(imageUrl = thumb)
                         }
@@ -925,167 +927,164 @@ fun PlaylistDetailScreen(
                             lineHeight = 30.sp
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Duration and Song count pill
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color.White.copy(alpha = 0.08f),
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
+                        val authorName = playlist.author?.name
+                        if (!authorName.isNullOrBlank() && authorName != "Artist" && authorName != playlist.title) {
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = formattedDuration,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFFD4D4D8),
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                text = authorName,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 24.dp)
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(22.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                        // Unified Action Buttons: [Play], [Shuffle], [Save], [More]
+                        // Duration and Song count
+                        Text(
+                            text = formattedDuration,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // ViVi Dual Action Hero Buttons: [Play] & [Shuffle]
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                .padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 1. Play
-                            Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = Color(0xFF1E1E24),
+                            // 1. Play (Filled Capsule)
+                            Button(
+                                onClick = {
+                                    if (songs.isNotEmpty()) onSongSelect(songs[0], songs) else onPlayAll()
+                                },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable {
-                                        if (songs.isNotEmpty()) {
-                                            onSongSelect(songs[0], songs)
-                                        } else {
-                                            onPlayAll()
-                                        }
-                                    }
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = playBtnBg,
+                                    contentColor = Color.Black
+                                ),
+                                contentPadding = PaddingValues(horizontal = 16.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Play",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Play",
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Play",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Play",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
 
-                            // 2. Shuffle
-                            Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = Color(0xFF1E1E24),
+                            // 2. Shuffle (Tonal Capsule)
+                            FilledTonalButton(
+                                onClick = {
+                                    if (songs.isNotEmpty()) {
+                                        val shuffled = songs.shuffled()
+                                        onSongSelect(shuffled[0], shuffled)
+                                    }
+                                },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable {
-                                        if (songs.isNotEmpty()) {
-                                            val shuffled = songs.shuffled()
-                                            onSongSelect(shuffled[0], shuffled)
-                                        }
-                                    }
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                contentPadding = PaddingValues(horizontal = 16.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Shuffle,
-                                        contentDescription = "Shuffle",
-                                        tint = Color.LightGray,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Shuffle",
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                Icon(
+                                    imageVector = Icons.Default.Shuffle,
+                                    contentDescription = "Shuffle",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Shuffle",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Secondary Action Icons Row: Save, Download, Share, More
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 28.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    isSaved = !isSaved
+                                    Toast.makeText(
+                                        context,
+                                        if (isSaved) "Added to library" else "Removed from library",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
+                            ) {
+                                Icon(
+                                    imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = "Save",
+                                    tint = if (isSaved) Color(0xFFFF4B6E) else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
 
-                            // 3. Save
-                            Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = Color(0xFF1E1E24),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        isSaved = !isSaved
-                                        Toast.makeText(
-                                            context,
-                                            if (isSaved) "Playlist saved to library" else "Playlist removed from library",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = "Save",
-                                        tint = if (isSaved) Color(0xFFFF4B6E) else Color.LightGray,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = if (isSaved) "Saved" else "Save",
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                            IconButton(
+                                onClick = {
+                                    Toast.makeText(context, "Downloading playlist...", Toast.LENGTH_SHORT).show()
                                 }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = "Download",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
 
-                            // 4. More
-                            Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = Color(0xFF1E1E24),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        onPlaylistActionClick?.invoke()
+                            IconButton(
+                                onClick = {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, playlist.title)
+                                        putExtra(Intent.EXTRA_TEXT, "${playlist.title} - Listen on Muzi\nhttps://music.youtube.com/playlist?list=${playlist.id}")
                                     }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MoreVert,
-                                        contentDescription = "More",
-                                        tint = Color.LightGray,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "More",
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                    context.startActivity(Intent.createChooser(shareIntent, "Share Playlist"))
                                 }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Share",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { onPlaylistActionClick?.invoke() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
