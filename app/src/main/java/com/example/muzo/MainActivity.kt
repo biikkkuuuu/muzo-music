@@ -213,6 +213,11 @@ fun MuziMainScreen(player: ExoPlayer) {
     var artistMonthlyListeners by remember { mutableStateOf<String?>(null) }
     val playlistBackStack = remember { mutableStateListOf<ShelfItem>() }
 
+    // Instant In-Memory Caches for 0ms Reload
+    val playlistCache = remember { mutableMapOf<String, List<SongItem>>() }
+    val artistBundleCache = remember { mutableMapOf<String, ArtistBundle>() }
+    val categoryCache = remember { mutableMapOf<String, List<ShelfItem>>() }
+
     var selectedSeeAllShelf by remember { mutableStateOf<HomeShelf?>(null) }
     var isMoodAndGenresOpen by remember { mutableStateOf(false) }
     var selectedCategoryTitle by remember { mutableStateOf<String?>(null) }
@@ -237,88 +242,105 @@ fun MuziMainScreen(player: ExoPlayer) {
             playlistBackStack.add(selectedPlaylist!!)
         }
         selectedPlaylist = item
-        isPlaylistLoading = true
-        artistPlaylists = emptyList()
-        similarArtists = emptyList()
-        artistSubscribers = null
-        artistMonthlyListeners = null
 
-        scope.launch {
-            if (item.type == ItemType.ARTIST) {
+        if (item.type == ItemType.ARTIST) {
+            val cachedBundle = artistBundleCache[item.id]
+            if (cachedBundle != null && cachedBundle.songs.isNotEmpty()) {
+                playlistSongs = cachedBundle.songs
+                artistPlaylists = cachedBundle.playlists
+                similarArtists = cachedBundle.similarArtists
+                artistSubscribers = cachedBundle.subscribers
+                artistMonthlyListeners = cachedBundle.monthlyListeners
+                isPlaylistLoading = false
+                return
+            }
+
+            isPlaylistLoading = true
+            artistPlaylists = emptyList()
+            similarArtists = emptyList()
+            artistSubscribers = null
+            artistMonthlyListeners = null
+
+            scope.launch {
                 val bundle = withContext(Dispatchers.IO) {
                     try {
+                        // 1. Direct artist browse: returns top songs, albums, and similar artists in ONE call
                         val artistPageRes = YouTube.artist(item.id).getOrNull()
-                        val subsText = artistPageRes?.subscriberCountText ?: "2.7M Subscribers"
-                        val monthlyText = artistPageRes?.monthlyListenerCount ?: "70.9M Monthly"
+                        val subsText = artistPageRes?.subscriberCountText ?: "Artist"
+                        val monthlyText = artistPageRes?.monthlyListenerCount ?: ""
 
-                        val officialDeferred = async {
-                            artistPageRes?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>().orEmpty()
-                        }
-                        val hitsDeferred = async {
-                            YouTube.search("${item.title} best songs", YouTube.SearchFilter.FILTER_SONG)
-                                .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
-                        }
-                        val allHitsDeferred = async {
-                            YouTube.search("${item.title} all hit songs", YouTube.SearchFilter.FILTER_SONG)
-                                .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
-                        }
-                        val latestDeferred = async {
-                            YouTube.search("${item.title} latest songs", YouTube.SearchFilter.FILTER_SONG)
-                                .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
-                        }
-
-                        // Playlists specifically by this artist (Screenshot 2)
-                        val playlistsDeferred = async {
-                            val p1 = YouTube.search("${item.title} playlist", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
-                                .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
-                            val p2 = YouTube.search("Best of ${item.title}", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
-                                .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
-                            val p3 = YouTube.search("${item.title} songs playlist", YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST)
-                                .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
-                            (p1 + p2 + p3).distinctBy { it.id }.take(15).map { p ->
-                                ShelfItem(
-                                    id = p.id,
-                                    title = p.title,
-                                    subtitle = "Playlist",
-                                    imageUrls = listOf(p.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
+                        val fromPageSongs = artistPageRes?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>().orEmpty()
+                        val fromPageArtists = artistPageRes?.sections?.flatMap { it.items }?.filterIsInstance<com.music.innertube.models.ArtistItem>().orEmpty()
+                        val fromPagePlaylists = artistPageRes?.sections?.flatMap { it.items }?.mapNotNull { ytItem ->
+                            when (ytItem) {
+                                is PlaylistItem -> ShelfItem(
+                                    id = ytItem.id,
+                                    title = ytItem.title,
+                                    subtitle = ytItem.author?.name ?: "Playlist",
+                                    imageUrls = listOf(ytItem.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
                                     type = ItemType.PLAYLIST
                                 )
+                                is com.music.innertube.models.AlbumItem -> ShelfItem(
+                                    id = ytItem.id,
+                                    title = ytItem.title,
+                                    subtitle = ytItem.year?.toString() ?: "Album",
+                                    imageUrls = listOf(ytItem.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
+                                    type = ItemType.ALBUM
+                                )
+                                else -> null
                             }
+                        }.orEmpty()
+
+                        // 2. Parallel lightweight enrichment ONLY for missing sections (not 8 heavy searches)
+                        val extraSongsDeferred = async {
+                            if (fromPageSongs.size < 8) {
+                                YouTube.search("${item.title} songs", YouTube.SearchFilter.FILTER_SONG)
+                                    .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
+                            } else emptyList()
                         }
 
-                        // Similar Artists ("Fans might also like" - Screenshot 2 & 3)
-                        val similarDeferred = async {
-                            val fromPage = artistPageRes?.sections?.flatMap { it.items }?.filterIsInstance<ArtistItem>().orEmpty()
-                            val searched = YouTube.search("${item.title} similar artists", YouTube.SearchFilter.FILTER_ARTIST)
-                                .getOrNull()?.items?.filterIsInstance<ArtistItem>().orEmpty()
-                            (fromPage + searched)
-                                .filter { it.id != item.id && !it.title.equals(item.title, ignoreCase = true) }
-                                .distinctBy { it.id }
-                                .take(15)
-                                .map { a ->
-                                    ShelfItem(
-                                        id = a.id,
-                                        title = a.title,
-                                        subtitle = "Artist",
-                                        imageUrls = listOf(a.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
-                                        type = ItemType.ARTIST
-                                    )
-                                }
+                        val extraPlaylistsDeferred = async {
+                            if (fromPagePlaylists.size < 6) {
+                                YouTube.search("${item.title} playlist", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
+                                    .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty().map { p ->
+                                        ShelfItem(
+                                            id = p.id,
+                                            title = p.title,
+                                            subtitle = "Playlist",
+                                            imageUrls = listOf(p.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
+                                            type = ItemType.PLAYLIST
+                                        )
+                                    }
+                            } else emptyList()
                         }
 
-                        val combined = (officialDeferred.await() + hitsDeferred.await() + allHitsDeferred.await() + latestDeferred.await())
+                        val extraSimilarDeferred = async {
+                            if (fromPageArtists.isEmpty()) {
+                                YouTube.search("${item.title} similar artists", YouTube.SearchFilter.FILTER_ARTIST)
+                                    .getOrNull()?.items?.filterIsInstance<com.music.innertube.models.ArtistItem>().orEmpty()
+                            } else emptyList()
+                        }
+
+                        val allSongs = (fromPageSongs + extraSongsDeferred.await()).distinctBy { it.id }
+                        val allPlaylists = (fromPagePlaylists + extraPlaylistsDeferred.await()).distinctBy { it.id }.take(15)
+                        val allSimilar = (fromPageArtists + extraSimilarDeferred.await())
+                            .filter { it.id != item.id && !it.title.equals(item.title, ignoreCase = true) }
                             .distinctBy { it.id }
-                        val songs = if (combined.isNotEmpty()) {
-                            combined
-                        } else {
-                            YouTube.search("${item.title} songs", YouTube.SearchFilter.FILTER_SONG)
-                                .getOrNull()?.items?.filterIsInstance<SongItem>() ?: emptyList()
-                        }
+                            .take(15)
+                            .map { a ->
+                                ShelfItem(
+                                    id = a.id,
+                                    title = a.title,
+                                    subtitle = "Artist",
+                                    imageUrls = listOf(a.thumbnail?.let { getHighResThumbnail(it) } ?: ""),
+                                    type = ItemType.ARTIST
+                                )
+                            }
 
                         ArtistBundle(
-                            songs = songs,
-                            playlists = playlistsDeferred.await(),
-                            similarArtists = similarDeferred.await(),
+                            songs = allSongs,
+                            playlists = allPlaylists,
+                            similarArtists = allSimilar,
                             subscribers = subsText,
                             monthlyListeners = monthlyText
                         )
@@ -326,34 +348,51 @@ fun MuziMainScreen(player: ExoPlayer) {
                         ArtistBundle(emptyList(), emptyList(), emptyList(), null, null)
                     }
                 }
-                playlistSongs = bundle.songs
-                // Background prefetch: pre-resolve stream URLs for top songs
+
                 if (bundle.songs.isNotEmpty()) {
+                    artistBundleCache[item.id] = bundle
                     com.example.muzo.core.prefetchSongStreams(bundle.songs, limit = 5)
                 }
+                playlistSongs = bundle.songs
                 artistPlaylists = bundle.playlists
                 similarArtists = bundle.similarArtists
                 artistSubscribers = bundle.subscribers
                 artistMonthlyListeners = bundle.monthlyListeners
                 isPlaylistLoading = false
-            } else {
+            }
+        } else {
+            // PLAYLIST or ALBUM
+            val cachedSongs = playlistCache[item.id]
+            if (cachedSongs != null && cachedSongs.isNotEmpty()) {
+                playlistSongs = cachedSongs
+                isPlaylistLoading = false
+                return
+            }
+
+            isPlaylistLoading = true
+            artistPlaylists = emptyList()
+            similarArtists = emptyList()
+            artistSubscribers = null
+            artistMonthlyListeners = null
+
+            scope.launch {
                 val songs = withContext(Dispatchers.IO) {
                     try {
-                        val albumRes = YouTube.album(item.id).getOrNull()
-                        if (albumRes != null && albumRes.songs.isNotEmpty()) {
-                            albumRes.songs
-                        } else {
-                            val playlistRes = YouTube.playlist(item.id).getOrNull()
-                            if (playlistRes != null && playlistRes.songs.isNotEmpty()) {
-                                playlistRes.songs
-                            } else {
-                                val artistRes = YouTube.artist(item.id).getOrNull()
-                                val artistSongs = artistRes?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>()
-                                if (!artistSongs.isNullOrEmpty()) {
-                                    artistSongs
-                                } else {
-                                    YouTube.search("${item.title} songs", YouTube.SearchFilter.FILTER_SONG)
-                                        .getOrNull()?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                        val isAlbum = item.type == ItemType.ALBUM || item.id.startsWith("MPRE")
+                        val isPlaylist = item.type == ItemType.PLAYLIST || item.id.startsWith("PL") || item.id.startsWith("VL") || item.id.startsWith("RD")
+
+                        when {
+                            isAlbum -> {
+                                YouTube.album(item.id).getOrNull()?.songs.orEmpty()
+                            }
+                            isPlaylist -> {
+                                YouTube.playlist(item.id.removePrefix("VL")).getOrNull()?.songs.orEmpty()
+                            }
+                            else -> {
+                                val pId = item.id.removePrefix("VL")
+                                val pSongs = YouTube.playlist(pId).getOrNull()?.songs.orEmpty()
+                                if (pSongs.isNotEmpty()) pSongs else {
+                                    YouTube.album(item.id).getOrNull()?.songs.orEmpty()
                                 }
                             }
                         }
@@ -361,11 +400,12 @@ fun MuziMainScreen(player: ExoPlayer) {
                         emptyList()
                     }
                 }
-                playlistSongs = songs
-                // Background prefetch: pre-resolve stream URLs for top songs
+
                 if (songs.isNotEmpty()) {
+                    playlistCache[item.id] = songs
                     com.example.muzo.core.prefetchSongStreams(songs, limit = 5)
                 }
+                playlistSongs = songs
                 isPlaylistLoading = false
             }
         }
@@ -374,6 +414,13 @@ fun MuziMainScreen(player: ExoPlayer) {
     // Helper to open mood/genre category and fetch its rich playlists
     fun openCategory(categoryName: String) {
         selectedCategoryTitle = categoryName
+        val cached = categoryCache[categoryName]
+        if (cached != null && cached.isNotEmpty()) {
+            categoryPlaylists = cached
+            isCategoryLoading = false
+            return
+        }
+
         isCategoryLoading = true
         scope.launch {
             val playlists = withContext(Dispatchers.IO) {
@@ -383,19 +430,10 @@ fun MuziMainScreen(player: ExoPlayer) {
                             .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
                     }
                     val q2 = async {
-                        YouTube.search("$categoryName Bollywood", YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST)
+                        YouTube.search(categoryName, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
                             .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
                     }
-                    val q3 = async {
-                        YouTube.search("$categoryName songs", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
-                            .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
-                    }
-                    val q4 = async {
-                        YouTube.search(categoryName, YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST)
-                            .getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
-                    }
-
-                    val all = (q1.await() + q2.await() + q3.await() + q4.await()).distinctBy { it.id }
+                    val all = (q1.await() + q2.await()).distinctBy { it.id }
                     all.map { p ->
                         val thumb = p.thumbnail?.let { getHighResThumbnail(it) } ?: ""
                         ShelfItem(
@@ -409,6 +447,9 @@ fun MuziMainScreen(player: ExoPlayer) {
                 } catch (e: Exception) {
                     emptyList()
                 }
+            }
+            if (playlists.isNotEmpty()) {
+                categoryCache[categoryName] = playlists
             }
             categoryPlaylists = playlists
             isCategoryLoading = false

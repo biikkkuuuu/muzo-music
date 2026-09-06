@@ -219,21 +219,24 @@ fun SongActionBottomSheet(
                     scope.launch {
                         val fetchedSongs = withContext(Dispatchers.IO) {
                             try {
-                                val albumRes = YouTube.album(shelfItem.id).getOrNull()
-                                if (albumRes != null && albumRes.songs.isNotEmpty()) {
-                                    albumRes.songs
-                                } else {
-                                    val playlistRes = YouTube.playlist(shelfItem.id).getOrNull()
-                                    if (playlistRes != null && playlistRes.songs.isNotEmpty()) {
-                                        playlistRes.songs
-                                    } else {
+                                val isAlbum = shelfItem.type == ItemType.ALBUM || shelfItem.id.startsWith("MPRE")
+                                val isPlaylist = shelfItem.type == ItemType.PLAYLIST || shelfItem.id.startsWith("PL") || shelfItem.id.startsWith("VL") || shelfItem.id.startsWith("RD")
+
+                                when {
+                                    isAlbum -> {
+                                        YouTube.album(shelfItem.id).getOrNull()?.songs.orEmpty()
+                                    }
+                                    isPlaylist -> {
+                                        YouTube.playlist(shelfItem.id.removePrefix("VL")).getOrNull()?.songs.orEmpty()
+                                    }
+                                    shelfItem.type == ItemType.ARTIST -> {
                                         val artistRes = YouTube.artist(shelfItem.id).getOrNull()
-                                        val artistSongs = artistRes?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>()
-                                        if (!artistSongs.isNullOrEmpty()) {
-                                            artistSongs
-                                        } else {
-                                            YouTube.search("${shelfItem.title} songs", YouTube.SearchFilter.FILTER_SONG)
-                                                .getOrNull()?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                                        artistRes?.sections?.flatMap { it.items }?.filterIsInstance<SongItem>().orEmpty()
+                                    }
+                                    else -> {
+                                        val pSongs = YouTube.playlist(shelfItem.id.removePrefix("VL")).getOrNull()?.songs.orEmpty()
+                                        if (pSongs.isNotEmpty()) pSongs else {
+                                            YouTube.album(shelfItem.id).getOrNull()?.songs.orEmpty()
                                         }
                                     }
                                 }
