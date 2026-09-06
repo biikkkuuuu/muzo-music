@@ -7,8 +7,11 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.YouTubeClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 
 fun getHighResThumbnail(url: String?): String {
@@ -61,61 +64,127 @@ fun warmUpStreamEngine() {
     } catch (_: Exception) {}
 }
 
+/**
+ * Extract the best audio URL from a player response.
+ */
+private fun extractAudioUrl(pRes: com.music.innertube.models.response.PlayerResponse?): String? {
+    val formats = (pRes?.streamingData?.adaptiveFormats.orEmpty() + pRes?.streamingData?.formats.orEmpty())
+        .filter { it.isAudio && !it.url.isNullOrBlank() }
+    val bestAudio = formats.sortedWith(
+        compareByDescending<com.music.innertube.models.response.PlayerResponse.StreamingData.Format> { it.itag == 140 }
+            .thenByDescending { it.itag == 251 }
+            .thenByDescending { it.bitrate ?: 0 }
+    ).firstOrNull()
+    return bestAudio?.url
+}
+
 suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers.IO) {
     streamUrlCache[videoId]?.let { return@withContext it }
 
     val startTime = System.currentTimeMillis()
 
-    // Strategy 1 (Ultra-Fast ~250-300ms Direct Streams): VISIONOS, ANDROID_VR, IPADOS
-    // These clients return unthrottled, unciphered audio streams directly in format.url
-    val fastClients = listOf(
-        YouTubeClient.VISIONOS,
-        YouTubeClient.ANDROID_VR_1_43_32,
-        YouTubeClient.IPADOS,
-        YouTubeClient.ANDROID_VR_1_65_10
-    )
+    // Strategy 1: Race IPADOS and ANDROID_VR in parallel with a tight per-client timeout.
+    // Whichever client returns a valid audio URL first wins. This eliminates the sequential
+    // wait when one client is slow/failing — previously, a 10s IPADOS timeout would block
+    // ANDROID_VR from even being attempted.
+    val clientTimeout = 6000L  // 6 seconds max per client
 
-    for (client in fastClients) {
-        try {
-            val pRes = YouTube.player(
-                videoId = videoId,
-                client = client
-            ).getOrNull()
-
-            val formats = (pRes?.streamingData?.adaptiveFormats.orEmpty() + pRes?.streamingData?.formats.orEmpty())
-                .filter { it.isAudio }
-
-            for (format in formats.sortedByDescending { it.bitrate ?: 0 }) {
-                val url = format.url
-                if (!url.isNullOrBlank()) {
-                    streamUrlCache[videoId] = url
-                    Log.d("StreamEngine", "Resolved via ${client.clientName} in ${System.currentTimeMillis() - startTime}ms")
-                    return@withContext url
-                }
+    val ipadJob = async {
+        withTimeoutOrNull(clientTimeout) {
+            try {
+                val pRes = YouTube.player(videoId = videoId, client = YouTubeClient.IPADOS).getOrNull()
+                extractAudioUrl(pRes)
+            } catch (e: Exception) {
+                Log.w("StreamEngine", "IPADOS error: ${e.message}")
+                null
             }
-        } catch (e: Exception) {
-            Log.w("StreamEngine", "Fast client ${client.clientName} error: ${e.message}")
         }
     }
 
-    // Strategy 2 (Guaranteed Fallback): Full NewPipe player extraction
-    try {
-        val streamPairs = NewPipeExtractor.newPipePlayer(videoId)
-        if (streamPairs.isNotEmpty()) {
-            val audioItags = listOf(140, 251, 250, 249)
-            val audioMatch = streamPairs.firstOrNull { it.first in audioItags }
-            val direct = audioMatch?.second ?: streamPairs.first().second
-            if (direct.isNotBlank()) {
-                streamUrlCache[videoId] = direct
-                Log.d("StreamEngine", "Resolved via NewPipe fallback in ${System.currentTimeMillis() - startTime}ms")
-                return@withContext direct
+    val vrJob = async {
+        withTimeoutOrNull(clientTimeout) {
+            try {
+                val pRes = YouTube.player(videoId = videoId, client = YouTubeClient.ANDROID_VR_1_65_10).getOrNull()
+                extractAudioUrl(pRes)
+            } catch (e: Exception) {
+                Log.w("StreamEngine", "ANDROID_VR error: ${e.message}")
+                null
             }
         }
-    } catch (e: Exception) {
-        Log.e("StreamEngine", "NewPipe fallback failed: ${e.message}")
+    }
+
+    // Use select to pick whichever completes first with a valid URL
+    val fastResult = select<String?> {
+        ipadJob.onAwait { url ->
+            if (!url.isNullOrBlank()) {
+                vrJob.cancel()
+                Log.d("StreamEngine", "Resolved via iPadOS in ${System.currentTimeMillis() - startTime}ms")
+                url
+            } else {
+                // iPadOS failed, wait for VR result
+                vrJob.await()?.also { vrUrl ->
+                    if (vrUrl.isNotBlank()) {
+                        Log.d("StreamEngine", "Resolved via ANDROID_VR in ${System.currentTimeMillis() - startTime}ms")
+                    }
+                }
+            }
+        }
+        vrJob.onAwait { url ->
+            if (!url.isNullOrBlank()) {
+                ipadJob.cancel()
+                Log.d("StreamEngine", "Resolved via ANDROID_VR in ${System.currentTimeMillis() - startTime}ms")
+                url
+            } else {
+                // VR failed, wait for iPadOS result
+                ipadJob.await()?.also { ipadUrl ->
+                    if (ipadUrl.isNotBlank()) {
+                        Log.d("StreamEngine", "Resolved via iPadOS in ${System.currentTimeMillis() - startTime}ms")
+                    }
+                }
+            }
+        }
+    }
+
+    if (!fastResult.isNullOrBlank()) {
+        streamUrlCache[videoId] = fastResult
+        return@withContext fastResult
+    }
+
+    // Strategy 2 (Guaranteed Fallback): Full NewPipe player extraction with timeout
+    val newPipeResult = withTimeoutOrNull(8000L) {
+        try {
+            val streamPairs = NewPipeExtractor.newPipePlayer(videoId)
+            if (streamPairs.isNotEmpty()) {
+                val audioItags = listOf(140, 251, 250, 249)
+                val audioMatch = streamPairs.firstOrNull { it.first in audioItags }
+                val direct = audioMatch?.second ?: streamPairs.first().second
+                if (direct.isNotBlank()) direct else null
+            } else null
+        } catch (e: Exception) {
+            Log.e("StreamEngine", "NewPipe fallback failed: ${e.message}")
+            null
+        }
+    }
+
+    if (!newPipeResult.isNullOrBlank()) {
+        streamUrlCache[videoId] = newPipeResult
+        Log.d("StreamEngine", "Resolved via NewPipe fallback in ${System.currentTimeMillis() - startTime}ms")
+        return@withContext newPipeResult
     }
 
     null
+}
+
+fun prefetchSongStreams(songs: List<com.music.innertube.models.SongItem>, limit: Int = 3) {
+    CoroutineScope(Dispatchers.IO).launch {
+        songs.take(limit).forEach { song ->
+            try {
+                if (!streamUrlCache.containsKey(song.id)) {
+                    resolveStreamUrl(song.id)
+                }
+            } catch (_: Exception) {}
+        }
+    }
 }
 
 val artworkBytesCache = android.util.LruCache<String, ByteArray>(25)

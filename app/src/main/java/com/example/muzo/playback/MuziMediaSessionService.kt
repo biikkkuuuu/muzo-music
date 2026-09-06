@@ -75,9 +75,9 @@ class MuziMediaSessionService : MediaSessionService() {
                         .build()
 
                     val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
-                        .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                        .setUserAgent(com.music.innertube.models.YouTubeClient.IPADOS.userAgent)
                         .setAllowCrossProtocolRedirects(true)
-                        .setConnectTimeoutMs(15000)
+                        .setConnectTimeoutMs(10000)
                         .setReadTimeoutMs(15000)
 
                     val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context.applicationContext)
@@ -85,10 +85,10 @@ class MuziMediaSessionService : MediaSessionService() {
 
                     val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
                         .setBufferDurationsMs(
-                            /* minBufferMs = */ 10_000,
-                            /* maxBufferMs = */ 40_000,
-                            /* bufferForPlaybackMs = */ 200,
-                            /* bufferForPlaybackAfterRebufferMs = */ 500
+                            /* minBufferMs = */ 15_000,
+                            /* maxBufferMs = */ 50_000,
+                            /* bufferForPlaybackMs = */ 100,
+                            /* bufferForPlaybackAfterRebufferMs = */ 250
                         )
                         .setPrioritizeTimeOverSizeThresholds(true)
                         .build()

@@ -105,6 +105,26 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(orderedShelves) {
+        val topSongItems = orderedShelves
+            .flatMap { it.items }
+            .filter { it.type == ItemType.SONG }
+            .take(4)
+            .map { shelfItem ->
+                SongItem(
+                    id = shelfItem.id,
+                    title = shelfItem.title,
+                    artists = listOf(Artist(name = shelfItem.subtitle ?: "", id = null)),
+                    album = null,
+                    duration = null,
+                    thumbnail = shelfItem.imageUrls.firstOrNull().orEmpty()
+                )
+            }
+        if (topSongItems.isNotEmpty()) {
+            com.example.muzo.core.prefetchSongStreams(topSongItems, limit = 4)
+        }
+    }
+
     var isHeaderVisible by rememberSaveable { mutableStateOf(true) }
     var scrollAccumulator by remember { mutableFloatStateOf(0f) }
 

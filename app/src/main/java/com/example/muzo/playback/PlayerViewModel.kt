@@ -418,6 +418,8 @@ class PlayerViewModel(
                 viewModelScope.launch {
                     _statusText.value = "Retrying..."
                     val fallbackUrl = withContext(Dispatchers.IO) {
+                        val fastRetry = resolveStreamUrl(current.id)
+                        if (!fastRetry.isNullOrBlank()) return@withContext fastRetry
                         try {
                             val streamPairs = com.music.innertube.NewPipeExtractor.newPipePlayer(current.id)
                             val audioItags = listOf(140, 251, 250, 249)

@@ -101,10 +101,10 @@ class InnerTube {
                     )
                 )
                 
-                // Timeout configurations
-                connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                // Timeout configurations - kept tight for responsive playback
+                connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+                writeTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
                 
                 // Enable HTTP/2 for better performance
                 protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
@@ -148,11 +148,11 @@ class InnerTube {
             }
         }
 
-        // Request timeout configuration
+        // Request timeout configuration - kept tight for responsive playback
         install(HttpTimeout) {
-            requestTimeoutMillis = 60000
-            connectTimeoutMillis = 30000
-            socketTimeoutMillis = 60000
+            requestTimeoutMillis = 20000
+            connectTimeoutMillis = 10000
+            socketTimeoutMillis = 20000
         }
 
         defaultRequest {
@@ -193,8 +193,8 @@ class InnerTube {
      * Cancellation is respected since [delay] will throw if the coroutine is cancelled.
      */
     private suspend fun <T> withRetry(
-        maxAttempts: Int = 3,
-        initialDelay: Long = 500L,
+        maxAttempts: Int = 2,
+        initialDelay: Long = 300L,
         factor: Double = 2.0,
         block: suspend () -> T,
     ): T {

@@ -143,6 +143,10 @@ fun SearchScreen(
                         }
                     }
 
+                    if (initialSongs.isNotEmpty()) {
+                        com.example.muzo.core.prefetchSongStreams(initialSongs, limit = 3)
+                    }
+
                     // BACKGROUND PROGRESSIVE ENRICHMENT (non-blocking, appends 50+ more songs & playlists silently)
                     val extraSongsDef = async {
                         YouTube.search("$q songs", YouTube.SearchFilter.FILTER_SONG)
