@@ -176,7 +176,7 @@ fun SettingsScreen(
                                 openUrl(update.updateUrl)
                             }
                         } else {
-                            Toast.makeText(context, "Muzi Music v${BuildConfig.VERSION_NAME} is up to date! 🎉", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Muzi Music v${BuildConfig.VERSION_NAME} is up to date!", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -555,7 +555,7 @@ fun SettingsScreen(
                         showAudioQualityDialog = false
                         onOpenEqualizer()
                     }) {
-                        Text("Equalizer 🎚️", color = Color(0xFF6B9DFE))
+                        Text("Equalizer", color = Color(0xFF6B9DFE))
                     }
                 }
             },

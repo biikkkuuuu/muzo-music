@@ -202,15 +202,6 @@ fun EqualizerBottomSheet(
                         ) {
                             equalizerController.presetConfigMap.keys.forEach { presetName ->
                                 val isSelected = currentPreset == presetName
-                                val displayName = when (presetName) {
-                                    "Bass Heavy" -> "Bass Heavy 🔊"
-                                    "Vocal Boost" -> "Vocal Boost 🎙️"
-                                    "Rock" -> "Rock 🎸"
-                                    "Pop" -> "Pop 🎵"
-                                    "Electronic" -> "Electronic ⚡"
-                                    "Custom" -> "Custom 🎚️"
-                                    else -> presetName
-                                }
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
                                     color = if (isSelected) Color.White else Color(0xFF22212D),
@@ -219,7 +210,7 @@ fun EqualizerBottomSheet(
                                     }
                                 ) {
                                     Text(
-                                        text = displayName,
+                                        text = presetName,
                                         fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (isSelected) Color.Black else Color(0xFFD0D0D8),

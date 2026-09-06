@@ -142,7 +142,7 @@ class HomeFeedViewModel(
                         ),
                         FeedShelfConfig(
                             id = "shelf_rain_therapy",
-                            title = "Rain Therapy 🌧️☘️",
+                            title = "Rain Therapy",
                             subtitle = "FOR COZY DAYS AND ENDLESS CUPS OF TEA",
                             query = listOf("Monsoon Hindi acoustic songs", "Cozy rainy day Bollywood", "Rain therapy songs", "Lofi Bollywood Rain").random(),
                             filter = YouTube.SearchFilter.FILTER_SONG,

@@ -143,13 +143,13 @@ fun WelcomeDialog(
                 }
 
                 // 3. Sarcastic Note Card (Free Tier Reality Check & Telegram Bug Report)
-                WelcomeSectionCard(title = "Free Tier Reality Check ☕") {
+                WelcomeSectionCard(title = "Free Tier Reality Check") {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Bro, remember you're streaming 100% ad-free music straight from YouTube without paying a single penny. A minor bug or stream buffer is totally justifiable! 😉",
+                            text = "Bro, remember you're streaming 100% ad-free music straight from YouTube without paying a single penny. A minor bug or stream buffer is totally justifiable!",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.White.copy(alpha = 0.85f),
                             lineHeight = 20.sp

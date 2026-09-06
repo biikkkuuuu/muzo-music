@@ -231,7 +231,7 @@ class PlayerViewModel(
         val next = !_isShuffleActive.value
         _isShuffleActive.value = next
         scheduleGaplessPreload(_currentIndex.value, _playbackQueue.value)
-        android.widget.Toast.makeText(context, if (next) "Shuffle On 🔀" else "Shuffle Off", android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(context, if (next) "Shuffle On" else "Shuffle Off", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     fun toggleRepeat() {
@@ -239,8 +239,8 @@ class PlayerViewModel(
         _repeatMode.value = next
         scheduleGaplessPreload(_currentIndex.value, _playbackQueue.value)
         val msg = when (next) {
-            1 -> "Repeat All 🔁"
-            2 -> "Repeat One 🔂"
+            1 -> "Repeat All"
+            2 -> "Repeat One"
             else -> "Repeat Off"
         }
         android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
@@ -660,7 +660,7 @@ class PlayerViewModel(
                 }
             }
             playTrack(0, radioSongs)
-            android.widget.Toast.makeText(context, "Radio started 📻", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(context, "Radio started", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 

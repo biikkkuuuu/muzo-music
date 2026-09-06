@@ -114,7 +114,7 @@ fun SleepTimerDialog(
                         ) {
                             Text(
                                 text = if (pauseWhenSongEnd) {
-                                    "Stops after current track finishes 🎵"
+                                    "Stops after current track finishes"
                                 } else {
                                     "Stopping in ${formatTime(remainingTimeMs)}"
                                 },

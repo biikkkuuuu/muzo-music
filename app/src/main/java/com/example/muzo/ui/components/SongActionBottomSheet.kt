@@ -416,7 +416,7 @@ fun SongActionBottomSheet(
                         isPinned = nowPinned
                         Toast.makeText(
                             context,
-                            if (nowPinned) "Pinned to Speed dial 📌" else "Unpinned from Speed dial",
+                            if (nowPinned) "Pinned to Speed dial" else "Unpinned from Speed dial",
                             Toast.LENGTH_SHORT
                         ).show()
                         onDismiss()
@@ -633,7 +633,7 @@ fun AddToPlaylistDialog(
                                             )
                                             userPlaylistDao.updatePlaylistMetadata(pl.id)
                                             withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, "Added to ${pl.name} 🎶", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "Added to ${pl.name}", Toast.LENGTH_SHORT).show()
                                                 onSongAdded()
                                             }
                                         }
