@@ -85,10 +85,10 @@ class MuziMediaSessionService : MediaSessionService() {
 
                     val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
                         .setBufferDurationsMs(
-                            /* minBufferMs = */ 15_000,
-                            /* maxBufferMs = */ 50_000,
-                            /* bufferForPlaybackMs = */ 400,
-                            /* bufferForPlaybackAfterRebufferMs = */ 1_000
+                            /* minBufferMs = */ 10_000,
+                            /* maxBufferMs = */ 40_000,
+                            /* bufferForPlaybackMs = */ 200,
+                            /* bufferForPlaybackAfterRebufferMs = */ 500
                         )
                         .setPrioritizeTimeOverSizeThresholds(true)
                         .build()

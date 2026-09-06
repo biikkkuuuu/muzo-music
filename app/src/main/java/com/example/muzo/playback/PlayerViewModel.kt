@@ -563,11 +563,7 @@ class PlayerViewModel(
             _isPlaying.value = true
             _statusText.value = ""
             _currentPosition.value = 0L
-            if (_crossfadeSeconds.value > 0) {
-                startFadeIn(durationMs = 300L)
-            } else {
-                player.volume = 1.0f
-            }
+            player.volume = 1.0f
 
             viewModelScope.launch(Dispatchers.IO) {
                 val artworkBytes = loadArtworkBitmapBytes(song.thumbnail)
@@ -619,11 +615,7 @@ class PlayerViewModel(
             _isPlaying.value = true
             _statusText.value = ""
             _currentPosition.value = 0L
-            if (_crossfadeSeconds.value > 0) {
-                startFadeIn(durationMs = 300L)
-            } else {
-                player.volume = 1.0f
-            }
+            player.volume = 1.0f
             Log.d("PlayerVM", "player.play() executed successfully for ${song.title}")
 
             // Asynchronously fetch high-resolution artwork bytes
@@ -636,6 +628,24 @@ class PlayerViewModel(
                     withContext(Dispatchers.Main) {
                         player.setPlaylistMetadata(enrichedMetadata)
                     }
+                }
+            }
+
+            // Auto-populate radio queue if single song was selected (e.g. from Home or Search)
+            if (queue.size == 1) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = YouTube.next(WatchEndpoint(videoId = song.id)).getOrNull()
+                        val nextSongs = res?.items?.filterIsInstance<SongItem>().orEmpty().filter { it.id != song.id }
+                        if (nextSongs.isNotEmpty() && _playbackQueue.value.size == 1 && _currentSong.value?.id == song.id) {
+                            withContext(Dispatchers.Main) {
+                                val newQueue = listOf(song) + nextSongs
+                                _playbackQueue.value = newQueue
+                                prefetchSurroundingTracks(0, newQueue)
+                                scheduleGaplessPreload(0, newQueue)
+                            }
+                        }
+                    } catch (_: Exception) {}
                 }
             }
 

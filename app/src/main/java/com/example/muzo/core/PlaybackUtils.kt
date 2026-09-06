@@ -66,27 +66,36 @@ suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers
 
     val startTime = System.currentTimeMillis()
 
-    // Strategy 1 (Fast ~250ms): Direct InnerTube WEB_REMIX API with cached timestamp + JS deobfuscation
-    try {
-        val pRes = YouTube.player(
-            videoId = videoId,
-            client = YouTubeClient.WEB_REMIX,
-            signatureTimestamp = cachedSigTimestamp
-        ).getOrNull()
+    // Strategy 1 (Ultra-Fast ~250-300ms Direct Streams): VISIONOS, ANDROID_VR, IPADOS
+    // These clients return unthrottled, unciphered audio streams directly in format.url
+    val fastClients = listOf(
+        YouTubeClient.VISIONOS,
+        YouTubeClient.ANDROID_VR_1_43_32,
+        YouTubeClient.IPADOS,
+        YouTubeClient.ANDROID_VR_1_65_10
+    )
 
-        val formats = (pRes?.streamingData?.adaptiveFormats.orEmpty() + pRes?.streamingData?.formats.orEmpty())
-            .filter { it.isAudio }
+    for (client in fastClients) {
+        try {
+            val pRes = YouTube.player(
+                videoId = videoId,
+                client = client
+            ).getOrNull()
 
-        for (format in formats.sortedByDescending { it.bitrate ?: 0 }) {
-            val url = format.url ?: NewPipeExtractor.getStreamUrl(format, videoId)
-            if (!url.isNullOrBlank()) {
-                streamUrlCache[videoId] = url
-                Log.d("StreamEngine", "Resolved via WEB_REMIX in ${System.currentTimeMillis() - startTime}ms: $url")
-                return@withContext url
+            val formats = (pRes?.streamingData?.adaptiveFormats.orEmpty() + pRes?.streamingData?.formats.orEmpty())
+                .filter { it.isAudio }
+
+            for (format in formats.sortedByDescending { it.bitrate ?: 0 }) {
+                val url = format.url
+                if (!url.isNullOrBlank()) {
+                    streamUrlCache[videoId] = url
+                    Log.d("StreamEngine", "Resolved via ${client.clientName} in ${System.currentTimeMillis() - startTime}ms")
+                    return@withContext url
+                }
             }
+        } catch (e: Exception) {
+            Log.w("StreamEngine", "Fast client ${client.clientName} error: ${e.message}")
         }
-    } catch (e: Exception) {
-        Log.e("StreamEngine", "WEB_REMIX strategy failed: ${e.message}")
     }
 
     // Strategy 2 (Guaranteed Fallback): Full NewPipe player extraction
