@@ -39,5 +39,18 @@ val MetrolistThemePalettes = listOf(
 fun ColorScheme.pureBlack(apply: Boolean): ColorScheme =
     if (apply) copy(
         surface = Color.Black,
-        background = Color.Black
+        background = Color.Black,
+        surfaceContainerLow = Color(0xFF0A0A0A),
+        surfaceContainer = Color(0xFF111111),
+        surfaceContainerHigh = Color(0xFF1A1A1A),
+        surfaceContainerHighest = Color(0xFF222222),
+        primary = Color(0xFFE0E0E0),
+        onPrimary = Color.Black,
+        primaryContainer = Color(0xFF2A2A2A),
+        onPrimaryContainer = Color(0xFFE8E8E8),
+        onBackground = Color(0xFFE6E1E5),
+        onSurface = Color(0xFFE6E1E5),
+        onSurfaceVariant = Color(0xFF938F93),
+        outline = Color(0xFF3D3D3D),
+        outlineVariant = Color(0xFF2A2A2A)
     ) else this
