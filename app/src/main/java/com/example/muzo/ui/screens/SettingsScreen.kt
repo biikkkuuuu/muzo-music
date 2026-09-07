@@ -43,7 +43,6 @@ fun SettingsScreen(
         listOf(
             MetrolistSettingRow(Icons.Default.Person, null, "Account", "Manage login and integrations") {},
             MetrolistSettingRow(null, "Ai", "AI Hub", "AI-powered lyrics and translations") {},
-            MetrolistSettingRow(Icons.Default.Palette, null, "Appearance", "Themes, colors, and UI layout", onClick = onOpenThemes),
             MetrolistSettingRow(Icons.Default.PlayArrow, null, "Player and audio", "Playback, quality, and equalizer") {},
             MetrolistSettingRow(Icons.Default.Group, null, "Listen Together", "Sync playback with friends") {},
             MetrolistSettingRow(Icons.Default.Language, null, "Content", "Language, region, and providers") {},

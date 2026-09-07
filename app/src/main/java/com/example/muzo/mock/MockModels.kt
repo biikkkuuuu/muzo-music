@@ -96,7 +96,7 @@ object MockDataRepository {
 
     val allMockSongs = listOf(
         MockSong(
-            id = "song_1",
+            id = "t2aEijUo-H0",
             title = "Ajj Din Chadheya",
             artist = "Rahat Fateh Ali Khan, Pritam",
             album = "Love Aaj Kal",
@@ -105,7 +105,7 @@ object MockDataRepository {
             lyrics = sampleLyrics1
         ),
         MockSong(
-            id = "song_2",
+            id = "q76bMs-NwRk",
             title = "Heavy Thunderstorm Sounds",
             artist = "Stardust Vibes",
             album = "Rain Therapy",
@@ -114,7 +114,7 @@ object MockDataRepository {
             lyrics = sampleLyrics2
         ),
         MockSong(
-            id = "song_3",
+            id = "q6Hq7-V6XEY",
             title = "Dil Ne Yeh Kaha Hai",
             artist = "Udit Narayan, Alka Yagnik",
             album = "Dhadkan",
@@ -123,7 +123,7 @@ object MockDataRepository {
             lyrics = sampleLyrics3
         ),
         MockSong(
-            id = "song_4",
+            id = "hHuG7FIKgtc",
             title = "Apna Bana Le",
             artist = "Arijit Singh, Sachin-Jigar",
             album = "Bhediya",
@@ -132,7 +132,7 @@ object MockDataRepository {
             lyrics = sampleLyrics1
         ),
         MockSong(
-            id = "song_5",
+            id = "5Eqb_-j3FDA",
             title = "Tum Mere Na Huye",
             artist = "Sachin-Jigar",
             album = "Midnight Melodies",
@@ -141,7 +141,7 @@ object MockDataRepository {
             lyrics = sampleLyrics3
         ),
         MockSong(
-            id = "song_6",
+            id = "VAdGW7QDJiU",
             title = "Chaleya",
             artist = "Arijit Singh, Shilpa Rao",
             album = "Jawan",
@@ -150,7 +150,7 @@ object MockDataRepository {
             lyrics = sampleLyrics1
         ),
         MockSong(
-            id = "song_7",
+            id = "5qap5aO4i9A",
             title = "Lofi Study Session",
             artist = "ChillHop Cafe",
             album = "Focus Beats",
@@ -159,7 +159,7 @@ object MockDataRepository {
             lyrics = sampleLyrics2
         ),
         MockSong(
-            id = "song_8",
+            id = "MVPTGNGiI-4",
             title = "Midnight Drive",
             artist = "Synthwave Collective",
             album = "Neon Horizon",

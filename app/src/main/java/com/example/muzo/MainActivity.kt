@@ -34,6 +34,9 @@ import com.example.muzo.ui.screens.LibraryScreen
 import com.example.muzo.ui.screens.SearchScreen
 import com.example.muzo.ui.screens.SettingsScreen
 import com.example.muzo.ui.screens.ThemeScreen
+import com.example.muzo.data.local.MuziDatabase
+import com.example.muzo.playback.MuziMediaSessionService
+import com.example.muzo.playback.PlayerViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +59,14 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val playerViewModel: MockPlayerViewModel = viewModel()
+            val db = MuziDatabase.getInstance(applicationContext)
+            val player = MuziMediaSessionService.getPlayer(applicationContext)
+            val realPlayerViewModel: PlayerViewModel = viewModel(
+                factory = PlayerViewModel.Factory(applicationContext, db.historyDao(), db.likedSongDao(), player)
+            )
+            val playerViewModel: MockPlayerViewModel = viewModel(
+                factory = MockPlayerViewModel.Factory(realPlayerViewModel)
+            )
             val homeViewModel: MockHomeViewModel = viewModel()
             val searchViewModel: MockSearchViewModel = viewModel()
             val libraryViewModel: MockLibraryViewModel = viewModel()
@@ -66,8 +76,8 @@ class MainActivity : ComponentActivity() {
             val useDynamicColor by playerViewModel.useDynamicColor.collectAsState()
 
             MetrolistTheme(
-                pureBlack = pureBlack,
-                useDynamicColor = useDynamicColor,
+                pureBlack = true,
+                useDynamicColor = false,
                 themeColor = selectedPalette.color
             ) {
                 Surface(

@@ -1,7 +1,9 @@
 package com.example.muzo.mock
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.muzo.playback.PlayerViewModel
 import com.example.muzo.theme.DefaultThemeColor
 import com.example.muzo.theme.MetrolistThemePalettes
 import com.example.muzo.theme.ThemePalette
@@ -9,8 +11,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class MockPlayerViewModel : ViewModel() {
-    val engine = MockPlaybackEngine()
+class MockPlayerViewModel(val realPlayerViewModel: PlayerViewModel) : ViewModel() {
+    val engine = MockPlaybackEngine(realPlayerViewModel)
+    
+    class Factory(private val playerViewModel: PlayerViewModel) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return MockPlayerViewModel(playerViewModel) as T
+        }
+    }
 
     val currentSong: StateFlow<MockSong> = engine.currentSong
     val isPlaying: StateFlow<Boolean> = engine.isPlaying
@@ -109,12 +118,31 @@ class MockPlayerViewModel : ViewModel() {
     }
 }
 
-class MockHomeViewModel : ViewModel() {
-    private val _shelves = MutableStateFlow(MockDataRepository.mockHomeShelves)
-    val shelves: StateFlow<List<MockShelf>> = _shelves.asStateFlow()
+class MockHomeViewModel(application: android.app.Application) : androidx.lifecycle.AndroidViewModel(application) {
+    private val historyDao = com.example.muzo.data.local.MuziDatabase.getInstance(application).historyDao()
+    private val realHomeViewModel = com.example.muzo.data.HomeFeedViewModel(historyDao)
 
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+    val shelves: StateFlow<List<MockShelf>> = realHomeViewModel.homeShelves.map { realShelves ->
+        realShelves.map { rs ->
+            MockShelf(
+                id = rs.id,
+                title = rs.title,
+                songs = rs.items.map { item ->
+                    MockSong(
+                        id = item.id,
+                        title = item.title,
+                        artist = item.subtitle ?: "Unknown",
+                        album = "",
+                        durationMs = 0L,
+                        thumbnailUrl = item.imageUrls.firstOrNull() ?: "",
+                        lyrics = emptyList()
+                    )
+                }
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val isRefreshing: StateFlow<Boolean> = realHomeViewModel.isRefreshing
 
     private val _selectedFilterChip = MutableStateFlow<String?>(null)
     val selectedFilterChip: StateFlow<String?> = _selectedFilterChip.asStateFlow()
@@ -124,34 +152,56 @@ class MockHomeViewModel : ViewModel() {
     }
 
     fun refresh() {
-        viewModelScope.launch {
-            _isRefreshing.value = true
-            delay(1200L)
-            _isRefreshing.value = false
-        }
+        realHomeViewModel.refreshFeed()
     }
 }
 
-class MockSearchViewModel : ViewModel() {
+class MockSearchViewModel(application: android.app.Application) : androidx.lifecycle.AndroidViewModel(application) {
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    val searchResults: StateFlow<List<MockSong>> = _query.map { q ->
-        if (q.isBlank()) {
-            emptyList()
-        } else {
-            MockDataRepository.allMockSongs.filter {
-                it.title.contains(q, ignoreCase = true) || it.artist.contains(q, ignoreCase = true)
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    private val _searchResults = MutableStateFlow<List<MockSong>>(emptyList())
+    val searchResults: StateFlow<List<MockSong>> = _searchResults.asStateFlow()
 
-    val recentSearches = MutableStateFlow(
-        listOf("Arijit Singh", "Heavy Thunderstorm", "Pritam", "Rain Therapy", "Focus Beats")
-    )
+    private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
+    val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
+
+    private var searchJob: kotlinx.coroutines.Job? = null
+
+    init {
+        _recentSearches.value = com.example.muzo.data.local.SearchHistoryManager.getHistory(application)
+    }
 
     fun onQueryChange(newQuery: String) {
         _query.value = newQuery
+        searchJob?.cancel()
+        
+        if (newQuery.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+
+        searchJob = viewModelScope.launch {
+            delay(500) // debounce
+            com.example.muzo.data.local.SearchHistoryManager.addQuery(getApplication(), newQuery)
+            _recentSearches.value = com.example.muzo.data.local.SearchHistoryManager.getHistory(getApplication())
+            
+            val result = com.music.innertube.YouTube.search(newQuery, com.music.innertube.YouTube.SearchFilter.FILTER_SONG)
+            result.getOrNull()?.items?.let { items ->
+                val songs = items.filterIsInstance<com.music.innertube.models.SongItem>().map { song ->
+                    MockSong(
+                        id = song.id,
+                        title = song.title,
+                        artist = song.artists.joinToString { it.name },
+                        album = song.album?.name ?: "",
+                        durationMs = (song.duration ?: 0) * 1000L,
+                        thumbnailUrl = song.thumbnail,
+                        lyrics = emptyList()
+                    )
+                }
+                _searchResults.value = songs
+            }
+        }
     }
 }
 

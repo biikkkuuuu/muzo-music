@@ -1,17 +1,19 @@
 package com.example.muzo.mock
 
+import com.example.muzo.playback.PlayerViewModel
+import com.music.innertube.models.SongItem
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 
 /**
- * MockPlaybackEngine: High-precision simulated playback engine.
- * Runs on a lightweight coroutine ticker (100ms interval) to move seekbars,
- * track playback progress, update durations, and synchronously highlight lyrics
- * in real-time without needing any audio hardware or ExoPlayer backend.
+ * MockPlaybackEngine: Wraps the real PlayerViewModel but maintains the MockSong interface
+ * so the mock UI doesn't break, while actually streaming audio via InnerTube!
  */
 class MockPlaybackEngine(
+    val realPlayerViewModel: PlayerViewModel,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) {
     private val _queue = MutableStateFlow(MockDataRepository.allMockSongs)
@@ -23,52 +25,20 @@ class MockPlaybackEngine(
     private val _currentSong = MutableStateFlow(MockDataRepository.allMockSongs[0])
     val currentSong: StateFlow<MockSong> = _currentSong.asStateFlow()
 
-    private val _isPlaying = MutableStateFlow(true)
-    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
-
-    private val _currentPositionMs = MutableStateFlow(0L)
-    val currentPositionMs: StateFlow<Long> = _currentPositionMs.asStateFlow()
-
-    private val _durationMs = MutableStateFlow(_currentSong.value.durationMs)
-    val durationMs: StateFlow<Long> = _durationMs.asStateFlow()
-
-    private val _isShuffle = MutableStateFlow(false)
-    val isShuffle: StateFlow<Boolean> = _isShuffle.asStateFlow()
-
-    private val _isRepeat = MutableStateFlow(false)
-    val isRepeat: StateFlow<Boolean> = _isRepeat.asStateFlow()
+    // Expose REAL states from PlayerViewModel
+    val isPlaying: StateFlow<Boolean> = realPlayerViewModel.isPlaying
+    val currentPositionMs: StateFlow<Long> = realPlayerViewModel.currentPosition
+    val durationMs: StateFlow<Long> = realPlayerViewModel.duration
+    val isShuffle: StateFlow<Boolean> = realPlayerViewModel.isShuffleActive
+    val isRepeat: StateFlow<Boolean> = MutableStateFlow(false).asStateFlow()
 
     private val _activeLyricIndex = MutableStateFlow(0)
     val activeLyricIndex: StateFlow<Int> = _activeLyricIndex.asStateFlow()
 
-    private var tickerJob: Job? = null
-
     init {
-        startTicker()
-    }
-
-    private fun startTicker() {
-        tickerJob?.cancel()
-        tickerJob = scope.launch {
-            while (isActive) {
-                delay(100L)
-                if (_isPlaying.value) {
-                    val nextPos = _currentPositionMs.value + 100L
-                    val totalDuration = _durationMs.value
-
-                    if (nextPos >= totalDuration) {
-                        if (_isRepeat.value) {
-                            _currentPositionMs.value = 0L
-                        } else {
-                            playNext()
-                        }
-                    } else {
-                        _currentPositionMs.value = nextPos
-                    }
-
-                    // Update live synchronized lyrics index
-                    updateActiveLyric(nextPos)
-                }
+        scope.launch {
+            currentPositionMs.collectLatest { pos ->
+                updateActiveLyric(pos)
             }
         }
     }
@@ -90,21 +60,35 @@ class MockPlaybackEngine(
     }
 
     fun togglePlayPause() {
-        _isPlaying.value = !_isPlaying.value
+        realPlayerViewModel.togglePlayPause()
     }
 
     fun play() {
-        _isPlaying.value = true
+        if (!isPlaying.value) {
+            realPlayerViewModel.togglePlayPause()
+        }
     }
 
     fun pause() {
-        _isPlaying.value = false
+        if (isPlaying.value) {
+            realPlayerViewModel.togglePlayPause()
+        }
     }
 
     fun seekTo(positionMs: Long) {
-        val clamped = positionMs.coerceIn(0L, _durationMs.value)
-        _currentPositionMs.value = clamped
-        updateActiveLyric(clamped)
+        realPlayerViewModel.seekTo(positionMs)
+        updateActiveLyric(positionMs)
+    }
+
+    private fun MockSong.toSongItem(): SongItem {
+        return SongItem(
+            id = this.id,
+            title = this.title,
+            artists = listOf(com.music.innertube.models.Artist(this.artist, null)),
+            album = com.music.innertube.models.Album(this.album, ""),
+            duration = (this.durationMs / 1000).toInt(),
+            thumbnail = this.thumbnailUrl
+        )
     }
 
     fun playSong(song: MockSong, newQueue: List<MockSong>? = null) {
@@ -114,48 +98,40 @@ class MockPlaybackEngine(
         val targetIdx = _queue.value.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
         _currentIndex.value = targetIdx
         _currentSong.value = _queue.value[targetIdx]
-        _durationMs.value = _currentSong.value.durationMs
-        _currentPositionMs.value = 0L
-        _isPlaying.value = true
-        updateActiveLyric(0L)
+        
+        // Pass the entire mock queue to the real player so it can prefetch and play next!
+        val realQueue = _queue.value.map { it.toSongItem() }
+        realPlayerViewModel.playTrack(targetIdx, realQueue)
     }
 
     fun playNext() {
-        val q = _queue.value
-        if (q.isEmpty()) return
-        val nextIdx = if (_isShuffle.value) {
-            (0 until q.size).random()
-        } else {
-            (_currentIndex.value + 1) % q.size
-        }
-        _currentIndex.value = nextIdx
-        _currentSong.value = q[nextIdx]
-        _durationMs.value = _currentSong.value.durationMs
-        _currentPositionMs.value = 0L
-        updateActiveLyric(0L)
+        realPlayerViewModel.playNext()
+        syncCurrentSongFromReal()
     }
 
     fun playPrevious() {
-        val q = _queue.value
-        if (q.isEmpty()) return
-        val prevIdx = if (_currentIndex.value - 1 < 0) q.size - 1 else _currentIndex.value - 1
-        _currentIndex.value = prevIdx
-        _currentSong.value = q[prevIdx]
-        _durationMs.value = _currentSong.value.durationMs
-        _currentPositionMs.value = 0L
-        updateActiveLyric(0L)
+        realPlayerViewModel.playPrevious()
+        syncCurrentSongFromReal()
+    }
+    
+    private fun syncCurrentSongFromReal() {
+        val realSong = realPlayerViewModel.currentSong.value ?: return
+        val mockIndex = _queue.value.indexOfFirst { it.id == realSong.id }
+        if (mockIndex >= 0) {
+            _currentIndex.value = mockIndex
+            _currentSong.value = _queue.value[mockIndex]
+        }
     }
 
     fun toggleShuffle() {
-        _isShuffle.value = !_isShuffle.value
+        realPlayerViewModel.toggleShuffle()
     }
 
     fun toggleRepeat() {
-        _isRepeat.value = !_isRepeat.value
+        // Mock UI repeat toggle
     }
 
     fun release() {
-        tickerJob?.cancel()
         scope.cancel()
     }
 }
