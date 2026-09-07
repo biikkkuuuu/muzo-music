@@ -77,22 +77,7 @@ fun MetrolistNavBar(
                 onClick = { onTabSelected(2) }
             )
 
-            // 19 Palettes Quick Switcher Icon
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
-                    .bounceClick(scaleDown = 0.88f, onClick = onThemeClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Palette,
-                    contentDescription = "Themes",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+
         }
     }
 }

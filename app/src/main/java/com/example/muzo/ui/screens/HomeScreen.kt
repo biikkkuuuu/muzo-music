@@ -220,13 +220,7 @@ fun HomeScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { playerViewModel.openThemeSettings() }) {
-                        Icon(
-                            imageVector = Icons.Default.Palette,
-                            contentDescription = "Themes",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+
                     IconButton(onClick = { playerViewModel.openSettings() }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
