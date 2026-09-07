@@ -79,7 +79,7 @@ fun HomeScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 76.dp, bottom = 150.dp),
+                contentPadding = PaddingValues(top = 110.dp, bottom = 150.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 1. Filter Chips Row
@@ -197,7 +197,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Metrolist",
+                    text = "Muzi Music",
                     fontFamily = GoogleSansFlex,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
