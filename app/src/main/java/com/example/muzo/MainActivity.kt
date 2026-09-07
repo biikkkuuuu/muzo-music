@@ -102,23 +102,33 @@ class MainActivity : ComponentActivity() {
         com.example.muzo.core.initStreamEngine(this)
 
         setContent {
-            val muzoDarkTheme = darkColorScheme(
-                primary = Color(0xFFE2E4EB),
-                onPrimary = Color(0xFF121216),
-                primaryContainer = Color(0xFF262530),
-                onPrimaryContainer = Color(0xFFEAEAF0),
-                surface = Color(0xFF0F0E13),
-                surfaceContainer = Color(0xFF14131A),
-                surfaceContainerHigh = Color(0xFF1B1A22),
-                surfaceContainerHighest = Color(0xFF24232E),
-                background = Color(0xFF08080A),
-                onBackground = Color(0xFFEEEEF2),
-                onSurface = Color(0xFFEEEEF2),
-                onSurfaceVariant = Color(0xFF9EA3B0),
-                outlineVariant = Color(0x2AFFFFFF)
-            )
+            val context = LocalContext.current
+            val baseColorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                dynamicDarkColorScheme(context)
+            } else {
+                darkColorScheme(
+                    primary = Color(0xFFED5564),
+                    onPrimary = Color(0xFF441922),
+                    primaryContainer = Color(0xFF5D242E),
+                    onPrimaryContainer = Color(0xFFFFD9DD),
+                    surface = Color(0xFF161213),
+                    surfaceContainer = Color(0xFF1E1A1B),
+                    surfaceContainerHigh = Color(0xFF262123),
+                    surfaceContainerHighest = Color(0xFF312B2D),
+                    surfaceContainerLow = Color(0xFF120E0F),
+                    background = Color(0xFF0F0B0C),
+                    onBackground = Color(0xFFECE0E1),
+                    onSurface = Color(0xFFECE0E1),
+                    onSurfaceVariant = Color(0xFFD4C2C4),
+                    outline = Color(0xFF9E8C8E),
+                    outlineVariant = Color(0xFF514345)
+                )
+            }
 
-            MaterialTheme(colorScheme = muzoDarkTheme) {
+            MaterialTheme(
+                colorScheme = baseColorScheme,
+                typography = com.example.muzo.theme.AppTypography
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

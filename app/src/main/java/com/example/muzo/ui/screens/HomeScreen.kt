@@ -187,14 +187,65 @@ fun HomeScreen(
                     }
                 }
 
-                // 2. Material 3 Expressive Hero Carousel (Echo-Style Hero Banner)
-                if (featuredHeroItems.isNotEmpty()) {
-                    item(key = "hero_expressive_carousel") {
-                        com.example.muzo.ui.components.HeroExpressiveCarousel(
-                            featuredItems = featuredHeroItems,
-                            onSongSelect = onSongSelect,
-                            onPlaylistSelect = onPlaylistSelect
+                // 2. Echo Music 1:1 Mood and Genres Section (Screenshot 2)
+                item(key = "echo_mood_and_genres_grid") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onCategoryClick("Mood and Genres") }
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Mood and Genres",
+                                fontFamily = com.example.muzo.theme.GoogleSansFlex,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 22.sp
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = "Mood and Genres",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        val moodPairs = listOf(
+                            "Chill" to "Focus",
+                            "Commute" to "Gaming",
+                            "Energize" to "Party",
+                            "Feel good" to "Romance"
                         )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            moodPairs.forEach { (first, second) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    MoodTile(
+                                        title = first,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onCategoryClick(first) }
+                                    )
+                                    MoodTile(
+                                        title = second,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onCategoryClick(second) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 

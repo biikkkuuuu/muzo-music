@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -27,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.muzo.BuildConfig
+import com.example.muzo.theme.GoogleSansFlex
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,34 +39,36 @@ fun SettingsBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1D24),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         dragHandle = {
             Box(
                 modifier = Modifier
-                    .padding(vertical = 10.dp)
+                    .padding(vertical = 12.dp)
                     .width(36.dp)
                     .height(4.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.3f))
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
             )
         },
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 6.dp)
-                .padding(bottom = 20.dp)
+                .padding(bottom = 24.dp)
         ) {
-            // Header Title: Matches Screenshot 1
+            // Header Title: Echo Music (Matches Screenshot 3 1:1)
             Text(
-                text = "Muzi Music",
-                style = MaterialTheme.typography.headlineSmall,
+                text = "Echo Music",
+                fontFamily = GoogleSansFlex,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                fontSize = 20.sp
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -75,6 +76,7 @@ fun SettingsBottomSheet(
             // Section 1: Account
             Text(
                 text = "Account",
+                fontFamily = GoogleSansFlex,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp
@@ -84,13 +86,12 @@ fun SettingsBottomSheet(
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF282732)
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Column {
                     SettingsSheetItem(
                         icon = Icons.Default.Person,
-                        isCircleIcon = true,
                         title = "Anonymous",
                         subtitle = "Not Logged In",
                         onClick = {
@@ -99,13 +100,12 @@ fun SettingsBottomSheet(
                     )
 
                     HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                         thickness = 1.dp,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
                     SettingsSheetItem(
-                        icon = Icons.Default.AutoAwesome,
                         customBadge = "Ai",
                         title = "AI Hub",
                         subtitle = "AI-powered lyrics and translations",
@@ -121,6 +121,7 @@ fun SettingsBottomSheet(
             // Section 2: App
             Text(
                 text = "App",
+                fontFamily = GoogleSansFlex,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp
@@ -130,8 +131,8 @@ fun SettingsBottomSheet(
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF282732)
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Column {
                     SettingsSheetItem(
@@ -145,32 +146,16 @@ fun SettingsBottomSheet(
                     )
 
                     HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-
-                    SettingsSheetItem(
-                        icon = Icons.Default.GraphicEq,
-                        title = "Equalizer",
-                        subtitle = "Audio frequency & sound effects",
-                        onClick = {
-                            onDismiss()
-                            onOpenEqualizer?.invoke()
-                        }
-                    )
-
-                    HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                         thickness = 1.dp,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
                     SettingsSheetItem(
                         icon = Icons.Default.Info,
-                        isCircleIcon = true,
                         title = "About",
-                        subtitle = "v${BuildConfig.VERSION_NAME}",
+                        trailingText = "1.2.2",
+                        subtitle = "",
                         onClick = {
                             onDismiss()
                             onOpenAbout()
@@ -179,9 +164,9 @@ fun SettingsBottomSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(26.dp))
 
-            // Footer Links
+            // Footer Links: Privacy Policy • Terms of Service
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -189,7 +174,8 @@ fun SettingsBottomSheet(
             ) {
                 Text(
                     text = "Privacy Policy",
-                    color = Color.Gray,
+                    fontFamily = GoogleSansFlex,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     fontSize = 13.sp,
                     modifier = Modifier.clickable {
                         try {
@@ -200,13 +186,15 @@ fun SettingsBottomSheet(
 
                 Text(
                     text = "  •  ",
-                    color = Color.Gray,
+                    fontFamily = GoogleSansFlex,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     fontSize = 13.sp
                 )
 
                 Text(
                     text = "Terms of Service",
-                    color = Color.Gray,
+                    fontFamily = GoogleSansFlex,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     fontSize = 13.sp,
                     modifier = Modifier.clickable {
                         try {
@@ -221,11 +209,11 @@ fun SettingsBottomSheet(
 
 @Composable
 private fun SettingsSheetItem(
-    icon: ImageVector,
-    isCircleIcon: Boolean = false,
+    icon: ImageVector? = null,
     customBadge: String? = null,
     title: String,
-    subtitle: String,
+    subtitle: String = "",
+    trailingText: String? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -235,26 +223,27 @@ private fun SettingsSheetItem(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon container: clean neutral subtle rounded surface
+        // Squircle Icon Container matching Screenshot 3
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .clip(if (isCircleIcon) CircleShape else RoundedCornerShape(10.dp))
-                .background(Color.White.copy(alpha = 0.08f)),
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             if (customBadge != null) {
                 Text(
                     text = customBadge,
-                    color = Color.White,
+                    fontFamily = GoogleSansFlex,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
-            } else {
+            } else if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -265,15 +254,28 @@ private fun SettingsSheetItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
+                fontFamily = GoogleSansFlex,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
-                color = Color.White
+                fontSize = 15.5.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            if (subtitle.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontFamily = GoogleSansFlex,
+                    fontSize = 12.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        trailingText?.let {
             Text(
-                text = subtitle,
-                fontSize = 13.sp,
-                color = Color(0xFF9E9EA8)
+                text = it,
+                fontFamily = GoogleSansFlex,
+                fontSize = 13.5.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

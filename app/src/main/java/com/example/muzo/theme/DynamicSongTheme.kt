@@ -94,9 +94,33 @@ fun DynamicSongTheme(
         }
     }
 
-    val seed = extractedSeedColor ?: EchoDefaultThemeColor
-    val targetTokens = remember(seed, pureBlack) {
-        computeMonetTokens(seed, pureBlack)
+    val systemScheme = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        androidx.compose.material3.dynamicDarkColorScheme(context)
+    } else null
+
+    val targetTokens = remember(extractedSeedColor, pureBlack, systemScheme) {
+        if (extractedSeedColor != null) {
+            computeMonetTokens(extractedSeedColor!!, pureBlack)
+        } else if (systemScheme != null) {
+            DynamicThemeTokens(
+                primary = systemScheme.primary,
+                onPrimary = systemScheme.onPrimary,
+                primaryContainer = systemScheme.primaryContainer,
+                onPrimaryContainer = systemScheme.onPrimaryContainer,
+                surface = if (pureBlack) Color.Black else systemScheme.surface,
+                surfaceContainer = if (pureBlack) Color(0xFF0C0C0E) else systemScheme.surfaceContainer,
+                surfaceContainerHigh = if (pureBlack) Color(0xFF141418) else systemScheme.surfaceContainerHigh,
+                surfaceContainerHighest = if (pureBlack) Color(0xFF1C1C22) else systemScheme.surfaceContainerHighest,
+                surfaceContainerLow = if (pureBlack) Color(0xFF08080A) else systemScheme.surfaceContainerLow,
+                background = if (pureBlack) Color.Black else systemScheme.background,
+                outlineVariant = systemScheme.outlineVariant,
+                outline = systemScheme.outline,
+                onSurface = systemScheme.onSurface,
+                onSurfaceVariant = systemScheme.onSurfaceVariant
+            )
+        } else {
+            computeMonetTokens(EchoDefaultThemeColor, pureBlack)
+        }
     }
 
     val morphSpec = remember {
