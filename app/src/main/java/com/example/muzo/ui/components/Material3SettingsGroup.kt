@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,16 +17,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.muzo.theme.GoogleSansFlex
 
 /**
- * Data model for a single setting item in a grouped card.
+ * Data model for an Echo Music 1:1 Material 3 settings row.
  */
 data class Material3SettingsItem(
     val title: String,
     val subtitle: String? = null,
     val icon: ImageVector? = null,
-    val iconTint: Color = Color.White,
-    val iconBackground: Color? = null,
+    val customIcon: (@Composable () -> Unit)? = null,
     val isCircleIcon: Boolean = false,
     val badge: String? = null,
     val subtitleColor: Color? = null,
@@ -37,29 +35,27 @@ data class Material3SettingsItem(
 )
 
 /**
- * Material3SettingsGroup: iOS/OneUI-inspired rounded card grouping for settings.
- * First item: 24dp top, 4dp bottom.
- * Middle items: 4dp corners.
- * Last item: 4dp top, 24dp bottom.
- * Single item: 24dp on all corners.
+ * Material3SettingsGroup: Echo Music 1:1 Rounded Card Grouping
+ * Top item has 24dp top corners, bottom item has 24dp bottom corners,
+ * middle items have 4dp corners, with 2dp spacing inside a surfaceContainerHigh card.
  */
 @Composable
 fun Material3SettingsGroup(
-    title: String? = null,
     items: List<Material3SettingsItem>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    title: String? = null
 ) {
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
         title?.let {
             Text(
-                text = it.uppercase(),
-                style = MaterialTheme.typography.labelMedium,
+                text = it,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(start = 12.dp, bottom = 8.dp, top = 12.dp)
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = GoogleSansFlex,
+                modifier = Modifier.padding(start = 12.dp, bottom = 8.dp, top = 8.dp)
             )
         }
 
@@ -77,7 +73,7 @@ fun Material3SettingsGroup(
 
                 Surface(
                     shape = shape,
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(shape)
@@ -86,13 +82,24 @@ fun Material3SettingsGroup(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Icon with squircle/circle badge
-                        if (item.icon != null) {
+                        // Icon in squircle container
+                        if (item.customIcon != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                item.customIcon.invoke()
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                        } else if (item.icon != null) {
                             val bgShape = if (item.isCircleIcon) CircleShape else RoundedCornerShape(12.dp)
-                            val bgColor = item.iconBackground ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            val bgColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
 
                             Box(
                                 modifier = Modifier
@@ -104,14 +111,14 @@ fun Material3SettingsGroup(
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = item.title,
-                                    tint = item.iconTint,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(14.dp))
+                            Spacer(modifier = Modifier.width(16.dp))
                         }
 
-                        // Title and Subtitle
+                        // Title and Subtitle with GoogleSansFlex
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
@@ -121,8 +128,9 @@ fun Material3SettingsGroup(
                             ) {
                                 Text(
                                     text = item.title,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontFamily = GoogleSansFlex,
+                                    fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -131,12 +139,13 @@ fun Material3SettingsGroup(
                                 item.badge?.let { badgeText ->
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                                     ) {
                                         Text(
                                             text = badgeText,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
+                                            fontFamily = GoogleSansFlex,
                                             color = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
@@ -144,30 +153,23 @@ fun Material3SettingsGroup(
                                 }
                             }
 
-                            if (!item.subtitle.isNullOrBlank()) {
+                            item.subtitle?.let { sub ->
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = item.subtitle,
+                                    text = sub,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = item.subtitleColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    fontFamily = GoogleSansFlex,
+                                    color = item.subtitleColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Trailing element (custom content or default chevron)
-                        if (item.trailingContent != null) {
-                            item.trailingContent.invoke()
-                        } else {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
-                                modifier = Modifier.size(20.dp)
-                            )
+                        // Trailing Content
+                        item.trailingContent?.let { trailing ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            trailing()
                         }
                     }
                 }

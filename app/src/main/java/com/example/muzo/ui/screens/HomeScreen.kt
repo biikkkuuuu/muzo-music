@@ -31,8 +31,16 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -67,6 +75,7 @@ fun HomeScreen(
     onOpenRecognition: () -> Unit = {},
     onItemLongClick: ((ShelfItem, List<ShelfItem>) -> Unit)? = null
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var selectedMoodChip by remember { mutableStateOf<String?>(null) }
     val moodChips = listOf("Workout", "Commute", "Feel good", "Romance", "Party", "Chill", "Focus", "Gaming")
 
@@ -134,15 +143,19 @@ fun HomeScreen(
                 onRefresh()
             },
             indicator = {
-                PullToRefreshDefaults.Indicator(
-                    state = pullRefreshState,
-                    isRefreshing = isRefreshing,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = totalHeaderHeight + 6.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                if (pullRefreshState.distanceFraction > 0f || isRefreshing) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = totalHeaderHeight + 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        EchoLoadingIndicator(
+                            isRefreshing = isRefreshing,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             },
             modifier = Modifier.fillMaxSize()
         ) {
@@ -387,81 +400,21 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ViVi App Icon + Title
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        modifier = Modifier.size(34.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.MusicNote,
-                                contentDescription = "Logo",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                // Title: Echo Music (Matching Screenshot Image 2)
+                Text(
+                    text = "Echo Music",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = com.example.muzo.theme.GoogleSansFlex,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 24.sp
+                )
 
-                    Text(
-                        text = "Music",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 24.sp
-                    )
-                }
-
-                // Actions: Refresh (Echo Setting format), History, Equalizer/Charts, Settings
+                // Actions matching Image 2: History, Charts, Listen Together, Settings
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val refreshRotation by androidx.compose.animation.core.animateFloatAsState(
-                        targetValue = if (isRefreshing) 360f else 0f,
-                        animationSpec = if (isRefreshing) {
-                            androidx.compose.animation.core.infiniteRepeatable(
-                                animation = androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)
-                            )
-                        } else {
-                            androidx.compose.animation.core.tween(300)
-                        },
-                        label = "homeRefreshRotation"
-                    )
-
-                    // Refresh Button (Echo Setting Icon Format: Squircle with primary tint)
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                            .clickable {
-                                randomSeed = System.currentTimeMillis()
-                                onRefresh()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh Feed",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .graphicsLayer { rotationZ = refreshRotation }
-                        )
-                    }
-
-                    IconButton(onClick = onOpenRecognition) {
-                        Icon(
-                            imageVector = Icons.Default.GraphicEq,
-                            contentDescription = "Identify Music",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
                     IconButton(onClick = { onCategoryClick("History") }) {
                         Icon(
                             imageVector = Icons.Default.History,
@@ -473,6 +426,15 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.TrendingUp,
                             contentDescription = "Charts",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = {
+                        android.widget.Toast.makeText(context, "Listen Together: Sync playback with friends", android.widget.Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Group,
+                            contentDescription = "Listen Together",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -523,3 +485,77 @@ fun MoodTile(title: String, modifier: Modifier = Modifier, onClick: () -> Unit =
         }
     }
 }
+
+/**
+ * 12-lobed scalloped starburst / Expressive flower loading indicator matching Echo Music (Screenshot 2).
+ */
+@Composable
+fun EchoLoadingIndicator(
+    isRefreshing: Boolean,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+    size: Dp = 38.dp
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "EchoRefreshSpin")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "EchoRefreshRotation"
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.90f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "EchoRefreshScale"
+    )
+
+    Canvas(
+        modifier = modifier
+            .size(size)
+            .graphicsLayer {
+                rotationZ = if (isRefreshing) rotation else 0f
+                scaleX = if (isRefreshing) pulseScale else 1f
+                scaleY = if (isRefreshing) pulseScale else 1f
+            }
+    ) {
+        val center = Offset(this.size.width / 2f, this.size.height / 2f)
+        val outerRadius = this.size.minDimension / 2f
+        val innerRadius = outerRadius * 0.76f
+        val points = 12
+        val path = Path()
+
+        for (i in 0 until points) {
+            val angle = (i * 2 * Math.PI / points).toFloat()
+            val nextAngle = ((i + 1) * 2 * Math.PI / points).toFloat()
+            val midAngle = (angle + nextAngle) / 2f
+
+            val px = center.x + outerRadius * kotlin.math.cos(angle)
+            val py = center.y + outerRadius * kotlin.math.sin(angle)
+
+            val cx = center.x + innerRadius * kotlin.math.cos(midAngle)
+            val cy = center.y + innerRadius * kotlin.math.sin(midAngle)
+
+            val npx = center.x + outerRadius * kotlin.math.cos(nextAngle)
+            val npy = center.y + outerRadius * kotlin.math.sin(nextAngle)
+
+            if (i == 0) {
+                path.moveTo(px, py)
+            }
+            path.quadraticBezierTo(cx, cy, npx, npy)
+        }
+        path.close()
+
+        drawPath(
+            path = path,
+            color = color
+        )
+    }
+}
+

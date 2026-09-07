@@ -22,9 +22,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * DynamicSongTheme: Echo-Music 1:1 Dynamic Color Architecture
- * Extracts colors from current playing song artwork and adapts theme colors
- * across all surfaces, cards, borders, and controls with exact opacities.
+ * Echo Music 1:1 Default Theme Color (Warm Dusty Rose / Coral Tone)
+ */
+val EchoDefaultThemeColor = Color(0xFFED5564)
+
+/**
+ * DynamicSongTheme: Echo Music 1:1 Material You Monet Architecture
+ * Produces minimal, elegant, pastel-toned colors (TonalSpot style) that smoothly
+ * respond to the currently playing song without harsh or loud oversaturation.
  */
 @Composable
 fun DynamicSongTheme(
@@ -36,7 +41,7 @@ fun DynamicSongTheme(
     var extractedSeedColor by remember { mutableStateOf<Color?>(null) }
     var extractedGradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
 
-    val fallbackColor = Color(0xFFED5564).toArgb()
+    val fallbackColor = EchoDefaultThemeColor.toArgb()
 
     LaunchedEffect(currentSong?.id) {
         val rawThumb = currentSong?.thumbnail
@@ -89,32 +94,9 @@ fun DynamicSongTheme(
         }
     }
 
-    // Default Neutral / AMOLED Stealth Palette when no song is playing
-    val defaultPrimary = Color(0xFFED5564) // Echo Default Theme Color
-    val defaultSurfaceContainerHigh = Color(0xFF1B1A22)
-    val defaultSurfaceContainer = Color(0xFF14131A)
-    val defaultPrimaryContainer = Color(0xFF262530)
-    val defaultOutlineVariant = Color(0x2AFFFFFF)
-    val defaultOnSurfaceVariant = Color(0xFF9EA3B0)
-
-    val targetTokens = remember(extractedSeedColor) {
-        if (extractedSeedColor != null) {
-            computeDynamicTokens(extractedSeedColor!!, pureBlack)
-        } else {
-            DynamicThemeTokens(
-                primary = defaultPrimary,
-                onPrimary = Color(0xFF121216),
-                primaryContainer = defaultPrimaryContainer,
-                onPrimaryContainer = Color(0xFFEAEAF0),
-                surfaceContainer = if (pureBlack) Color(0xFF0A0A0E) else defaultSurfaceContainer,
-                surfaceContainerHigh = if (pureBlack) Color(0xFF121216) else defaultSurfaceContainerHigh,
-                surfaceContainerHighest = if (pureBlack) Color(0xFF18181E) else Color(0xFF24232E),
-                surfaceContainerLow = if (pureBlack) Color.Black else Color(0xFF0F0E13),
-                outlineVariant = defaultOutlineVariant,
-                onSurfaceVariant = defaultOnSurfaceVariant,
-                outline = defaultPrimary.copy(alpha = 0.50f)
-            )
-        }
+    val seed = extractedSeedColor ?: EchoDefaultThemeColor
+    val targetTokens = remember(seed, pureBlack) {
+        computeMonetTokens(seed, pureBlack)
     }
 
     val morphSpec = remember {
@@ -125,12 +107,15 @@ fun DynamicSongTheme(
     val animatedOnPrimary by animateColorAsState(targetTokens.onPrimary, morphSpec, label = "dynOnPrimary")
     val animatedPrimaryContainer by animateColorAsState(targetTokens.primaryContainer, morphSpec, label = "dynPrimaryContainer")
     val animatedOnPrimaryContainer by animateColorAsState(targetTokens.onPrimaryContainer, morphSpec, label = "dynOnPrimaryContainer")
+    val animatedSurface by animateColorAsState(targetTokens.surface, morphSpec, label = "dynSurface")
     val animatedSurfaceContainer by animateColorAsState(targetTokens.surfaceContainer, morphSpec, label = "dynSurfaceContainer")
     val animatedSurfaceContainerHigh by animateColorAsState(targetTokens.surfaceContainerHigh, morphSpec, label = "dynSurfaceContainerHigh")
     val animatedSurfaceContainerHighest by animateColorAsState(targetTokens.surfaceContainerHighest, morphSpec, label = "dynSurfaceContainerHighest")
     val animatedSurfaceContainerLow by animateColorAsState(targetTokens.surfaceContainerLow, morphSpec, label = "dynSurfaceContainerLow")
+    val animatedBackground by animateColorAsState(targetTokens.background, morphSpec, label = "dynBackground")
     val animatedOutlineVariant by animateColorAsState(targetTokens.outlineVariant, morphSpec, label = "dynOutlineVariant")
     val animatedOutline by animateColorAsState(targetTokens.outline, morphSpec, label = "dynOutline")
+    val animatedOnSurface by animateColorAsState(targetTokens.onSurface, morphSpec, label = "dynOnSurface")
     val animatedOnSurfaceVariant by animateColorAsState(targetTokens.onSurfaceVariant, morphSpec, label = "dynOnSurfaceVariant")
 
     val dynamicColorScheme = darkColorScheme(
@@ -138,14 +123,14 @@ fun DynamicSongTheme(
         onPrimary = animatedOnPrimary,
         primaryContainer = animatedPrimaryContainer,
         onPrimaryContainer = animatedOnPrimaryContainer,
-        surface = if (pureBlack) Color.Black else Color(0xFF0F0E13),
+        surface = animatedSurface,
         surfaceContainer = animatedSurfaceContainer,
         surfaceContainerHigh = animatedSurfaceContainerHigh,
         surfaceContainerHighest = animatedSurfaceContainerHighest,
         surfaceContainerLow = animatedSurfaceContainerLow,
-        background = if (pureBlack) Color.Black else Color(0xFF08080A),
-        onBackground = Color(0xFFEEEEF2),
-        onSurface = Color(0xFFEEEEF2),
+        background = animatedBackground,
+        onBackground = animatedOnSurface,
+        onSurface = animatedOnSurface,
         onSurfaceVariant = animatedOnSurfaceVariant,
         outline = animatedOutline,
         outlineVariant = animatedOutlineVariant
@@ -166,86 +151,86 @@ private data class DynamicThemeTokens(
     val onPrimary: Color,
     val primaryContainer: Color,
     val onPrimaryContainer: Color,
+    val surface: Color,
     val surfaceContainer: Color,
     val surfaceContainerHigh: Color,
     val surfaceContainerHighest: Color,
     val surfaceContainerLow: Color,
+    val background: Color,
     val outlineVariant: Color,
     val outline: Color,
+    val onSurface: Color,
     val onSurfaceVariant: Color
 )
 
-private fun computeDynamicTokens(seed: Color, pureBlack: Boolean): DynamicThemeTokens {
+/**
+ * Generates soft, pastel Monet tones (TonalSpot style) matching Android OS & Echo Music.
+ * High saturation is clamped to an organic 0.24f-0.30f, avoiding screaming neon highlights.
+ */
+private fun computeMonetTokens(seed: Color, pureBlack: Boolean): DynamicThemeTokens {
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(seed.toArgb(), hsv)
     val hue = hsv[0]
 
-    // 1. Primary: Luminous vibrant accent tone (Echo signature accent for titles, active pills, icons)
-    val primaryHsv = floatArrayOf(
-        hue,
-        (hsv[1] * 1.3f).coerceIn(0.40f, 0.85f),
-        (hsv[2] * 0.95f).coerceIn(0.75f, 0.95f)
-    )
+    // 1. Primary: Soft, luminous pastel tone (Tonal level 80)
+    // Minimal saturation (0.24f - 0.32f), high brightness (0.88f - 0.94f)
+    val pastelSaturation = (hsv[1] * 0.45f).coerceIn(0.24f, 0.32f)
+    val primaryHsv = floatArrayOf(hue, pastelSaturation, 0.92f)
     val primary = Color(android.graphics.Color.HSVToColor(primaryHsv))
 
-    // 2. OnPrimary: High-contrast text on primary
-    val onPrimary = if (primaryHsv[2] > 0.70f && primaryHsv[1] < 0.65f) Color(0xFF0D0E12) else Color.White
+    // 2. OnPrimary: Deep contrast tone for play button & primary pills
+    val onPrimary = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0.60f, 0.14f)))
 
-    // 3. PrimaryContainer (Active Tab Capsule Pill & Badges):
-    // 28% opacity matching Echo container tokens
+    // 3. PrimaryContainer: Soft translucent capsule for active tabs & badges
     val primaryContainer = primary.copy(alpha = 0.28f)
     val onPrimaryContainer = Color.White
 
-    // 4. SurfaceContainerHigh (Cards, Settings Groups, BottomDock):
-    // 35% opacity on surface variant or subtle hue tint
-    val surfaceHighHsv = floatArrayOf(
-        hue,
-        (hsv[1] * 0.40f).coerceIn(0.20f, 0.40f),
-        if (pureBlack) 0.10f else 0.18f
-    )
-    val surfaceContainerHigh = Color(android.graphics.Color.HSVToColor(surfaceHighHsv))
+    // 4. Surfaces: Deep AMOLED with subtle warm tonal hue (Tonal levels 6 to 18)
+    val surfaceHueSat = (hsv[1] * 0.20f).coerceIn(0.10f, 0.18f)
 
-    // 5. SurfaceContainer (Nested background layers)
-    val surfaceHsv = floatArrayOf(
-        hue,
-        (hsv[1] * 0.30f).coerceIn(0.15f, 0.32f),
-        if (pureBlack) 0.06f else 0.14f
-    )
-    val surfaceContainer = Color(android.graphics.Color.HSVToColor(surfaceHsv))
+    val bgHsv = floatArrayOf(hue, surfaceHueSat, if (pureBlack) 0.0f else 0.06f)
+    val background = if (pureBlack) Color.Black else Color(android.graphics.Color.HSVToColor(bgHsv))
 
-    // 6. SurfaceContainerHighest
-    val surfaceHighestHsv = floatArrayOf(
-        hue,
-        (hsv[1] * 0.40f).coerceIn(0.22f, 0.42f),
-        if (pureBlack) 0.12f else 0.22f
-    )
-    val surfaceContainerHighest = Color(android.graphics.Color.HSVToColor(surfaceHighestHsv))
+    val surfHsv = floatArrayOf(hue, surfaceHueSat, if (pureBlack) 0.0f else 0.09f)
+    val surface = if (pureBlack) Color.Black else Color(android.graphics.Color.HSVToColor(surfHsv))
 
-    val surfaceContainerLow = if (pureBlack) Color.Black else Color(0xFF0F0E13)
+    val surfLowHsv = floatArrayOf(hue, surfaceHueSat, if (pureBlack) 0.02f else 0.11f)
+    val surfaceContainerLow = Color(android.graphics.Color.HSVToColor(surfLowHsv))
 
-    // 7. Outline & OutlineVariant: 32% halo border matching Echo
-    val outlineVariant = primary.copy(alpha = 0.32f)
-    val outline = primary.copy(alpha = 0.50f)
+    val surfContHsv = floatArrayOf(hue, surfaceHueSat, if (pureBlack) 0.06f else 0.14f)
+    val surfaceContainer = Color(android.graphics.Color.HSVToColor(surfContHsv))
 
-    // 8. OnSurfaceVariant: Soft tinted tone for subtitles and icons
-    val onSurfaceVariantHsv = floatArrayOf(
-        hue,
-        0.28f,
-        0.82f
-    )
-    val onSurfaceVariant = Color(android.graphics.Color.HSVToColor(onSurfaceVariantHsv))
+    val surfHighHsv = floatArrayOf(hue, surfaceHueSat, if (pureBlack) 0.10f else 0.18f)
+    val surfaceContainerHigh = Color(android.graphics.Color.HSVToColor(surfHighHsv))
+
+    val surfHighestHsv = floatArrayOf(hue, surfaceHueSat, if (pureBlack) 0.14f else 0.22f)
+    val surfaceContainerHighest = Color(android.graphics.Color.HSVToColor(surfHighestHsv))
+
+    // 5. Outlines: Subtle border lines (Tonal Level 30)
+    val outlineVariant = primary.copy(alpha = 0.18f)
+    val outline = primary.copy(alpha = 0.35f)
+
+    // 6. OnSurface & OnSurfaceVariant: Crisp readable off-white and soft warm gray
+    val onSurfaceHsv = floatArrayOf(hue, 0.08f, 0.95f)
+    val onSurface = Color(android.graphics.Color.HSVToColor(onSurfaceHsv))
+
+    val onSurfaceVarHsv = floatArrayOf(hue, 0.14f, 0.65f)
+    val onSurfaceVariant = Color(android.graphics.Color.HSVToColor(onSurfaceVarHsv))
 
     return DynamicThemeTokens(
         primary = primary,
         onPrimary = onPrimary,
         primaryContainer = primaryContainer,
         onPrimaryContainer = onPrimaryContainer,
+        surface = surface,
         surfaceContainer = surfaceContainer,
         surfaceContainerHigh = surfaceContainerHigh,
         surfaceContainerHighest = surfaceContainerHighest,
         surfaceContainerLow = surfaceContainerLow,
+        background = background,
         outlineVariant = outlineVariant,
         outline = outline,
+        onSurface = onSurface,
         onSurfaceVariant = onSurfaceVariant
     )
 }

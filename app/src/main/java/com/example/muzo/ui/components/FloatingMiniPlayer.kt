@@ -159,15 +159,27 @@ fun FloatingMiniPlayer(
                     ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Rounded album artwork
-                AsyncImage(
-                    model = getHighResThumbnail(song.thumbnail),
-                    contentDescription = song.title,
-                    modifier = Modifier
-                        .size(artSize)
-                        .clip(RoundedCornerShape(artCornerRadius)),
-                    contentScale = ContentScale.Crop
-                )
+                // Circular artwork with progress ring matching Echo Screenshot Image 2
+                Box(
+                    modifier = Modifier.size(artSize),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                        strokeWidth = 2.5.dp
+                    )
+                    AsyncImage(
+                        model = getHighResThumbnail(song.thumbnail),
+                        contentDescription = song.title,
+                        modifier = Modifier
+                            .size(artSize - 6.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(if (isInline) 8.dp else 12.dp))
 
@@ -176,6 +188,7 @@ fun FloatingMiniPlayer(
                     Text(
                         text = song.title,
                         style = MaterialTheme.typography.bodySmall,
+                        fontFamily = com.example.muzo.theme.GoogleSansFlex,
                         fontWeight = FontWeight.SemiBold,
                         color = contentColor,
                         maxLines = 1,
@@ -187,6 +200,7 @@ fun FloatingMiniPlayer(
                         Text(
                             text = song.title,
                             style = MaterialTheme.typography.titleMedium,
+                            fontFamily = com.example.muzo.theme.GoogleSansFlex,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = contentColor,
@@ -198,6 +212,7 @@ fun FloatingMiniPlayer(
                         Text(
                             text = song.artists.joinToString(", ") { it.name },
                             style = MaterialTheme.typography.bodySmall,
+                            fontFamily = com.example.muzo.theme.GoogleSansFlex,
                             fontSize = 12.5.sp,
                             color = contentColor.copy(alpha = 0.72f),
                             maxLines = 1,
@@ -223,16 +238,21 @@ fun FloatingMiniPlayer(
                     }
                 }
 
-                IconButton(
+                // Solid primary circular play button matching Echo Screenshot Image 2
+                Surface(
                     onClick = onPlayPause,
-                    modifier = Modifier.size(controlSize)
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(if (isInline) 34.dp else 40.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
-                        tint = contentColor,
-                        modifier = Modifier.size(if (isInline) 22.dp else 26.dp)
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = "Play/Pause",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(if (isInline) 20.dp else 24.dp)
+                        )
+                    }
                 }
 
                 if (!isInline && hasNext) {
@@ -248,18 +268,6 @@ fun FloatingMiniPlayer(
                         )
                     }
                 }
-            }
-
-            // Slim progress indicator bar at the bottom for expanded view
-            if (!isInline) {
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = Color.Transparent
-                )
             }
         }
     }
