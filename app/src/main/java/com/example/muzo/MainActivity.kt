@@ -187,6 +187,13 @@ fun MuziMainScreen(player: ExoPlayer) {
     var isAboutDialogOpen by remember { mutableStateOf(false) }
     var isPlayerExpanded by remember { mutableStateOf(false) }
     var isEqualizerOpen by remember { mutableStateOf(false) }
+    var isRecognitionOpen by remember { mutableStateOf(false) }
+    var isRecognitionHistoryOpen by remember { mutableStateOf(false) }
+    var isGlassSettingsOpen by remember { mutableStateOf(false) }
+    var isAmbientModeOpen by remember { mutableStateOf(false) }
+    var isStatsOpen by remember { mutableStateOf(false) }
+    var isSpotifyImportOpen by remember { mutableStateOf(false) }
+    var glassConfig by remember { mutableStateOf(com.example.muzo.ui.screens.loadGlassConfig(context)) }
     var actionMenuTarget by remember { mutableStateOf<ActionMenuTarget?>(null) }
 
     val prefs = remember { context.getSharedPreferences("muzi_app_prefs", Context.MODE_PRIVATE) }
@@ -206,6 +213,14 @@ fun MuziMainScreen(player: ExoPlayer) {
     BackHandler(enabled = librarySubScreen != null && selectedTab == 2) {
         libraryViewModel.setSubScreen(null)
     }
+    BackHandler(enabled = isAmbientModeOpen) { isAmbientModeOpen = false }
+    BackHandler(enabled = isGlassSettingsOpen) { isGlassSettingsOpen = false }
+    BackHandler(enabled = isEqualizerOpen) { isEqualizerOpen = false }
+    BackHandler(enabled = isRecognitionHistoryOpen) { isRecognitionHistoryOpen = false }
+    BackHandler(enabled = isRecognitionOpen) { isRecognitionOpen = false }
+    BackHandler(enabled = isStatsOpen) { isStatsOpen = false }
+    BackHandler(enabled = isSpotifyImportOpen) { isSpotifyImportOpen = false }
+    BackHandler(enabled = isSettingsOpen) { isSettingsOpen = false }
 
     // Navigation Sub-Screens
     var selectedPlaylist by remember { mutableStateOf<ShelfItem?>(null) }
@@ -499,6 +514,9 @@ fun MuziMainScreen(player: ExoPlayer) {
         isMoodAndGenresOpen -> {
             BackHandler { isMoodAndGenresOpen = false }
         }
+        isRecognitionOpen -> {
+            BackHandler { isRecognitionOpen = false }
+        }
         isEqualizerOpen -> {
             BackHandler { isEqualizerOpen = false }
         }
@@ -513,16 +531,82 @@ fun MuziMainScreen(player: ExoPlayer) {
             modifier = Modifier.fillMaxSize()
         ) {
             when {
+                isAmbientModeOpen -> {
+                    AmbientModeScreen(
+                        song = currentSong,
+                        isPlaying = isPlaying,
+                        currentPosition = currentPosition,
+                        duration = duration,
+                        onPlayPause = { playerViewModel.togglePlayPause() },
+                        onNext = { playerViewModel.playNext() },
+                        onPrev = { playerViewModel.playPrevious() },
+                        onSeek = { playerViewModel.seekTo(it) },
+                        onClose = { isAmbientModeOpen = false }
+                    )
+                }
+                isGlassSettingsOpen -> {
+                    GlassEffectSettings(
+                        config = glassConfig,
+                        onConfigChange = { glassConfig = it },
+                        onBack = { isGlassSettingsOpen = false }
+                    )
+                }
                 isSettingsOpen -> {
                     SettingsScreen(
                         onBack = { isSettingsOpen = false },
                         onOpenAbout = { isAboutDialogOpen = true },
                         onOpenEqualizer = { isEqualizerOpen = true },
+                        onOpenGlassSettings = { isGlassSettingsOpen = true },
+                        onOpenAmbientMode = { isAmbientModeOpen = true },
+                        onOpenRecognition = { isRecognitionOpen = true },
+                        onOpenStats = { isStatsOpen = true },
+                        onOpenSpotifyImport = { isSpotifyImportOpen = true },
                         onUpdateFound = { updateInfo -> availableUpdate = updateInfo },
                         crossfadeSeconds = crossfadeSeconds,
                         isGaplessEnabled = isGaplessEnabled,
                         onCrossfadeChange = { playerViewModel.setCrossfadeSeconds(it) },
                         onGaplessToggle = { playerViewModel.setGaplessEnabled(it) }
+                    )
+                }
+                isEqualizerOpen -> {
+                    com.example.muzo.ui.screens.equalizer.AxionEqScreen(
+                        equalizerController = playerViewModel.equalizerController,
+                        onBack = { isEqualizerOpen = false }
+                    )
+                }
+                isRecognitionHistoryOpen -> {
+                    RecognitionHistoryScreen(
+                        onBack = { isRecognitionHistoryOpen = false },
+                        onPlaySong = { song ->
+                            playerViewModel.playTrack(0, listOf(song))
+                        }
+                    )
+                }
+                isRecognitionOpen -> {
+                    RecognitionScreen(
+                        onBack = { isRecognitionOpen = false },
+                        onPlaySong = { recognizedSong ->
+                            playerViewModel.playTrack(0, listOf(recognizedSong))
+                        },
+                        onOpenHistory = { isRecognitionHistoryOpen = true }
+                    )
+                }
+                isStatsOpen -> {
+                    StatsScreen(
+                        onBack = { isStatsOpen = false },
+                        onSongSelect = { song, queue ->
+                            val idx = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+                            playerViewModel.playTrack(idx, queue)
+                        }
+                    )
+                }
+                isSpotifyImportOpen -> {
+                    SpotifyImportScreen(
+                        onBack = { isSpotifyImportOpen = false },
+                        onPlaylistImported = { playlistId ->
+                            isSpotifyImportOpen = false
+                            selectedTab = 2 // Switch to Library to view imported playlist
+                        }
                     )
                 }
                 selectedPlaylist != null -> {
@@ -700,6 +784,7 @@ fun MuziMainScreen(player: ExoPlayer) {
                             },
                             onOpenSettings = { isSettingsSheetOpen = true },
                             onOpenSearch = { selectedTab = 1 },
+                            onOpenRecognition = { isRecognitionOpen = true },
                             onItemLongClick = { item, list ->
                                 if (item.type == ItemType.SONG) {
                                     val songItem = SongItem(
@@ -849,7 +934,8 @@ fun MuziMainScreen(player: ExoPlayer) {
                 onQueueSongSelect = { idx -> playerViewModel.playTrack(idx, playbackQueue) },
                 onMoveQueueItem = { from, to -> playerViewModel.moveQueueItem(from, to) },
                 onRemoveQueueItem = { idx -> playerViewModel.removeQueueItem(idx) },
-                onClearUpcomingQueue = { playerViewModel.clearUpcomingQueue() }
+                onClearUpcomingQueue = { playerViewModel.clearUpcomingQueue() },
+                onOpenAmbientMode = { isAmbientModeOpen = true }
             )
         }
 
@@ -872,14 +958,7 @@ fun MuziMainScreen(player: ExoPlayer) {
             )
         }
 
-        // Equalizer Bottom Sheet (when opened from Settings or Quick Menu)
-        if (isEqualizerOpen) {
-            com.example.muzo.ui.components.EqualizerBottomSheet(
-                equalizerController = playerViewModel.equalizerController,
-                audioSessionId = playerViewModel.player.audioSessionId,
-                onDismiss = { isEqualizerOpen = false }
-            )
-        }
+
 
         // Welcome & Developer Info Dialog (Shown once on first install & when explicitly opened)
         if (showWelcomeDialog || isAboutDialogOpen) {

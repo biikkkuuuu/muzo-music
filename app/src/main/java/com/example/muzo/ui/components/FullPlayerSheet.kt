@@ -116,7 +116,8 @@ fun FullPlayerSheet(
     crossfadeSeconds: Int = 4,
     isGaplessEnabled: Boolean = true,
     onCrossfadeChange: (Int) -> Unit = {},
-    onGaplessToggle: (Boolean) -> Unit = {}
+    onGaplessToggle: (Boolean) -> Unit = {},
+    onOpenAmbientMode: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val downloadManager = remember { SongDownloadManager.getInstance(context.applicationContext) }
@@ -226,16 +227,29 @@ fun FullPlayerSheet(
                         )
                     }
 
-                    IconButton(
-                        onClick = { showAudioOutputSheet = true },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Cast,
-                            contentDescription = "Cast / Output",
-                            modifier = Modifier.size(22.dp),
-                            tint = Color.White.copy(alpha = 0.85f)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = onOpenAmbientMode,
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.StayCurrentLandscape,
+                                contentDescription = "StandBy Mode",
+                                modifier = Modifier.size(22.dp),
+                                tint = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
+                        IconButton(
+                            onClick = { showAudioOutputSheet = true },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Cast,
+                                contentDescription = "Cast / Output",
+                                modifier = Modifier.size(22.dp),
+                                tint = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
                     }
                 }
 
@@ -417,11 +431,11 @@ fun FullPlayerSheet(
                                 .clickable { onLikeToggle() }
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = if (isLiked) "Liked" else "Like",
-                                    tint = if (isLiked) Color(0xFFFF3B30) else Color.White,
-                                    modifier = Modifier.size(22.dp)
+                                HeartBurstIcon(
+                                    isLiked = isLiked,
+                                    iconSize = 22.dp,
+                                    likedColor = Color(0xFFFF3B30),
+                                    unlikedColor = Color.White
                                 )
                             }
                         }

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -116,6 +117,7 @@ fun AlbumSyncedLyricsView(
 
     val listState = rememberLazyListState()
     var swipeOffsetAccumulator by remember { mutableFloatStateOf(0f) }
+    var showShareStoryDialog by remember { mutableStateOf(false) }
 
     val currentCandidate = lyricsResult.candidates.getOrNull(candidateIndex)
     val syncedLines = currentCandidate?.syncedLines ?: emptyList()
@@ -310,6 +312,31 @@ fun AlbumSyncedLyricsView(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center)
             )
+
+            IconButton(
+                onClick = { showShareStoryDialog = true },
+                modifier = Modifier
+                    .size(36.dp)
+                    .align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share Lyrics",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White.copy(alpha = 0.75f)
+                )
+            }
+        }
+
+        if (showShareStoryDialog) {
+            val lines = if (syncedLines.isNotEmpty()) syncedLines.map { it.text }
+                        else if (!plainLyrics.isNullOrBlank()) plainLyrics.lines().filter { it.isNotBlank() }
+                        else emptyList()
+            LyricsStoryCardDialog(
+                song = song,
+                lyricsLines = lines,
+                onDismiss = { showShareStoryDialog = false }
+            )
         }
 
         // 2. MAIN LYRICS CANVAS (No dark masking boxes; clean ambient background)
@@ -336,34 +363,15 @@ fun AlbumSyncedLyricsView(
                     ) {
                         itemsIndexed(items = syncedLines, key = { idx, item -> "$idx-${item.timeMs}" }) { index, line ->
                             val isCurrent = index == activeIndex
-                            val textColor by animateColorAsState(
-                                targetValue = if (isCurrent) Color.White else Color.White.copy(alpha = 0.28f),
-                                animationSpec = tween(220),
-                                label = "lyricColor"
-                            )
-                            val lyricScale by animateFloatAsState(
-                                targetValue = if (isCurrent) 1.04f else 1.0f,
-                                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                                label = "lyricScale"
-                            )
+                            val dist = kotlin.math.abs(index - activeIndex)
 
-                            Text(
+                            MetroLyricsLine(
                                 text = line.text,
-                                fontSize = if (isCurrent) 28.sp else 23.sp,
-                                fontWeight = if (isCurrent) FontWeight.ExtraBold else FontWeight.Bold,
-                                color = textColor,
-                                lineHeight = if (isCurrent) 38.sp else 32.sp,
-                                textAlign = TextAlign.Start,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .graphicsLayer {
-                                        scaleX = lyricScale
-                                        scaleY = lyricScale
-                                        transformOrigin = TransformOrigin(0f, 0.5f)
-                                    }
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { onSeek(line.timeMs + currentOffsetMs) }
-                                    .padding(vertical = 14.dp, horizontal = 4.dp)
+                                isActive = isCurrent,
+                                distanceFromActive = dist,
+                                enableBlur = true,
+                                fontSize = if (isCurrent) 28f else 24f,
+                                onClick = { onSeek(line.timeMs + currentOffsetMs) }
                             )
                         }
                     }
@@ -388,25 +396,27 @@ fun AlbumSyncedLyricsView(
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color.White.copy(alpha = 0.18f),
-                                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { fetchLyrics(true) }
+                                    shape = RoundedCornerShape(24.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.32f)),
+                                    modifier = Modifier.clip(RoundedCornerShape(24.dp)).clickable { fetchLyrics(true) }
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry", tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text(text = "Retry", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = "Retry", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                                 Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color.White.copy(alpha = 0.18f),
-                                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onCloseLyrics() }
+                                    shape = RoundedCornerShape(24.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier.clip(RoundedCornerShape(24.dp)).clickable { onCloseLyrics() }
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                                        Icon(imageVector = Icons.Default.Image, contentDescription = "Cover", tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                        Icon(imageVector = Icons.Default.Image, contentDescription = "Cover", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text(text = "Cover", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = "Cover", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }

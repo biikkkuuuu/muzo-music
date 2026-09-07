@@ -5,7 +5,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -43,21 +42,23 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Echo-Music style Floating Mini Player capsule with horizontal swipe gestures
- * to seamlessly change tracks, spring physics, and modern translucent surface styling.
+ * Echo-Music style Floating Mini Player capsule with both Expanded and Inline modes,
+ * horizontal swipe gestures to change tracks, spring physics, and translucent surface styling.
  */
 @Composable
 fun FloatingMiniPlayer(
     song: SongItem,
     isPlaying: Boolean,
-    currentPosition: Long,
-    duration: Long,
-    hasPrev: Boolean,
-    hasNext: Boolean,
+    currentPosition: Long = 0L,
+    duration: Long = 0L,
+    hasPrev: Boolean = true,
+    hasNext: Boolean = true,
+    isInline: Boolean = false,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: () -> Unit,
     onPlayPause: () -> Unit,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
+    onPrev: () -> Unit = {},
+    onNext: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -72,24 +73,39 @@ fun FloatingMiniPlayer(
     val pressInteractionSource = remember { MutableInteractionSource() }
     val isPressed by pressInteractionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 1.02f else 1f,
+        targetValue = if (isPressed) 1.03f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "miniPlayerPressScale"
     )
 
     val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
 
+    val artSize = if (isInline) 32.dp else 44.dp
+    val artCornerRadius = if (isInline) 8.dp else 12.dp
+    val controlSize = if (isInline) 32.dp else 40.dp
+
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 3.dp)
+            .then(
+                if (!isInline) {
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 2.dp)
+                } else {
+                    Modifier
+                }
+            )
             .graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
             }
-            .shadow(16.dp, RoundedCornerShape(26.dp), spotColor = Color.Black.copy(alpha = 0.5f))
+            .shadow(
+                elevation = if (isInline) 8.dp else 16.dp,
+                shape = RoundedCornerShape(if (isInline) 100.dp else 26.dp),
+                spotColor = Color.Black.copy(alpha = 0.5f)
+            )
             .clipToBounds()
-            .pointerInput(Unit) {
+            .pointerInput(song.id) {
                 detectHorizontalDragGestures(
                     onDragStart = {
                         dragStartTime = System.currentTimeMillis()
@@ -108,7 +124,7 @@ fun FloatingMiniPlayer(
                     },
                     onDragEnd = {
                         val currentOffset = offsetXAnimatable.value
-                        val threshold = 120f
+                        val threshold = if (isInline) 80f else 120f
                         if (currentOffset > threshold && hasPrev) {
                             onPrev()
                         } else if (currentOffset < -threshold && hasNext) {
@@ -120,14 +136,13 @@ fun FloatingMiniPlayer(
                     }
                 )
             },
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(if (isInline) 100.dp else 26.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
         tonalElevation = 6.dp
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
                 .clickable(
                     interactionSource = pressInteractionSource,
                     indication = null,
@@ -138,48 +153,63 @@ fun FloatingMiniPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(
+                        horizontal = if (isInline) 8.dp else 12.dp,
+                        vertical = if (isInline) 4.dp else 7.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Rounded album artwork with subtle border
+                // Rounded album artwork
                 AsyncImage(
                     model = getHighResThumbnail(song.thumbnail),
                     contentDescription = song.title,
                     modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .size(artSize)
+                        .clip(RoundedCornerShape(artCornerRadius)),
                     contentScale = ContentScale.Crop
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(if (isInline) 8.dp else 12.dp))
 
                 // Title & Artists
-                Column(modifier = Modifier.weight(1f)) {
+                if (isInline) {
                     Text(
                         text = song.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                        modifier = Modifier.basicMarquee()
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = song.artists.joinToString(", ") { it.name },
                         style = MaterialTheme.typography.bodySmall,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.SemiBold,
+                        color = contentColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                } else {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = song.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = contentColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            modifier = Modifier.basicMarquee()
+                        )
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = song.artists.joinToString(", ") { it.name },
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 12.5.sp,
+                            color = contentColor.copy(alpha = 0.72f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
-                // Controls: Previous, Play/Pause, Next
-                if (hasPrev) {
+                // Controls
+                if (!isInline && hasPrev) {
                     IconButton(
                         onClick = onPrev,
                         modifier = Modifier.size(36.dp)
@@ -187,29 +217,25 @@ fun FloatingMiniPlayer(
                         Icon(
                             imageVector = Icons.Default.SkipPrevious,
                             contentDescription = "Previous",
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = contentColor,
                             modifier = Modifier.size(22.dp)
                         )
                     }
                 }
 
-                FilledIconButton(
+                IconButton(
                     onClick = onPlayPause,
-                    modifier = Modifier.size(44.dp),
-                    shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    modifier = Modifier.size(controlSize)
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = "Play/Pause",
-                        modifier = Modifier.size(24.dp)
+                        tint = contentColor,
+                        modifier = Modifier.size(if (isInline) 22.dp else 26.dp)
                     )
                 }
 
-                if (hasNext) {
+                if (!isInline && hasNext) {
                     IconButton(
                         onClick = onNext,
                         modifier = Modifier.size(36.dp)
@@ -217,22 +243,24 @@ fun FloatingMiniPlayer(
                         Icon(
                             imageVector = Icons.Default.SkipNext,
                             contentDescription = "Next",
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = contentColor,
                             modifier = Modifier.size(22.dp)
                         )
                     }
                 }
             }
 
-            // Slim progress indicator bar at the very bottom
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.Transparent
-            )
+            // Slim progress indicator bar at the bottom for expanded view
+            if (!isInline) {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Transparent
+                )
+            }
         }
     }
 }

@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.muzo.BuildConfig
 import com.example.muzo.data.local.MuziDatabase
+import com.example.muzo.ui.components.Material3SettingsGroup
+import com.example.muzo.ui.components.Material3SettingsItem
 import com.example.muzo.updater.UpdateChecker
 import com.example.muzo.updater.UpdateInfo
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +54,11 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenEqualizer: (() -> Unit)? = null,
+    onOpenGlassSettings: (() -> Unit)? = null,
+    onOpenAmbientMode: (() -> Unit)? = null,
+    onOpenRecognition: (() -> Unit)? = null,
+    onOpenStats: (() -> Unit)? = null,
+    onOpenSpotifyImport: (() -> Unit)? = null,
     onUpdateFound: ((UpdateInfo) -> Unit)? = null,
     crossfadeSeconds: Int = 4,
     isGaplessEnabled: Boolean = true,
@@ -81,161 +88,227 @@ fun SettingsScreen(
         }
     }
 
-    // All Settings definitions matching Screenshot 2 & 3
-    val allSettings = listOf(
-        SettingItemDef(
-            id = "account",
-            title = "Account",
-            subtitle = "Manage login and integrations",
-            icon = Icons.Default.Person,
-            isCircleIcon = true,
-            onClick = { showAccountDialog = true }
-        ),
-        SettingItemDef(
-            id = "ai_hub",
-            title = "AI Hub",
-            subtitle = "AI-powered lyrics and translations",
-            icon = Icons.Default.AutoAwesome,
-            customBadge = "Ai",
-            onClick = {
-                Toast.makeText(context, "AI Hub: Smart synchronized lyrics active ✨", Toast.LENGTH_SHORT).show()
+    // Material 3 Expressive Grouped Settings (Echo-Music Style)
+    val audioGroup = remember(onOpenEqualizer, onOpenGlassSettings) {
+        buildList {
+            if (onOpenEqualizer != null) {
+                add(
+                    Material3SettingsItem(
+                        title = "Axion Equalizer",
+                        subtitle = "3-Axis rotary dials, 5-band EQ & BassBoost DSP",
+                        icon = Icons.Default.GraphicEq,
+                        badge = "DSP",
+                        onClick = onOpenEqualizer
+                    )
+                )
             }
-        ),
-        SettingItemDef(
-            id = "appearance",
-            title = "Appearance",
-            subtitle = "Themes, colors, and UI layout",
-            icon = Icons.Default.Palette,
-            onClick = { showAppearanceDialog = true }
-        ),
-        SettingItemDef(
-            id = "player_audio",
-            title = "Player and audio",
-            subtitle = "Playback, quality, and equalizer",
-            icon = Icons.Default.PlayArrow,
-            onClick = { showAudioQualityDialog = true }
-        ),
-        SettingItemDef(
-            id = "listen_together",
-            title = "Listen Together",
-            subtitle = "Sync playback with friends",
-            icon = Icons.Default.Group,
-            onClick = {
-                Toast.makeText(context, "Listen Together: Peer-to-peer sync coming soon!", Toast.LENGTH_SHORT).show()
+            if (onOpenGlassSettings != null) {
+                add(
+                    Material3SettingsItem(
+                        title = "Liquid Glass Effect",
+                        subtitle = "AGSL shaders, refraction & chromatic aberration",
+                        icon = Icons.Default.AutoAwesome,
+                        badge = "AGSL",
+                        onClick = onOpenGlassSettings
+                    )
+                )
             }
-        ),
-        SettingItemDef(
-            id = "content",
-            title = "Content",
-            subtitle = "Language, region, and providers",
-            icon = Icons.Default.Language,
-            onClick = { showContentDialog = true }
-        ),
-        SettingItemDef(
-            id = "privacy",
-            title = "Privacy",
-            subtitle = "History and tracking",
-            icon = Icons.Default.Security,
-            onClick = { showPrivacyDialog = true }
-        ),
-        SettingItemDef(
-            id = "storage",
-            title = "Storage",
-            subtitle = "Cache and downloads",
-            icon = Icons.Default.Storage,
-            onClick = { showStorageDialog = true }
-        ),
-        SettingItemDef(
-            id = "backup",
-            title = "Backup and restore",
-            subtitle = "Export and import data",
-            icon = Icons.Default.CloudDownload,
-            onClick = {
-                Toast.makeText(context, "Automatic cloud backup is enabled for playlists", Toast.LENGTH_SHORT).show()
+            if (onOpenStats != null) {
+                add(
+                    Material3SettingsItem(
+                        title = "Listening Analytics & Stats",
+                        subtitle = "Top played songs, artist recap & listening trends",
+                        icon = Icons.Default.Insights,
+                        badge = "Recap",
+                        onClick = onOpenStats
+                    )
+                )
             }
-        ),
-        SettingItemDef(
-            id = "system_update",
-            title = "System update",
-            subtitle = if (isCheckingUpdate) "Checking for updates..." else "Check for update • v${BuildConfig.VERSION_NAME}",
-            subtitleColor = Color(0xFFFF7A8A),
-            icon = Icons.Default.Sync,
-            isCircleIcon = true,
-            onClick = {
-                if (!isCheckingUpdate) {
-                    isCheckingUpdate = true
-                    Toast.makeText(context, "Checking GitHub for updates...", Toast.LENGTH_SHORT).show()
-                    scope.launch {
-                        val update = UpdateChecker.checkUpdate()
-                        isCheckingUpdate = false
-                        if (update != null) {
-                            if (onUpdateFound != null) {
-                                onUpdateFound(update)
+            add(
+                Material3SettingsItem(
+                    title = "Player & Audio Quality",
+                    subtitle = "Streaming bitrate, cache, and normalization",
+                    icon = Icons.Default.PlayArrow,
+                    onClick = { showAudioQualityDialog = true }
+                )
+            )
+        }
+    }
+
+    val displayGroup = remember(onOpenAmbientMode, onOpenRecognition) {
+        buildList {
+            if (onOpenAmbientMode != null) {
+                add(
+                    Material3SettingsItem(
+                        title = "StandBy Ambient Mode",
+                        subtitle = "Landscape OLED display with gesture volume & lyrics",
+                        icon = Icons.Default.StayCurrentLandscape,
+                        badge = "OLED",
+                        onClick = onOpenAmbientMode
+                    )
+                )
+            }
+            add(
+                Material3SettingsItem(
+                    title = "Appearance & Themes",
+                    subtitle = "Dynamic color palette and UI layout",
+                    icon = Icons.Default.Palette,
+                    onClick = { showAppearanceDialog = true }
+                )
+            )
+            if (onOpenRecognition != null) {
+                add(
+                    Material3SettingsItem(
+                        title = "Music Recognition",
+                        subtitle = "Shazam-style acoustic fingerprint radar",
+                        icon = Icons.Default.Radar,
+                        badge = "Radar",
+                        onClick = onOpenRecognition
+                    )
+                )
+            }
+            add(
+                Material3SettingsItem(
+                    title = "AI Hub",
+                    subtitle = "Smart synchronized lyrics and translations",
+                    icon = Icons.Default.AutoAwesome,
+                    badge = "Ai",
+                    onClick = {
+                        Toast.makeText(context, "AI Hub: Smart synchronized lyrics active ✨", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            )
+        }
+    }
+
+    val libraryGroup = remember(onOpenSpotifyImport) {
+        buildList {
+            if (onOpenSpotifyImport != null) {
+                add(
+                    Material3SettingsItem(
+                        title = "Spotify Playlist Importer",
+                        subtitle = "Convert public Spotify playlists into Muzi",
+                        icon = Icons.Default.QueueMusic,
+                        badge = "Import",
+                        onClick = onOpenSpotifyImport
+                    )
+                )
+            }
+            add(
+                Material3SettingsItem(
+                    title = "Account & Profile",
+                    subtitle = "Anonymous local session",
+                    icon = Icons.Default.Person,
+                    isCircleIcon = true,
+                    onClick = { showAccountDialog = true }
+                )
+            )
+            add(
+                Material3SettingsItem(
+                    title = "Content & Region",
+                    subtitle = "Language and YouTube Music providers",
+                    icon = Icons.Default.Language,
+                    onClick = { showContentDialog = true }
+                )
+            )
+            add(
+                Material3SettingsItem(
+                    title = "Storage & Downloads",
+                    subtitle = "Manage offline songs and image cache",
+                    icon = Icons.Default.Storage,
+                    onClick = { showStorageDialog = true }
+                )
+            )
+            add(
+                Material3SettingsItem(
+                    title = "Privacy",
+                    subtitle = "Listening history and privacy controls",
+                    icon = Icons.Default.Security,
+                    onClick = { showPrivacyDialog = true }
+                )
+            )
+            add(
+                Material3SettingsItem(
+                    title = "Backup & Restore",
+                    subtitle = "Export and import local playlists",
+                    icon = Icons.Default.CloudDownload,
+                    onClick = {
+                        Toast.makeText(context, "Automatic cloud backup enabled for playlists", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            )
+            add(
+                Material3SettingsItem(
+                    title = "Listen Together",
+                    subtitle = "Sync playback with friends (Coming soon)",
+                    icon = Icons.Default.Group,
+                    onClick = {
+                        Toast.makeText(context, "Listen Together: Peer-to-peer sync coming soon!", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            )
+        }
+    }
+
+    val aboutGroup = remember(isCheckingUpdate) {
+        listOf(
+            Material3SettingsItem(
+                title = "System Update",
+                subtitle = if (isCheckingUpdate) "Checking for updates..." else "Check for update • v${BuildConfig.VERSION_NAME}",
+                subtitleColor = Color(0xFFFF7A8A),
+                icon = Icons.Default.Sync,
+                isCircleIcon = true,
+                onClick = {
+                    if (!isCheckingUpdate) {
+                        isCheckingUpdate = true
+                        Toast.makeText(context, "Checking GitHub for updates...", Toast.LENGTH_SHORT).show()
+                        scope.launch {
+                            val update = UpdateChecker.checkUpdate()
+                            isCheckingUpdate = false
+                            if (update != null) {
+                                if (onUpdateFound != null) onUpdateFound(update)
+                                else Toast.makeText(context, "Update available: v${update.versionName}", Toast.LENGTH_LONG).show()
                             } else {
-                                Toast.makeText(context, "Update available: v${update.versionName}", Toast.LENGTH_LONG).show()
-                                openUrl(update.updateUrl)
+                                Toast.makeText(context, "You are using the latest version of Muzi!", Toast.LENGTH_SHORT).show()
                             }
-                        } else {
-                            Toast.makeText(context, "Muzi Music v${BuildConfig.VERSION_NAME} is up to date!", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
-            }
-        ),
-        SettingItemDef(
-            id = "supported_links",
-            title = "Supported Links",
-            subtitle = "App linking settings",
-            icon = Icons.Default.Link,
-            onClick = {
-                try {
-                    val intent = Intent(AndroidSettings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS).apply {
-                        data = Uri.parse("package:${context.packageName}")
-                    }
-                    context.startActivity(intent)
-                } catch (_: Exception) {
-                    Toast.makeText(context, "Supported Links: Handles music.youtube.com links", Toast.LENGTH_SHORT).show()
-                }
-            }
-        ),
-        SettingItemDef(
-            id = "developer",
-            title = "Developer & Socials",
-            subtitle = "Bikash Rana • Telegram & Instagram",
-            icon = Icons.Default.Code,
-            onClick = { onOpenAbout() }
-        ),
-        SettingItemDef(
-            id = "report_bugs",
-            title = "Report Bugs ☕",
-            subtitle = "Free tier reality: report bugs on Telegram",
-            icon = Icons.Default.BugReport,
-            onClick = { openUrl("https://t.me/biikkkuuuuu") }
-        ),
-        SettingItemDef(
-            id = "star_repo",
-            title = "Star on GitHub ⭐",
-            subtitle = "biikkkuuuu/muzo-music",
-            icon = Icons.Default.Star,
-            onClick = { openUrl("https://github.com/biikkkuuuu/muzo-music") }
-        ),
-        SettingItemDef(
-            id = "about",
-            title = "About",
-            subtitle = "App info and licenses",
-            icon = Icons.Default.Info,
-            isCircleIcon = true,
-            onClick = { onOpenAbout() }
+            ),
+            Material3SettingsItem(
+                title = "About Muzi",
+                subtitle = "App info, license, and developers",
+                icon = Icons.Default.Info,
+                isCircleIcon = true,
+                onClick = { onOpenAbout() }
+            ),
+            Material3SettingsItem(
+                title = "Star on GitHub ⭐",
+                subtitle = "biikkkuuuu/muzo-music",
+                icon = Icons.Default.Star,
+                onClick = { openUrl("https://github.com/biikkkuuuu/muzo-music") }
+            ),
+            Material3SettingsItem(
+                title = "Report Bugs ☕",
+                subtitle = "Telegram community @biikkkuuuuu",
+                icon = Icons.Default.BugReport,
+                onClick = { openUrl("https://t.me/biikkkuuuuu") }
+            )
         )
-    )
+    }
+
+    val allGroupedItems = remember(audioGroup, displayGroup, libraryGroup, aboutGroup) {
+        audioGroup + displayGroup + libraryGroup + aboutGroup
+    }
 
     // Filter by search query
-    val filteredSettings = if (searchQuery.isBlank()) {
-        allSettings
-    } else {
-        allSettings.filter {
-            it.title.contains(searchQuery, ignoreCase = true) ||
-                    it.subtitle.contains(searchQuery, ignoreCase = true)
+    val searchResults = remember(searchQuery, allGroupedItems) {
+        if (searchQuery.isBlank()) emptyList()
+        else {
+            allGroupedItems.filter {
+                it.title.contains(searchQuery, ignoreCase = true) ||
+                        (it.subtitle?.contains(searchQuery, ignoreCase = true) == true)
+            }
         }
     }
 
@@ -272,130 +345,84 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(top = paddingValues.calculateTopPadding())
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 150.dp)
+            contentPadding = PaddingValues(top = 8.dp, bottom = 150.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Search Bar Pill (Matches Screenshot 2)
+            // Search Bar (Echo Outlined Rounded TextField)
             item {
-                Surface(
-                    shape = RoundedCornerShape(28.dp),
-                    color = Color(0xFF14131A),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text("Search settings", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    },
+                    leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = Color(0xFF8E8E9A),
-                            modifier = Modifier.size(22.dp)
+                            tint = MaterialTheme.colorScheme.primary
                         )
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        TextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = {
-                                Text("Search", color = Color(0xFF8E8E9A), fontSize = 16.sp)
-                            },
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                disabledContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                )
             }
 
-            // Stacked Cards Container (Matching Screenshot 2 & 3 rounded cards)
-            itemsIndexed(filteredSettings, key = { _, item -> item.id }) { index, item ->
-                val isTop = index == 0
-                val isBottom = index == filteredSettings.lastIndex
-                val shape = when {
-                    isTop && isBottom -> RoundedCornerShape(18.dp)
-                    isTop -> RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
-                    isBottom -> RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)
-                    else -> RoundedCornerShape(0.dp)
+            if (searchQuery.isNotBlank()) {
+                // Filtered search results
+                item {
+                    Material3SettingsGroup(
+                        title = "Search Results (${searchResults.size})",
+                        items = searchResults
+                    )
                 }
-
-                Surface(
-                    shape = shape,
-                    color = Color(0xFF282732),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { item.onClick() }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(if (item.isCircleIcon) CircleShape else RoundedCornerShape(10.dp))
-                                    .background(Color.White.copy(alpha = 0.08f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (item.customBadge != null) {
-                                    Text(
-                                        text = item.customBadge,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = item.icon,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.title,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 16.sp,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = item.subtitle,
-                                    fontSize = 13.sp,
-                                    color = item.subtitleColor ?: Color(0xFF9E9EA8)
-                                )
-                            }
-                        }
-
-                        if (!isBottom) {
-                            HorizontalDivider(
-                                color = Color.White.copy(alpha = 0.05f),
-                                thickness = 1.dp,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
-                    }
+            } else {
+                // iOS / Echo-Music Grouped Rounded Cards
+                item {
+                    Material3SettingsGroup(
+                        title = "Audio & Processing",
+                        items = audioGroup
+                    )
+                }
+                item {
+                    Material3SettingsGroup(
+                        title = "Visuals & Display",
+                        items = displayGroup
+                    )
+                }
+                item {
+                    Material3SettingsGroup(
+                        title = "Content & Storage",
+                        items = libraryGroup
+                    )
+                }
+                item {
+                    Material3SettingsGroup(
+                        title = "App & Community",
+                        items = aboutGroup
+                    )
                 }
             }
         }

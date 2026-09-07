@@ -20,6 +20,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,6 +64,7 @@ fun HomeScreen(
     onCategoryClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit = {},
+    onOpenRecognition: () -> Unit = {},
     onItemLongClick: ((ShelfItem, List<ShelfItem>) -> Unit)? = null
 ) {
     var selectedMoodChip by remember { mutableStateOf<String?>(null) }
@@ -103,6 +105,14 @@ fun HomeScreen(
             }
             base + modifier
         }
+    }
+
+    val featuredHeroItems = remember(homeShelves) {
+        val candidate = homeShelves.firstOrNull { it.id == "shelf_new_releases" || it.id == "shelf_featured" }?.items
+            ?: homeShelves.firstOrNull { it.id != "keep_listening" && it.items.isNotEmpty() }?.items
+            ?: homeShelves.firstOrNull { it.items.isNotEmpty() }?.items
+            ?: emptyList()
+        candidate.take(6)
     }
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -160,6 +170,17 @@ fun HomeScreen(
                                 selectedMoodChip = if (isSelected) null else chip
                                 onCategoryClick(chip)
                             }
+                        )
+                    }
+                }
+
+                // 2. Material 3 Expressive Hero Carousel (Echo-Style Hero Banner)
+                if (featuredHeroItems.isNotEmpty()) {
+                    item(key = "hero_expressive_carousel") {
+                        com.example.muzo.ui.components.HeroExpressiveCarousel(
+                            featuredItems = featuredHeroItems,
+                            onSongSelect = onSongSelect,
+                            onPlaylistSelect = onPlaylistSelect
                         )
                     }
                 }
@@ -395,11 +416,52 @@ fun HomeScreen(
                     )
                 }
 
-                // Actions: History, Equalizer/Charts, Settings
+                // Actions: Refresh (Echo Setting format), History, Equalizer/Charts, Settings
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val refreshRotation by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (isRefreshing) 360f else 0f,
+                        animationSpec = if (isRefreshing) {
+                            androidx.compose.animation.core.infiniteRepeatable(
+                                animation = androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)
+                            )
+                        } else {
+                            androidx.compose.animation.core.tween(300)
+                        },
+                        label = "homeRefreshRotation"
+                    )
+
+                    // Refresh Button (Echo Setting Icon Format: Squircle with primary tint)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                            .clickable {
+                                randomSeed = System.currentTimeMillis()
+                                onRefresh()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh Feed",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsLayer { rotationZ = refreshRotation }
+                        )
+                    }
+
+                    IconButton(onClick = onOpenRecognition) {
+                        Icon(
+                            imageVector = Icons.Default.GraphicEq,
+                            contentDescription = "Identify Music",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(onClick = { onCategoryClick("History") }) {
                         Icon(
                             imageVector = Icons.Default.History,

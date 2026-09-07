@@ -1,19 +1,19 @@
 package com.example.muzo.theme
 
-import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.ColorScheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.palette.graphics.Palette
-import coil.ImageLoader
+import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.muzo.core.getHighResThumbnail
@@ -22,43 +22,37 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Dynamic Song-Driven Theming Engine (1:1 ViVi Music Match).
- * Extracts seed colors from the playing song's thumbnail, generating accessible,
- * luminous Material 3 tokens that smoothly morph across the entire app with 650ms transitions.
+ * DynamicSongTheme: Echo-Music 1:1 Dynamic Color Architecture
+ * Extracts colors from current playing song artwork and adapts theme colors
+ * across all surfaces, cards, borders, and controls with exact opacities.
  */
 @Composable
 fun DynamicSongTheme(
     currentSong: SongItem?,
+    pureBlack: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     var extractedSeedColor by remember { mutableStateOf<Color?>(null) }
+    var extractedGradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
 
-    LaunchedEffect(currentSong?.id, currentSong?.thumbnail) {
+    val fallbackColor = Color(0xFFED5564).toArgb()
+
+    LaunchedEffect(currentSong?.id) {
         val rawThumb = currentSong?.thumbnail
         if (!rawThumb.isNullOrBlank()) {
             withContext(Dispatchers.IO) {
                 try {
-                    val loader = ImageLoader(context)
-                    // First try raw thumbnail for instant cache hit
-                    val request = ImageRequest.Builder(context)
+                    val loader = context.imageLoader
+                    val req = ImageRequest.Builder(context)
                         .data(rawThumb)
                         .allowHardware(false)
                         .size(100, 100)
                         .build()
-                    val result = loader.execute(request)
-                    if (result is SuccessResult) {
-                        val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
-                        if (bitmap != null) {
-                            val palette = withContext(Dispatchers.Default) {
-                                Palette.from(bitmap)
-                                    .maximumColorCount(16)
-                                    .generate()
-                            }
-                            extractedSeedColor = extractDynamicSeedColor(palette)
-                        }
-                    } else {
-                        // Fallback to high res url
+                    val res = loader.execute(req)
+                    var bitmap = (res as? SuccessResult)?.drawable?.let { (it as? BitmapDrawable)?.bitmap }
+
+                    if (bitmap == null) {
                         val hiResUrl = getHighResThumbnail(rawThumb)
                         val hiResReq = ImageRequest.Builder(context)
                             .data(hiResUrl)
@@ -66,27 +60,37 @@ fun DynamicSongTheme(
                             .size(100, 100)
                             .build()
                         val hiResRes = loader.execute(hiResReq)
-                        if (hiResRes is SuccessResult) {
-                            val bmp = (hiResRes.drawable as? BitmapDrawable)?.bitmap
-                            if (bmp != null) {
-                                val pal = withContext(Dispatchers.Default) {
-                                    Palette.from(bmp).maximumColorCount(16).generate()
-                                }
-                                extractedSeedColor = extractDynamicSeedColor(pal)
-                            }
+                        bitmap = (hiResRes as? SuccessResult)?.drawable?.let { (it as? BitmapDrawable)?.bitmap }
+                    }
+
+                    if (bitmap != null) {
+                        val palette = withContext(Dispatchers.Default) {
+                            Palette.from(bitmap)
+                                .maximumColorCount(32)
+                                .resizeBitmapArea(100 * 100)
+                                .generate()
+                        }
+
+                        val primaryThemeColor = PlayerColorExtractor.extractPrimaryThemeColor(palette, fallbackColor)
+                        val gradient = PlayerColorExtractor.extractGradientColors(palette, fallbackColor)
+
+                        withContext(Dispatchers.Main) {
+                            extractedSeedColor = primaryThemeColor
+                            extractedGradientColors = gradient
                         }
                     }
                 } catch (_: Exception) {
-                    // Retain existing color or let fallback handle it
+                    // Retain existing color
                 }
             }
         } else {
             extractedSeedColor = null
+            extractedGradientColors = emptyList()
         }
     }
 
     // Default Neutral / AMOLED Stealth Palette when no song is playing
-    val defaultPrimary = Color(0xFFE2E4EB)
+    val defaultPrimary = Color(0xFFED5564) // Echo Default Theme Color
     val defaultSurfaceContainerHigh = Color(0xFF1B1A22)
     val defaultSurfaceContainer = Color(0xFF14131A)
     val defaultPrimaryContainer = Color(0xFF262530)
@@ -95,18 +99,20 @@ fun DynamicSongTheme(
 
     val targetTokens = remember(extractedSeedColor) {
         if (extractedSeedColor != null) {
-            computeDynamicTokens(extractedSeedColor!!)
+            computeDynamicTokens(extractedSeedColor!!, pureBlack)
         } else {
             DynamicThemeTokens(
                 primary = defaultPrimary,
                 onPrimary = Color(0xFF121216),
                 primaryContainer = defaultPrimaryContainer,
                 onPrimaryContainer = Color(0xFFEAEAF0),
-                surfaceContainer = defaultSurfaceContainer,
-                surfaceContainerHigh = defaultSurfaceContainerHigh,
-                surfaceContainerHighest = Color(0xFF24232E),
+                surfaceContainer = if (pureBlack) Color(0xFF0A0A0E) else defaultSurfaceContainer,
+                surfaceContainerHigh = if (pureBlack) Color(0xFF121216) else defaultSurfaceContainerHigh,
+                surfaceContainerHighest = if (pureBlack) Color(0xFF18181E) else Color(0xFF24232E),
+                surfaceContainerLow = if (pureBlack) Color.Black else Color(0xFF0F0E13),
                 outlineVariant = defaultOutlineVariant,
-                onSurfaceVariant = defaultOnSurfaceVariant
+                onSurfaceVariant = defaultOnSurfaceVariant,
+                outline = defaultPrimary.copy(alpha = 0.50f)
             )
         }
     }
@@ -122,7 +128,9 @@ fun DynamicSongTheme(
     val animatedSurfaceContainer by animateColorAsState(targetTokens.surfaceContainer, morphSpec, label = "dynSurfaceContainer")
     val animatedSurfaceContainerHigh by animateColorAsState(targetTokens.surfaceContainerHigh, morphSpec, label = "dynSurfaceContainerHigh")
     val animatedSurfaceContainerHighest by animateColorAsState(targetTokens.surfaceContainerHighest, morphSpec, label = "dynSurfaceContainerHighest")
+    val animatedSurfaceContainerLow by animateColorAsState(targetTokens.surfaceContainerLow, morphSpec, label = "dynSurfaceContainerLow")
     val animatedOutlineVariant by animateColorAsState(targetTokens.outlineVariant, morphSpec, label = "dynOutlineVariant")
+    val animatedOutline by animateColorAsState(targetTokens.outline, morphSpec, label = "dynOutline")
     val animatedOnSurfaceVariant by animateColorAsState(targetTokens.onSurfaceVariant, morphSpec, label = "dynOnSurfaceVariant")
 
     val dynamicColorScheme = darkColorScheme(
@@ -130,20 +138,25 @@ fun DynamicSongTheme(
         onPrimary = animatedOnPrimary,
         primaryContainer = animatedPrimaryContainer,
         onPrimaryContainer = animatedOnPrimaryContainer,
-        surface = Color(0xFF0F0E13),
+        surface = if (pureBlack) Color.Black else Color(0xFF0F0E13),
         surfaceContainer = animatedSurfaceContainer,
         surfaceContainerHigh = animatedSurfaceContainerHigh,
         surfaceContainerHighest = animatedSurfaceContainerHighest,
-        background = Color(0xFF08080A),
+        surfaceContainerLow = animatedSurfaceContainerLow,
+        background = if (pureBlack) Color.Black else Color(0xFF08080A),
         onBackground = Color(0xFFEEEEF2),
         onSurface = Color(0xFFEEEEF2),
         onSurfaceVariant = animatedOnSurfaceVariant,
+        outline = animatedOutline,
         outlineVariant = animatedOutlineVariant
     )
 
     MaterialTheme(
         colorScheme = dynamicColorScheme,
-        typography = Typography,
+        typography = AppTypography,
+        shapes = MaterialTheme.shapes.copy(
+            extraSmall = RoundedCornerShape(24.dp)
+        ),
         content = content
     )
 }
@@ -156,33 +169,22 @@ private data class DynamicThemeTokens(
     val surfaceContainer: Color,
     val surfaceContainerHigh: Color,
     val surfaceContainerHighest: Color,
+    val surfaceContainerLow: Color,
     val outlineVariant: Color,
+    val outline: Color,
     val onSurfaceVariant: Color
 )
 
-private fun extractDynamicSeedColor(palette: Palette): Color {
-    val swatch = palette.vibrantSwatch
-        ?: palette.dominantSwatch
-        ?: palette.lightVibrantSwatch
-        ?: palette.darkVibrantSwatch
-        ?: palette.mutedSwatch
-
-    if (swatch != null) {
-        return Color(swatch.rgb)
-    }
-    return Color(0xFF7E9FD9)
-}
-
-private fun computeDynamicTokens(seed: Color): DynamicThemeTokens {
+private fun computeDynamicTokens(seed: Color, pureBlack: Boolean): DynamicThemeTokens {
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(seed.toArgb(), hsv)
     val hue = hsv[0]
 
-    // 1. Primary: Luminous vibrant accent tone (ViVi signature accent for titles, pills, icons)
+    // 1. Primary: Luminous vibrant accent tone (Echo signature accent for titles, active pills, icons)
     val primaryHsv = floatArrayOf(
         hue,
-        (hsv[1] * 1.15f).coerceIn(0.42f, 0.82f),
-        (hsv[2] * 1.15f).coerceIn(0.78f, 0.96f)
+        (hsv[1] * 1.3f).coerceIn(0.40f, 0.85f),
+        (hsv[2] * 0.95f).coerceIn(0.75f, 0.95f)
     )
     val primary = Color(android.graphics.Color.HSVToColor(primaryHsv))
 
@@ -190,42 +192,45 @@ private fun computeDynamicTokens(seed: Color): DynamicThemeTokens {
     val onPrimary = if (primaryHsv[2] > 0.70f && primaryHsv[1] < 0.65f) Color(0xFF0D0E12) else Color.White
 
     // 3. PrimaryContainer (Active Tab Capsule Pill & Badges):
-    // Visibly glowing tint matching the song
+    // 28% opacity matching Echo container tokens
     val primaryContainer = primary.copy(alpha = 0.28f)
-    val onPrimaryContainer = primary
+    val onPrimaryContainer = Color.White
 
-    // 4. SurfaceContainerHigh (MiniPlayer & BottomDock background):
-    // RICH, VISIBLE dark tone reflecting the song's hue (exact ViVi #1A2436 / #241A1C)
+    // 4. SurfaceContainerHigh (Cards, Settings Groups, BottomDock):
+    // 35% opacity on surface variant or subtle hue tint
     val surfaceHighHsv = floatArrayOf(
         hue,
-        (hsv[1] * 0.45f).coerceIn(0.22f, 0.42f),
-        0.18f
+        (hsv[1] * 0.40f).coerceIn(0.20f, 0.40f),
+        if (pureBlack) 0.10f else 0.18f
     )
     val surfaceContainerHigh = Color(android.graphics.Color.HSVToColor(surfaceHighHsv))
 
-    // 5. SurfaceContainer (nested background layers)
+    // 5. SurfaceContainer (Nested background layers)
     val surfaceHsv = floatArrayOf(
         hue,
-        (hsv[1] * 0.35f).coerceIn(0.18f, 0.35f),
-        0.14f
+        (hsv[1] * 0.30f).coerceIn(0.15f, 0.32f),
+        if (pureBlack) 0.06f else 0.14f
     )
     val surfaceContainer = Color(android.graphics.Color.HSVToColor(surfaceHsv))
 
     // 6. SurfaceContainerHighest
     val surfaceHighestHsv = floatArrayOf(
         hue,
-        (hsv[1] * 0.45f).coerceIn(0.25f, 0.45f),
-        0.22f
+        (hsv[1] * 0.40f).coerceIn(0.22f, 0.42f),
+        if (pureBlack) 0.12f else 0.22f
     )
     val surfaceContainerHighest = Color(android.graphics.Color.HSVToColor(surfaceHighestHsv))
 
-    // 7. OutlineVariant: Luminous subtle halo border for MiniPlayer & Bottom Bar
+    val surfaceContainerLow = if (pureBlack) Color.Black else Color(0xFF0F0E13)
+
+    // 7. Outline & OutlineVariant: 32% halo border matching Echo
     val outlineVariant = primary.copy(alpha = 0.32f)
+    val outline = primary.copy(alpha = 0.50f)
 
     // 8. OnSurfaceVariant: Soft tinted tone for subtitles and icons
     val onSurfaceVariantHsv = floatArrayOf(
         hue,
-        0.30f,
+        0.28f,
         0.82f
     )
     val onSurfaceVariant = Color(android.graphics.Color.HSVToColor(onSurfaceVariantHsv))
@@ -238,7 +243,9 @@ private fun computeDynamicTokens(seed: Color): DynamicThemeTokens {
         surfaceContainer = surfaceContainer,
         surfaceContainerHigh = surfaceContainerHigh,
         surfaceContainerHighest = surfaceContainerHighest,
+        surfaceContainerLow = surfaceContainerLow,
         outlineVariant = outlineVariant,
+        outline = outline,
         onSurfaceVariant = onSurfaceVariant
     )
 }

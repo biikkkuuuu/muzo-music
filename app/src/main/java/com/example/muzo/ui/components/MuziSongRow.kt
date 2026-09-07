@@ -91,11 +91,11 @@ fun MuziSongRow(
                         .background(Color.Black.copy(alpha = 0.55f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Equalizer,
-                        contentDescription = "Playing",
-                        tint = MuziThemeTokens.AccentRose,
-                        modifier = Modifier.size(22.dp)
+                    PlayingIndicator(
+                        color = MuziThemeTokens.AccentRose,
+                        bars = 3,
+                        barWidth = 3.dp,
+                        barHeight = 16.dp
                     )
                 }
             }
