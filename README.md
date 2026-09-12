@@ -219,7 +219,7 @@ Without the support of this incredible open-source community, none of this would
 
 <!-- readme: contributors -start -->
 <table>
-<tr><td align="center"><a href="https://github.com/biikkkuuuu"><img src="https://avatars.githubusercontent.com/u/210472672?v=4" width="60" height="60" /></a><br><b>biikkkuuuu</b></td></tr>
+<tr><td align="center"><a href="https://github.com/biikkkuuuu"><img src="https://avatars.githubusercontent.com/u/210472672?v=4" width="60" height="60" /></a></td></tr>
 </table>
 <!-- readme: contributors -end -->
 
