@@ -32,9 +32,6 @@ lastfm-empty/build/
 # Kotlin Multiplatform
 /.kotlin
 
-# Logs
+# Temporary screenshots
+.temp_*.png
 *.log
-
-# APKs and generated test artifacts
-*.apk
-*.png
