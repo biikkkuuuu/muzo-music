@@ -53,7 +53,6 @@ import com.biikkkuuuu.muzi.ui.component.Material3SettingsGroup
 import com.biikkkuuuu.muzi.ui.component.Material3SettingsItem
 import com.biikkkuuuu.muzi.ui.screens.Screens
 import com.biikkkuuuu.muzi.ui.utils.backToMain
-import com.biikkkuuuu.muzi.echomusic.updater.getUpdateAvailableState
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,12 +64,9 @@ highlightKey: String? = null) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val isUpdateAvailable = getUpdateAvailableState(context) && com.biikkkuuuu.muzi.echomusic.updater.getAutoUpdateCheckSetting(context)
-
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val searchLower = searchQuery.lowercase()
 
-    val accountText = stringResource(R.string.account)
     val appearanceText = stringResource(R.string.appearance)
     val playerText = stringResource(R.string.player_and_audio)
     val listenTogetherText = stringResource(R.string.listen_together)
@@ -79,10 +75,8 @@ highlightKey: String? = null) {
     val privacyText = stringResource(R.string.privacy)
     val storageText = stringResource(R.string.storage)
     val backupText = stringResource(R.string.backup_restore)
-    val systemUpdateText = stringResource(R.string.system_update)
     val aboutText = stringResource(R.string.about)
     
-    val accountDesc = stringResource(R.string.setting_desc_account)
     val appearanceDesc = stringResource(R.string.setting_desc_appearance)
     val playerDesc = stringResource(R.string.setting_desc_player)
     val listenTogetherDesc = stringResource(R.string.setting_desc_listen_together)
@@ -91,7 +85,6 @@ highlightKey: String? = null) {
     val privacyDesc = stringResource(R.string.setting_desc_privacy)
     val storageDesc = stringResource(R.string.setting_desc_storage)
     val backupDesc = stringResource(R.string.setting_desc_backup)
-    val systemUpdateDesc = stringResource(R.string.setting_desc_update)
     val aboutDesc = stringResource(R.string.setting_desc_about)
 
     val scrollState = rememberScrollState()
@@ -143,19 +136,9 @@ highlightKey: String? = null) {
                 .padding(start = 8.dp, end = 8.dp, bottom = 16.dp)
         )
 
-        val itemsList = buildList {
-            if (accountText.lowercase().contains(searchLower) || accountDesc.lowercase().contains(searchLower)) {
-                add(
-                    Material3SettingsItem(
-                        isHighlighted = (highlightKey == accountText),
-                        icon = painterResource(R.drawable.account),
-                        title = { Text(accountText) },
-                        description = { Text(accountDesc) },
-                        onClick = { navController.navigate("settings/account") }
-                    )
-                )
-            }
 
+
+        val itemsList = buildList {
             if (aiLyricsText.lowercase().contains(searchLower) || aiLyricsDesc.lowercase().contains(searchLower)) {
                 add(
                     Material3SettingsItem(
@@ -254,26 +237,6 @@ highlightKey: String? = null) {
                         title = { Text(backupText) },
                         description = { Text(backupDesc) },
                         onClick = { navController.navigate("settings/backup_restore") }
-                    )
-                )
-            }
-            if (systemUpdateText.lowercase().contains(searchLower) || systemUpdateDesc.lowercase().contains(searchLower)) {
-                add(
-                    Material3SettingsItem(
-                        isHighlighted = (highlightKey == systemUpdateText),
-                        icon = painterResource(if (isUpdateAvailable) R.drawable.ic_launcher_nobg else R.drawable.update),
-                        title = { Text(systemUpdateText) },
-                        description = if (isUpdateAvailable) {
-                            {
-                                Text(
-                                    text = stringResource(R.string.update_available),
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        } else {
-                            { Text(systemUpdateDesc) }
-                        },
-                        onClick = { navController.navigate("settings/update") }
                     )
                 )
             }

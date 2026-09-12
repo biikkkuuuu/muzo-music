@@ -47,16 +47,12 @@ import com.biikkkuuuu.muzi.ui.screens.settings.PlayerSettings
 import com.biikkkuuuu.muzi.ui.screens.settings.PrivacySettings
 import com.biikkkuuuu.muzi.ui.screens.settings.RomanizationSettings
 import com.biikkkuuuu.muzi.ui.screens.settings.SettingsScreen
-import com.biikkkuuuu.muzi.ui.screens.settings.AccountSettingsScreen
 import com.biikkkuuuu.muzi.ui.screens.settings.StorageSettings
 import com.biikkkuuuu.muzi.ui.screens.settings.ThemeScreen
 import com.biikkkuuuu.muzi.ui.screens.settings.AiSettings
-
 import com.biikkkuuuu.muzi.ui.screens.settings.integrations.ListenTogetherSettings
 import com.biikkkuuuu.muzi.ui.screens.recognition.RecognitionScreen
 import com.biikkkuuuu.muzi.ui.screens.recognition.RecognitionHistoryScreen
-import com.biikkkuuuu.muzi.ui.screens.settings.UpdateSettings
-import com.biikkkuuuu.muzi.echomusic.updater.UpdateScreen
 import com.biikkkuuuu.muzi.utils.rememberEnumPreference
 import com.biikkkuuuu.muzi.utils.rememberPreference
 import com.biikkkuuuu.muzi.echomusic.changelog.ChangelogScreen
@@ -327,20 +323,6 @@ fun NavGraphBuilder.navigationBuilder(
 
 
     composable(
-        route = "settings/update?highlightKey={highlightKey}",
-        arguments = listOf(navArgument("highlightKey") { type = NavType.StringType; nullable = true })
-    ) { backStackEntry ->
-       UpdateSettings(navController, scrollBehavior, highlightKey = backStackEntry.arguments?.getString("highlightKey"))
-    }
-
-    composable(
-        route = "settings/account?highlightKey={highlightKey}",
-        arguments = listOf(navArgument("highlightKey") { type = NavType.StringType; nullable = true })
-    ) { backStackEntry ->
-        AccountSettingsScreen(navController, scrollBehavior, highlightKey = backStackEntry.arguments?.getString("highlightKey"))
-    }
-
-    composable(
         route = "settings/appearance?highlightKey={highlightKey}",
         arguments = listOf(navArgument("highlightKey") { type = NavType.StringType; nullable = true })
     ) { backStackEntry ->
@@ -448,14 +430,6 @@ fun NavGraphBuilder.navigationBuilder(
         arguments = listOf(navArgument("highlightKey") { type = NavType.StringType; nullable = true })
     ) { backStackEntry ->
         AboutScreen(navController, scrollBehavior, highlightKey = backStackEntry.arguments?.getString("highlightKey"))
-    }
-
-    composable("update") {
-        UpdateScreen(navController)
-    }
-
-    composable("login") {
-        LoginScreen(navController)
     }
 
     dialog("equalizer") {

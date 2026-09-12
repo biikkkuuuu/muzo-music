@@ -10,28 +10,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.music.innertube.utils.parseCookieString
 import com.biikkkuuuu.muzi.BuildConfig
 import com.biikkkuuuu.muzi.R
-import com.biikkkuuuu.muzi.constants.AccountEmailKey
-import com.biikkkuuuu.muzi.constants.InnerTubeCookieKey
-import com.biikkkuuuu.muzi.constants.UseLoginForBrowse
-import com.biikkkuuuu.muzi.constants.YtmSyncKey
-import com.biikkkuuuu.muzi.constants.AudioQualityKey
-import com.biikkkuuuu.muzi.constants.AudioQuality
 import com.biikkkuuuu.muzi.ui.component.Material3SettingsGroup
 import com.biikkkuuuu.muzi.ui.component.Material3SettingsItem
-import com.biikkkuuuu.muzi.utils.rememberEnumPreference
-import com.biikkkuuuu.muzi.utils.rememberPreference
 import com.biikkkuuuu.muzi.viewmodels.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,22 +30,6 @@ fun SettingDialoge(
     homeViewModel: HomeViewModel
 ) {
     val uriHandler = LocalUriHandler.current
-    val (audioQuality) = rememberEnumPreference(
-        AudioQualityKey,
-        defaultValue = AudioQuality.OPUS
-    )
-    val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
-    val isLoggedIn = remember(innerTubeCookie) {
-        innerTubeCookie.isNotEmpty() && "SAPISID" in parseCookieString(innerTubeCookie)
-    }
-
-    val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
-    val accountName by homeViewModel.accountName.collectAsState()
-    val accountImageUrl by homeViewModel.accountImageUrl.collectAsState()
-
-    val (useLoginForBrowse, onUseLoginForBrowseChange) = rememberPreference(UseLoginForBrowse, true)
-    val (ytmSync, onYtmSyncChange) = rememberPreference(YtmSyncKey, true)
-
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -66,7 +38,6 @@ fun SettingDialoge(
         dragHandle = { BottomSheetDefaults.DragHandle() },
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
-        val primaryColor = MaterialTheme.colorScheme.onSurface
         val onSecondaryColor = MaterialTheme.colorScheme.onSurfaceVariant
 
         Column(
@@ -76,102 +47,26 @@ fun SettingDialoge(
                 .padding(bottom = 32.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header
-            // Removed Echo Music text
-
-            // Account Group
             Material3SettingsGroup(
-                title = "Account",
-                compact = true,
-                items = buildList {
-                    add(
-                        Material3SettingsItem(
-                            title = { Text(if (isLoggedIn) accountName else "Anonymous") },
-                            description = { Text(if (isLoggedIn) accountEmail.ifEmpty { "Logged In" } else "Not Logged In") },
-                            icon = painterResource(R.drawable.account),
-                            trailingContent = if (isLoggedIn && !accountImageUrl.isNullOrBlank()) {
-                                {
-                                    AsyncImage(
-                                        model = accountImageUrl,
-                                        contentDescription = "Profile Photo",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                    )
-                                }
-                            } else null,
-                            onClick = {
-                                onDismissRequest()
-                                if (isLoggedIn) onNavigate("settings/account") else onNavigate("login") 
-                            }
-                        )
-                    )
-                    add(
-                        Material3SettingsItem(
-                            title = { Text(androidx.compose.ui.res.stringResource(R.string.ai_lyrics_translation)) },
-                            description = { Text(androidx.compose.ui.res.stringResource(R.string.setting_desc_ai)) },
-                            customIcon = {
-                                Text(
-                                    text = "Ai",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
-                                )
-                            },
-                            onClick = {
-                                onDismissRequest()
-                                onNavigate("settings/ai")
-                            }
-                        )
-                    )
-                }
-            )
-
-            if (isLoggedIn) {
-                Material3SettingsGroup(
-                    title = "Preferences",
-                    compact = true,
-                    items = listOf(
-                        Material3SettingsItem(
-                            title = { Text("Use Account for Browsing") },
-                            icon = painterResource(R.drawable.add_circle),
-                            trailingContent = {
-                                Switch(
-                                    checked = useLoginForBrowse,
-                                    onCheckedChange = {
-                                        com.music.innertube.YouTube.useLoginForBrowse = it
-                                        onUseLoginForBrowseChange(it)
-                                    },
-                                    modifier = Modifier.scale(0.8f)
-                                )
-                            },
-                            onClick = {
-                                val newVal = !useLoginForBrowse
-                                com.music.innertube.YouTube.useLoginForBrowse = newVal
-                                onUseLoginForBrowseChange(newVal)
-                            }
-                        ),
-                        Material3SettingsItem(
-                            title = { Text("YouTube Music Sync") },
-                            icon = painterResource(R.drawable.cached),
-                            trailingContent = {
-                                Switch(
-                                    checked = ytmSync,
-                                    onCheckedChange = onYtmSyncChange,
-                                    modifier = Modifier.scale(0.8f)
-                                )
-                            },
-                            onClick = { onYtmSyncChange(!ytmSync) }
-                        )
-                    )
-                )
-            }
-
-            Material3SettingsGroup(
-                title = "App",
+                title = "Muzi Music",
                 compact = true,
                 items = listOf(
+                    Material3SettingsItem(
+                        title = { Text(androidx.compose.ui.res.stringResource(R.string.ai_lyrics_translation)) },
+                        description = { Text(androidx.compose.ui.res.stringResource(R.string.setting_desc_ai)) },
+                        customIcon = {
+                            Text(
+                                text = "Ai",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                            )
+                        },
+                        onClick = {
+                            onDismissRequest()
+                            onNavigate("settings/ai")
+                        }
+                    ),
                     Material3SettingsItem(
                         title = { Text(androidx.compose.ui.res.stringResource(R.string.settings)) },
                         description = { Text(androidx.compose.ui.res.stringResource(R.string.setting_desc_settings_main)) },
@@ -184,7 +79,13 @@ fun SettingDialoge(
                     Material3SettingsItem(
                         title = { Text("About") },
                         icon = painterResource(R.drawable.info),
-                        trailingContent = { Text(BuildConfig.VERSION_NAME, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        trailingContent = { 
+                            Text(
+                                BuildConfig.VERSION_NAME, 
+                                style = MaterialTheme.typography.bodyMedium, 
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ) 
+                        },
                         onClick = { 
                             onDismissRequest()
                             onNavigate("settings/about") 
@@ -195,22 +96,19 @@ fun SettingDialoge(
 
             // Footer Links
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Privacy Policy",
+                    text = "Muzi Music on GitHub",
                     style = MaterialTheme.typography.bodySmall,
                     color = onSecondaryColor,
-                    modifier = Modifier.clickable { uriHandler.openUri("https://echomusic.fun/p/privacy-policy") }.padding(4.dp)
-                )
-                Text(text = " • ", color = onSecondaryColor, style = MaterialTheme.typography.bodySmall)
-                Text(
-                    text = "Terms of Service",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = onSecondaryColor,
-                    modifier = Modifier.clickable { uriHandler.openUri("https://echomusic.fun/p/toc") }.padding(4.dp)
+                    modifier = Modifier
+                        .clickable { uriHandler.openUri("https://github.com/biikkkuuuu/muzi-music") }
+                        .padding(4.dp)
                 )
             }
         }

@@ -175,12 +175,6 @@ import com.biikkkuuuu.muzi.constants.MiniPlayerBottomSpacing
 import com.biikkkuuuu.muzi.constants.MiniPlayerHeight
 import com.biikkkuuuu.muzi.constants.NavigationBarAnimationSpec
 import com.biikkkuuuu.muzi.constants.NavigationBarHeight
-import com.biikkkuuuu.muzi.echomusic.updater.checkForUpdate
-import com.biikkkuuuu.muzi.echomusic.updater.getAutoUpdateCheckSetting
-import com.biikkkuuuu.muzi.echomusic.updater.isNewerVersion
-import com.biikkkuuuu.muzi.echomusic.updater.saveUpdateAvailableState
-import com.biikkkuuuu.muzi.echomusic.updater.getUpdateNotificationsSetting
-import com.biikkkuuuu.muzi.echomusic.UpdateNotificationHelper
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import com.biikkkuuuu.muzi.constants.PauseListenHistoryKey
@@ -457,59 +451,6 @@ class MainActivity : ComponentActivity() {
         val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
         val context = LocalContext.current
-        var showUpdateDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
-        var availableUpdateVersion by remember { androidx.compose.runtime.mutableStateOf("") }
-        var availableUpdateChangelog by remember { androidx.compose.runtime.mutableStateOf<List<com.biikkkuuuu.muzi.echomusic.updater.ChangelogSection>>(emptyList()) }
-        var availableUpdateDescription by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-        var whatsNewInfo by remember { androidx.compose.runtime.mutableStateOf<com.biikkkuuuu.muzi.echomusic.updater.WhatsNewInfo?>(null) }
-
-        LaunchedEffect(Unit) {
-            val currentVersion = BuildConfig.VERSION_NAME
-            val lastSeenVersion = com.biikkkuuuu.muzi.echomusic.updater.getLastSeenChangelogVersion(context)
-            if (lastSeenVersion.isEmpty()) {
-                // Fresh install, not an update — nothing "new" to show, so mark this
-                // version seen right away rather than waiting on a dialog dismissal.
-                com.biikkkuuuu.muzi.echomusic.updater.saveLastSeenChangelogVersion(context, currentVersion)
-            } else if (lastSeenVersion != currentVersion) {
-                // Only mark the version seen once its changelog is actually shown (see
-                // onDismiss below) — if the fetch fails here, retry on the next launch
-                // instead of losing that version's release notes forever.
-                whatsNewInfo = com.biikkkuuuu.muzi.echomusic.updater.fetchChangelogForVersion(currentVersion)
-            }
-        }
-
-        LaunchedEffect(Unit) {
-            val prefs = context.dataStore.data.first()
-
-            if (getAutoUpdateCheckSetting(context)) {
-                
-                delay(2000L)
-                checkForUpdate(
-                    context = context,
-                    onSuccess = { latestVersion, isAvailable, changelog, _, _, description, _, _ ->
-                        val currentVersion = BuildConfig.VERSION_NAME
-                        Log.d("UpdateCheck", "Startup check success. Latest: $latestVersion, Current: $currentVersion, isAvailable: $isAvailable")
-                        saveUpdateAvailableState(context, isAvailable)
-                        
-                        if (isAvailable) {
-                            availableUpdateVersion = latestVersion
-                            availableUpdateChangelog = changelog
-                            availableUpdateDescription = description
-                            showUpdateDialog = true
-                        }
-
-                        if (isAvailable && getUpdateNotificationsSetting(context)) {
-                            Log.d("UpdateCheck", "Posting update notification for $latestVersion")
-                            UpdateNotificationHelper.showUpdateNotification(context, latestVersion)
-                        }
-                    },
-                    onError = {
-                        Log.e("UpdateCheck", "Startup check failed")
-                        
-                    }
-                )
-            }
-        }
 
         LaunchedEffect(enableHighRefreshRate) {
             val window = this@MainActivity.window
@@ -610,28 +551,7 @@ class MainActivity : ComponentActivity() {
         ) {
 
 
-        if (showUpdateDialog) {
-            com.biikkkuuuu.muzi.echomusic.component.UpdateAvailableDialog(
-                version = availableUpdateVersion,
-                changelog = availableUpdateChangelog,
-                description = availableUpdateDescription,
-                onDismiss = { showUpdateDialog = false }
-            )
-        } else {
-            whatsNewInfo?.let { info ->
-                com.biikkkuuuu.muzi.echomusic.updater.WhatsNewDialog(
-                    version = BuildConfig.VERSION_NAME,
-                    info = info,
-                    onDismiss = {
-                        com.biikkkuuuu.muzi.echomusic.updater.saveLastSeenChangelogVersion(
-                            context,
-                            BuildConfig.VERSION_NAME,
-                        )
-                        whatsNewInfo = null
-                    }
-                )
-            }
-        }
+
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1075,24 +995,12 @@ class MainActivity : ComponentActivity() {
                                                     )
                                                 }
                                             }
-                                             IconButton(onClick = { showSettingDialoge = true }) {
-                                                BadgedBox(badge = {}) {
-                                                    if (accountImageUrl != null) {
-                                                        AsyncImage(
-                                                            model = accountImageUrl,
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier = Modifier
-                                                                .size(24.dp)
-                                                                .clip(CircleShape)
-                                                        )
-                                                     } else {
-                                                         Icon(
-                                                             painter = painterResource(R.drawable.settings),
-                                                             contentDescription = stringResource(R.string.account),
-                                                             modifier = Modifier.size(24.dp)
-                                                         )
-                                                     }
-                                                }
+                                            IconButton(onClick = { showSettingDialoge = true }) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.settings),
+                                                    contentDescription = stringResource(R.string.settings),
+                                                    modifier = Modifier.size(24.dp)
+                                                )
                                             }
                                         },
                                         scrollBehavior = topAppBarScrollBehavior,
