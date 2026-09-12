@@ -1,1 +1,2 @@
-# muzo-music
+# muzi-music
+
