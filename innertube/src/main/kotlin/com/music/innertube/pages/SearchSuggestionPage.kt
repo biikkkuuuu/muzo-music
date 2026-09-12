@@ -8,7 +8,6 @@ import com.music.innertube.models.MusicResponsiveListItemRenderer
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
 import com.music.innertube.models.clean
-import com.music.innertube.models.findViewCountText
 import com.music.innertube.models.oddElements
 import com.music.innertube.models.splitBySeparator
 
@@ -25,7 +24,15 @@ object SearchSuggestionPage {
                         ?.splitBySeparator()
                         ?.clean()
                 SongItem(
-                    id = renderer.playlistItemData?.videoId ?: return null,
+                    id = renderer.playlistItemData?.videoId ?: renderer.navigationEndpoint?.watchEndpoint?.videoId
+                    ?: renderer.overlay?.musicItemThumbnailOverlayRenderer
+                        ?.content?.musicPlayButtonRenderer
+                        ?.playNavigationEndpoint?.watchEndpoint?.videoId
+                    ?: renderer.flexColumns.firstOrNull()
+                        ?.musicResponsiveListItemFlexColumnRenderer
+                        ?.text?.runs?.firstOrNull()
+                        ?.navigationEndpoint?.watchEndpoint?.videoId
+                    ?: return null,
                     title =
                         renderer.flexColumns
                             .firstOrNull()
@@ -65,17 +72,9 @@ object SearchSuggestionPage {
                         renderer.badges?.find {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                         } != null,
-                    viewCountText = secondaryLine?.findViewCountText()
                 )
             }
             renderer.isArtist -> {
-                val secondaryLine =
-                    renderer.flexColumns
-                        .getOrNull(1)
-                        ?.musicResponsiveListItemFlexColumnRenderer
-                        ?.text
-                        ?.runs
-                        ?.splitBySeparator()
                 ArtistItem(
                     id = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
                     title =
@@ -104,7 +103,6 @@ object SearchSuggestionPage {
                             ?.menuNavigationItemRenderer
                             ?.navigationEndpoint
                             ?.watchPlaylistEndpoint,
-                    subtext = secondaryLine?.map { list -> list.joinToString(separator = "") { it.text } }?.joinToString(separator = " • ")
                 )
             }
             renderer.isAlbum -> {

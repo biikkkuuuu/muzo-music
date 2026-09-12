@@ -8,7 +8,6 @@ import com.music.innertube.models.MusicResponsiveListItemRenderer
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
-import com.music.innertube.models.findViewCountText
 import com.music.innertube.models.oddElements
 import com.music.innertube.models.splitBySeparator
 import com.music.innertube.utils.parseTime
@@ -27,17 +26,22 @@ object SearchPage {
                 ?.text
                 ?.runs
                 ?.splitBySeparator()
-                ?: return null
+                ?: return null.also { println("[UPLOAD_DEBUG] SearchPage.toYTItem FAILED: secondaryLine is null for renderer: $renderer") }
         return when {
             renderer.isSong -> {
                 // Extract library tokens using the new method that properly handles multiple toggle items
                 val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
                 SongItem(
-                    id = renderer.playlistItemData?.videoId
-                        ?: renderer.navigationEndpoint?.watchEndpoint?.videoId
-                        ?: renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
-                        ?: return null,
+                    id = renderer.playlistItemData?.videoId ?: renderer.navigationEndpoint?.watchEndpoint?.videoId
+                    ?: renderer.overlay?.musicItemThumbnailOverlayRenderer
+                        ?.content?.musicPlayButtonRenderer
+                        ?.playNavigationEndpoint?.watchEndpoint?.videoId
+                    ?: renderer.flexColumns.firstOrNull()
+                        ?.musicResponsiveListItemFlexColumnRenderer
+                        ?.text?.runs?.firstOrNull()
+                        ?.navigationEndpoint?.watchEndpoint?.videoId
+                    ?: return null.also { println("[UPLOAD_DEBUG] SearchPage.toYTItem FAILED: id is null for renderer: $renderer") },
                     title =
                         renderer.flexColumns
                             .firstOrNull()
@@ -52,7 +56,7 @@ object SearchPage {
                                 name = it.text,
                                 id = it.navigationEndpoint?.browseEndpoint?.browseId,
                             )
-                        } ?: return null,
+                        } ?: return null.also { println("[UPLOAD_DEBUG] SearchPage.toYTItem FAILED: artists is null for renderer: $renderer") },
                     album =
                         secondaryLine.getOrNull(1)?.firstOrNull()?.takeIf { it.navigationEndpoint?.browseEndpoint != null }?.let {
                             Album(
@@ -72,11 +76,8 @@ object SearchPage {
                         renderer.badges?.find {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                         } != null,
-                    endpoint = renderer.navigationEndpoint?.watchEndpoint
-                        ?: renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint,
                     libraryAddToken = libraryTokens.addToken,
-                    libraryRemoveToken = libraryTokens.removeToken,
-                    viewCountText = secondaryLine.findViewCountText()
+                    libraryRemoveToken = libraryTokens.removeToken
                 )
             }
             renderer.isArtist -> {
@@ -106,7 +107,6 @@ object SearchPage {
                             ?.menuNavigationItemRenderer
                             ?.navigationEndpoint
                             ?.watchPlaylistEndpoint ?: return null,
-                    subtext = secondaryLine.map { list -> list.joinToString(separator = "") { it.text } }.joinToString(separator = " • ")
                 )
             }
             renderer.isAlbum -> {

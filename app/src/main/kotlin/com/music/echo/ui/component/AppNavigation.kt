@@ -1,0 +1,349 @@
+
+
+package com.biikkkuuuu.muzi.ui.component
+
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.biikkkuuuu.muzi.R
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import com.biikkkuuuu.muzi.ui.screens.Screens
+import com.biikkkuuuu.muzi.ui.component.LocalGlassEffectConfig
+import com.biikkkuuuu.muzi.ui.component.liquidGlass
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+
+@Immutable
+private data class NavItemState(
+    val isSelected: Boolean,
+    val iconRes: Int
+)
+
+@Stable
+fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
+    if (currentRoute == null) return false
+    if (currentRoute == screenRoute) return true
+    return navigationItems.any { it.route == screenRoute } && 
+           currentRoute.startsWith("$screenRoute/")
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppNavigationRail(
+    navigationItems: List<Screens>,
+    currentRoute: String?,
+    onItemClick: (Screens, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    pureBlack: Boolean = false,
+    onSearchLongClick: (() -> Unit)? = null,
+    onMusicRecognitionClick: (() -> Unit)? = null,
+    musicRecognitionContentDescription: String = "",
+    onShuffleClick: (() -> Unit)? = null,
+    shuffleEnabled: Boolean = false,
+    shuffleIconRes: Int? = null,
+    shuffleContentDescription: String = "",
+    onAiHubClick: (() -> Unit)? = null,
+    aiHubIconRes: Int? = null,
+    aiHubContentDescription: String = ""
+) {
+    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+    val haptics = LocalHapticFeedback.current
+    val viewConfiguration = LocalViewConfiguration.current
+    var showMoreOptionsSheet by rememberSaveable { mutableStateOf(false) }
+    val hasMoreOptions = (onShuffleClick != null && shuffleIconRes != null) || onAiHubClick != null
+
+    NavigationRail(
+        modifier = modifier,
+        containerColor = containerColor
+    ) {
+        Spacer(modifier = Modifier.weight(1f))
+
+        navigationItems.forEach { screen ->
+            val isSelected = remember(currentRoute, screen.route) {
+                isRouteSelected(currentRoute, screen.route, navigationItems)
+            }
+            val iconRes = remember(isSelected, screen) {
+                if (isSelected) screen.iconIdActive else screen.iconIdInactive
+            }
+
+            val isSearchItem = screen == Screens.Search && onSearchLongClick != null
+            val interactionSource = remember { MutableInteractionSource() }
+
+
+            if (isSearchItem) {
+                LaunchedEffect(interactionSource) {
+                    var isLongClick = false
+                    interactionSource.interactions.collectLatest { interaction ->
+                        when (interaction) {
+                            is PressInteraction.Press -> {
+                                isLongClick = false
+                                delay(viewConfiguration.longPressTimeoutMillis)
+                                isLongClick = true
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onSearchLongClick.invoke()
+                            }
+                            is PressInteraction.Release -> {
+                                if (!isLongClick) {
+                                    onItemClick(screen, isSelected)
+                                }
+                            }
+                            is PressInteraction.Cancel -> {
+                                isLongClick = false
+                            }
+                        }
+                    }
+                }
+            }
+
+            NavigationRailItem(
+                selected = isSelected,
+                onClick = {
+                    if (!isSearchItem) {
+                        onItemClick(screen, isSelected)
+                    }
+
+                },
+                interactionSource = interactionSource,
+                icon = {
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = stringResource(screen.titleId)
+                    )
+                }
+            )
+
+            if (screen == Screens.Library && onMusicRecognitionClick != null) {
+                NavigationRailItem(
+                    selected = false,
+                    onClick = onMusicRecognitionClick,
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.mic),
+                            contentDescription = musicRecognitionContentDescription
+                        )
+                    }
+                )
+            }
+        }
+
+        if (hasMoreOptions) {
+            NavigationRailItem(
+                selected = false,
+                onClick = { showMoreOptionsSheet = true },
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.more_horiz),
+                        contentDescription = stringResource(R.string.more_label)
+                    )
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+    }
+
+    if (hasMoreOptions && showMoreOptionsSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showMoreOptionsSheet = false },
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.more_options),
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                )
+
+                Material3SettingsGroup(
+                    items = buildList {
+                        if (onShuffleClick != null && shuffleIconRes != null) {
+                            add(
+                                Material3SettingsItem(
+                                    title = { Text(shuffleContentDescription) },
+                                    icon = painterResource(shuffleIconRes),
+                                    trailingContent = {
+                                        Switch(
+                                            checked = shuffleEnabled,
+                                            onCheckedChange = { onShuffleClick() }
+                                        )
+                                    },
+                                    onClick = onShuffleClick
+                                )
+                            )
+                        }
+
+                        if (onAiHubClick != null && aiHubIconRes != null) {
+                            add(
+                                Material3SettingsItem(
+                                    title = { Text(aiHubContentDescription) },
+                                    icon = painterResource(aiHubIconRes),
+                                    onClick = {
+                                        showMoreOptionsSheet = false
+                                        onAiHubClick()
+                                    }
+                                )
+                            )
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AppNavigationBar(
+    navigationItems: List<Screens>,
+    currentRoute: String?,
+    onItemClick: (Screens, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    pureBlack: Boolean = false,
+    slimNav: Boolean = false,
+    glassEnabled: Boolean = false,
+    onSearchLongClick: (() -> Unit)? = null
+) {
+    val glassConfig = LocalGlassEffectConfig.current
+    val containerColor = if (glassEnabled && glassConfig.globalEnabled && glassConfig.navBarEnabled) Color.Transparent else if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+    val contentColor = if (glassEnabled && glassConfig.globalEnabled && glassConfig.navBarEnabled) glassConfig.textColor else if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    val haptics = LocalHapticFeedback.current
+    val viewConfiguration = LocalViewConfiguration.current
+    
+    val navModifier = if (glassEnabled && glassConfig.globalEnabled && glassConfig.navBarEnabled) {
+        modifier.liquidGlass(config = glassConfig)
+    } else {
+        modifier
+    }
+    
+    NavigationBar(
+        modifier = navModifier,
+        containerColor = containerColor,
+        contentColor = contentColor
+    ) {
+        navigationItems.forEach { screen ->
+            val isSelected = remember(currentRoute, screen.route) {
+                isRouteSelected(currentRoute, screen.route, navigationItems)
+            }
+            val iconRes = remember(isSelected, screen) {
+                if (isSelected) screen.iconIdActive else screen.iconIdInactive
+            }
+            
+            val isSearchItem = screen == Screens.Search && onSearchLongClick != null
+            val interactionSource = remember { MutableInteractionSource() }
+            
+            
+            if (isSearchItem) {
+                LaunchedEffect(interactionSource) {
+                    var isLongClick = false
+                    interactionSource.interactions.collectLatest { interaction ->
+                        when (interaction) {
+                            is PressInteraction.Press -> {
+                                isLongClick = false
+                                delay(viewConfiguration.longPressTimeoutMillis)
+                                isLongClick = true
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onSearchLongClick.invoke()
+                            }
+                            is PressInteraction.Release -> {
+                                if (!isLongClick) {
+                                    onItemClick(screen, isSelected)
+                                }
+                            }
+                            is PressInteraction.Cancel -> {
+                                isLongClick = false
+                            }
+                        }
+                    }
+                }
+            }
+            
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { 
+                    if (!isSearchItem) {
+                        onItemClick(screen, isSelected)
+                    }
+                    
+                },
+                interactionSource = interactionSource,
+                icon = {
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = stringResource(screen.titleId)
+                    )
+                },
+                label = if (!slimNav) {
+                    {
+                        Text(
+                            text = stringResource(screen.titleId),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                } else null
+            )
+        }
+    }
+}

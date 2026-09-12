@@ -35,14 +35,13 @@ data class SongItem(
     val setVideoId: String? = null,
     val libraryAddToken: String? = null,
     val libraryRemoveToken: String? = null,
-    val historyRemoveToken: String? = null,
-    val viewCountText: String? = null
+    val historyRemoveToken: String? = null
 ) : YTItem() {
     val isVideoSong: Boolean
         get() = musicVideoType != null && musicVideoType != MUSIC_VIDEO_TYPE_ATV
 
     override val shareLink: String
-        get() = "https://music.youtube.com/watch?v=$id"
+        get() = "https://share.echomusic.fun/watch?v=$id"
 }
 
 data class AlbumItem(
@@ -57,7 +56,7 @@ data class AlbumItem(
     val description: String? = null,
 ) : YTItem() {
     override val shareLink: String
-        get() = "https://music.youtube.com/playlist?list=$playlistId"
+        get() = "https://share.echomusic.fun/playlist?list=$playlistId"
 }
 
 data class PlaylistItem(
@@ -70,12 +69,11 @@ data class PlaylistItem(
     val shuffleEndpoint: WatchEndpoint?,
     val radioEndpoint: WatchEndpoint?,
     val isEditable: Boolean = false,
-    val description: String? = null,
 ) : YTItem() {
     override val explicit: Boolean
         get() = false
     override val shareLink: String
-        get() = "https://music.youtube.com/playlist?list=$id"
+        get() = "https://share.echomusic.fun/playlist?list=$id"
 }
 
 data class ArtistItem(
@@ -86,12 +84,11 @@ data class ArtistItem(
     val playEndpoint: WatchEndpoint? = null,
     val shuffleEndpoint: WatchEndpoint?,
     val radioEndpoint: WatchEndpoint?,
-    val subtext: String? = null
 ) : YTItem() {
     override val explicit: Boolean
         get() = false
     override val shareLink: String
-        get() = "https://music.youtube.com/channel/$id"
+        get() = "https://share.echomusic.fun/channel/$id"
 }
 
 fun <T : YTItem> List<T>.filterExplicit(enabled: Boolean = true) =

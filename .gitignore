@@ -1,18 +1,40 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+/.idea/
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
-.vscode/
+.kotlin/
+
+# Mac
+.DS_Store
+
+# build folders
+build/
+app/build/
+androidApp/build/
+composeApp/build/
+cast/build/
+cast-empty/build/
+crashlytics/build/
+crashlytics-empty/build/
+lastfm/build/
+lastfm-empty/build/
+*/build/
+
+# Gradle
+.gradle/
+
+# Kotlin Multiplatform
+/.kotlin
+
+# Logs
+*.log
+
+# APKs and generated test artifacts
+*.apk
 *.png
-*.mp4

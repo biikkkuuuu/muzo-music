@@ -20,9 +20,6 @@ android {
 
 kotlin {
     jvmToolchain(21)
-    compilerOptions {
-        freeCompilerArgs.add("-Xmetadata-version=2.0.0")
-    }
 }
 
 dependencies {
@@ -32,7 +29,16 @@ dependencies {
     implementation(libs.ktor.serialization.json)
     implementation(libs.ktor.client.encoding)
     implementation(libs.brotli)
-    implementation(libs.newpipeextractor)
+    // implementation("com.github.bravepipeproject:extractor") {
+    //     exclude(group = "com.google.protobuf", module = "protobuf-java")
+    // }
+    implementation(libs.newpipeextractor) {
+        exclude(group = "com.google.protobuf", module = "protobuf-java")
+    }
+    implementation(libs.pipepipe.extractor) {
+        exclude(group = "com.google.protobuf", module = "protobuf-java")
+    }
+    implementation("com.github.TeamNewPipe:nanojson:c7a6c1c08d16b6d5ecded34758e6415e07be2166")
     testImplementation(libs.junit)
 
     coreLibraryDesugaring(libs.desugaring)
