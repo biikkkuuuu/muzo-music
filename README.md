@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/Echo-new.png" alt="Muzi Music Logo" width="120"/>
+  <img src="assets/muzi_logo.png" alt="Muzi Music Logo" width="120"/>
 
   <h1>Muzi Music</h1>
 
