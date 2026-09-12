@@ -141,8 +141,8 @@ fun QueueMenu(
     if (showWhyDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showWhyDialog = false },
-            title = { androidx.compose.material3.Text(text = "Echo Brain Recommendation") },
-            text = { androidx.compose.material3.Text(text = "This song was dynamically added by Echo Brain based on your listening patterns, the current song's genre, and your library's vibes.") },
+            title = { androidx.compose.material3.Text(text = "Muzi Recommendation") },
+            text = { androidx.compose.material3.Text(text = "This song was dynamically added based on your listening patterns, the current song's genre, and your library's vibes.") },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = { showWhyDialog = false }) {
                     androidx.compose.material3.Text("Got it")

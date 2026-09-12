@@ -79,7 +79,7 @@ class CrashActivity : ComponentActivity() {
         try {
             
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val fileName = "echomusic_crash_$timestamp.txt"
+            val fileName = "muzi_crash_$timestamp.txt"
             val crashFile = File(cacheDir, fileName)
             crashFile.writeText(crashLog)
             

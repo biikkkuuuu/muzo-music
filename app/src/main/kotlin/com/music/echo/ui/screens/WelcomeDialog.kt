@@ -92,7 +92,7 @@ fun WelcomeDialog(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Button(
-                    onClick = { uriHandler.openUri("https://github.com/biikkkuuuu/muzo-music") },
+                    onClick = { uriHandler.openUri("https://github.com/biikkkuuuu/muzi-music") },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(

@@ -1,6 +1,6 @@
 # MUZI Architecture & Frontend Design Specification (DESIGN.md)
 
-This document provides a comprehensive technical overview and design specification of the actual frontend implementation and backend integration for **MUZI** (built with Echo UI/UX on top of MUZI backend and InnerTube data services).
+This document provides a comprehensive technical overview and design specification of the frontend implementation and backend integration for **MUZI** (built on top of MUZI backend and InnerTube data services).
 
 ---
 
@@ -8,7 +8,7 @@ This document provides a comprehensive technical overview and design specificati
 
 ```
                ┌──────────────────────────────────────────────┐
-               │         Echo UI / UX Layer (Jetpack Compose) │
+               │         MUZI UI / UX Layer (Jetpack Compose) │
                │  - Home, Search, Library, Explore, Player    │
                │  - Material 3 Expressive + iOS Blur/Aesthetic│
                └──────────────────────┬───────────────────────┘
@@ -27,7 +27,7 @@ This document provides a comprehensive technical overview and design specificati
                └──────────────────────────────────────────────┘
 ```
 
-The application preserves the rich, fluid frontend of Echo Music with seamless bindings to MUZI's backend service layer (`innertube`, `core`, and `playback` engines).
+The application provides a rich, fluid Material 3 Expressive frontend with seamless bindings to MUZI's backend service layer (`innertube`, `core`, and `playback` engines).
 
 ---
 

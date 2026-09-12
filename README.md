@@ -4,20 +4,20 @@
   <h1>Muzi Music</h1>
 
   <p><b>A modern Android music app with ad-free streaming, synced lyrics, offline playback, and an intuitive user experience.</b></p>
+  <p>Developed & Maintained by <a href="https://github.com/biikkkuuuu">@biikkkuuuu</a></p>
 </div>
 
 ---
 
 ## Overview
 
-Echo Music delivers a seamless, premium listening experience by leveraging YouTube Music's vast library — without the ads. It adds powerful extras including offline downloads, real-time synchronized lyrics, and environment-aware music recognition.
-
-> [!IMPORTANT]
-> **In-app OTA updates have been permanently removed.** Please update manually via the website. Echo Music is completely free and ad-free; the few ads shown during a manual download help support the ongoing development of this project. Please do not open issues requesting to bring this back. Thank you for your support!
+Muzi Music delivers a seamless, premium listening experience by leveraging YouTube Music's vast library — without the ads. It adds powerful extras including offline downloads, real-time synchronized lyrics, audio equalization, and environment-aware music recognition.
 
 ---
 
-- **Discord**: [Join the Echo Music Discord server](https://discord.gg/Xt5hgsJJuA)
+- **Telegram**: [@biikkkuuuuu](https://t.me/biikkkuuuuu)
+- **Instagram**: [@biikkkuuuu](https://instagram.com/biikkkuuuu)
+- **GitHub**: [biikkkuuuu/muzi-music](https://github.com/biikkkuuuu/muzi-music)
 
 ---
 
@@ -30,6 +30,7 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
 - [Support the Project](#support-the-project)
 - [Contributors](#contributors)
 - [Special Thanks](#special-thanks)
+- [Legal Disclaimer](#legal-disclaimer--terms-of-use)
 
 ---
 
@@ -61,8 +62,8 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
         <img src="Screenshots/sc_5.png" alt="Music Library" width="220" style="border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);"/>
       </td>
       <td align="center" style="padding: 15px; border: none;">
-        <b>Echo Find (Recognition)</b><br><br>
-        <img src="Screenshots/sc_6.png" alt="Echo Find" width="220" style="border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);"/>
+        <b>Muzi Find (Recognition)</b><br><br>
+        <img src="Screenshots/sc_6.png" alt="Muzi Find" width="220" style="border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);"/>
       </td>
     </tr>
   </table>
@@ -72,13 +73,13 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
 
 ## Features
 
-### What's New
+### Highlights
 
 > - **Data Saver Mode (Beta)** — Automatically reduces data usage during playback for limited connections.
 > - **Settings Search Index** — Quickly find and navigate to any settings option instantly.
-> - **Redesigned UI** — Cleaner, faster, and more intuitive interface from the ground up.
+> - **Expressive Modern UI** — Material 3 Expressive, blur effects, dynamic Monet color palettes, and fluid animations.
 > - **Import from Spotify** — Bring your playlists and tracks over with ease.
-> - **Listen Together** — Sync music in real time, similar to Spotify Jam.
+> - **Listen Together** — Sync music in real time across devices.
 > - **Podcast Support** — Listen to podcasts alongside your music library.
 > - **Local Media Support** — Play music files stored directly on your device.
 > - **Dynamic Island Support** — Enhanced playback notifications on supported Android devices.
@@ -100,11 +101,11 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
 </details>
 
 <details>
-<summary><b>Discovery & Echo Find</b></summary>
+<summary><b>Discovery & Music Intelligence</b></summary>
 <br>
 
-- **Echo Find** — Identify songs playing around you using advanced audio recognition.
-- **Echo Brain** — An intelligent, on-device engine that analyzes your listening momentum and auto-injects perfectly aligned tracks into your queue. Read more in the [Echo Brain Documentation](ECHO_BRAIN_DOCS.md).
+- **Muzi Find** — Identify songs playing around you using advanced audio recognition.
+- **Muzi Brain** — An intelligent, on-device engine that analyzes your listening momentum and auto-injects perfectly aligned tracks into your queue.
 - **Smart Recommendations** — Personalized suggestions based on your listening history.
 - **Comprehensive Browsing** — Explore Charts, Podcasts, Moods, and Genres.
 
@@ -116,8 +117,8 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
 
 - **Multiple Lyric Animations** — Choose from various lyric display styles.
 - **Word-by-Word Lyrics** — Precise per-word synchronization.
-- **Lyrics+** — New lyrics provider for improved accuracy and coverage.
-- **AI Translation** — Built-in Google Translate integration for lyrics in any language.
+- **Lyrics+** — High-accuracy lyrics provider.
+- **AI Translation** — Built-in translation integration for lyrics in any language.
 
 </details>
 
@@ -127,6 +128,7 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
 
 - **Music Sharing via Odesli** — Share songs as Song.link for cross-platform listening.
 - **Set as Ringtone** — Directly set any song as your device ringtone.
+- **Discord Rich Presence** — Broadcast your currently playing tracks to Discord.
 
 </details>
 
@@ -158,7 +160,7 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
 
 ### Android Installation
 
-Download the latest pre-compiled APK from the [Releases Page](https://github.com/biikkkuuuu/muzo-music/releases/latest).
+Download the latest pre-compiled APK from the [Releases Page](https://github.com/biikkkuuuu/muzi-music/releases/latest).
 
 <details>
 <summary><b>Building from Source</b></summary>
@@ -167,8 +169,8 @@ Download the latest pre-compiled APK from the [Releases Page](https://github.com
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/biikkkuuuu/Echo-Music.git
-   cd Echo-Music
+   git clone https://github.com/biikkkuuuu/muzi-music.git
+   cd muzi-music
    ```
 
 2. **Configure Android SDK**
@@ -181,10 +183,10 @@ Download the latest pre-compiled APK from the [Releases Page](https://github.com
    _(For detailed paths on Windows/macOS/Linux, refer to [SETUP.md](SETUP.md))_
 
 3. **Firebase Configuration (Optional)**
-   Firebase is required for analytics and crash reporting. See the instructions in [SETUP.md](SETUP.md#3-configure-firebase-optional) for adding your `google-services.json`.
+   Firebase is used for analytics and crash reporting. See instructions in [SETUP.md](SETUP.md#3-configure-firebase-optional) for adding your `google-services.json`.
 
 4. **Build the Application**
-   Echo Music has two build variants: **FOSS** (without Google Play Services / Cast) and **GMS** (with Cast support).
+   Muzi Music has build variants for FOSS and GMS (with Google Cast support).
 
    - To build the **FOSS** Universal Debug variant:
      ```bash
@@ -195,7 +197,7 @@ Download the latest pre-compiled APK from the [Releases Page](https://github.com
      ./gradlew assembleUniversalGmsDebug
      ```
 
-   _(For optimized ARM64 builds, release builds, or other options, refer to [SETUP.md](SETUP.md))_
+   _(For release builds and details, refer to [SETUP.md](SETUP.md))_
 
 </details>
 
@@ -203,59 +205,38 @@ Download the latest pre-compiled APK from the [Releases Page](https://github.com
 
 ## Support the Project
 
-If Echo Music has been useful to you, consider supporting its development.
+If Muzi Music has been useful to you, star the repository and follow the developer!
 
-<div align="left">
-  <table style="margin: 0 auto; border-collapse: collapse; border: none;">
-    <tr>
-      <td align="center" style="padding: 15px; border: none;">
-        <a href="https://github.com/biikkkuuuu/muzo-music" style="text-decoration:none;"><img src="assets/bmac.png" alt="Support" width="140" style="border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);"/></a>
-      </td>
-    </tr>
-  </table>
-</div>
-
-<br>
-
-<details>
-<summary><b>Cryptocurrency Options</b></summary>
-<br>
-
-| Network      | Address                                        |
-| :----------- | :--------------------------------------------- |
-| **Bitcoin**  | `bc1qcvyr7eekha8uytmffcvgzf4h7xy7shqzke35fy`   |
-| **Ethereum** | `0x51bc91022E2dCef9974D5db2A0e22d57B360e700`   |
-| **Solana**   | `9wjca3EQnEiqzqgy7N5iqS1JGXJiknMQv6zHgL96t94S` |
-
-</details>
+- **GitHub**: [biikkkuuuu](https://github.com/biikkkuuuu)
+- **Telegram**: [@biikkkuuuuu](https://t.me/biikkkuuuuu)
+- **Instagram**: [@biikkkuuuu](https://instagram.com/biikkkuuuu)
 
 ---
 
 ## Contributors
 
-Without the support of this incredible open-source community, none of this would be possible. Thank you to everyone who has contributed to Echo Music!
+Without the support of this incredible open-source community, none of this would be possible. Thank you to everyone who has contributed to Muzi Music!
 
 <!-- readme: contributors -start -->
 <table>
-<tr><td align="center"><a href="https://github.com/biikkkuuuu"><img src="https://avatars.githubusercontent.com/u/210472672?v=4" width="60" height="60" /></a></td></tr>
+<tr><td align="center"><a href="https://github.com/biikkkuuuu"><img src="https://avatars.githubusercontent.com/u/210472672?v=4" width="60" height="60" /></a><br><b>biikkkuuuu</b></td></tr>
 </table>
 <!-- readme: contributors -end -->
-
 
 ---
 
 ## Special Thanks
 
-Echo Music stands on the shoulders of several excellent open-source projects. Sincere thanks to:
+Muzi Music stands on the shoulders of several excellent open-source projects. Sincere thanks to:
 
-| Project                                                                                                                   | Description                                         |
-| :------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------- |
+| Project | Description |
+| :--- | :--- |
 | **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** & **[Vivi Music](https://github.com/vivizzz007/vivi-music)** | Foundational inspiration and architecture reference |
-| **[ArchiveTune](https://github.com/koiverse/ArchiveTune)**                                                                | Material You UI inspiration                         |
-| **[Better Lyrics](https://better-lyrics.boidu.dev/)**                                                                     | Lyrics enhancement and synchronization              |
-| **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)**                                                                 | Lyrics implementation reference                     |
-| **[Music Recognizer](https://github.com/aleksey-saenko/MusicRecognizer)**                                                 | Audio recognition (Echo Find)                       |
-| **[BravePipe](https://github.com/bravepipeproject/BravePipe)**                                                            | Decryption handling and backup playback engine      |
+| **[ArchiveTune](https://github.com/koiverse/ArchiveTune)** | Material You UI inspiration |
+| **[Better Lyrics](https://better-lyrics.boidu.dev/)** | Lyrics enhancement and synchronization |
+| **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)** | Lyrics implementation reference |
+| **[Music Recognizer](https://github.com/aleksey-saenko/MusicRecognizer)** | Audio recognition (Muzi Find) |
+| **[BravePipe](https://github.com/bravepipeproject/BravePipe)** | Decryption handling and backup playback engine |
 
 ---
 
@@ -263,15 +244,15 @@ Echo Music stands on the shoulders of several excellent open-source projects. Si
 
 ### 1. 100% Free, Open-Source & Strictly Non-Commercial
 
-Echo Music is a fully open-source project (FOSS) created purely for educational purposes and personal use. We do not sell this application, nor do we monetize it in any way. There are no advertisements, no premium features, no subscriptions, and no hidden fees within the app. This project has absolutely no commercial value or financial intent.
+Muzi Music is a fully open-source project (FOSS) created purely for educational purposes and personal use. We do not sell this application, nor do we monetize it in any way. There are no advertisements, no premium features, no subscriptions, and no hidden fees within the app. This project has absolutely no commercial value or financial intent.
 
 ### 2. A Custom Browser with Content Filtering
 
-Echo Music acts strictly as a specialized, third-party web browser and client. It simply parses the publicly available website content and APIs of YouTube and YouTube Music, rendering them in a custom user interface. The ad-free experience it provides is fundamentally no different from using a standard web browser (like Chrome, Firefox, or Brave) equipped with a common ad-blocking extension (such as uBlock Origin).
+Muzi Music acts strictly as a specialized, third-party web browser and client. It simply parses the publicly available website content and APIs of YouTube and YouTube Music, rendering them in a custom user interface. The ad-free experience it provides is fundamentally no different from using a standard web browser (like Chrome, Firefox, or Brave) equipped with a common ad-blocking extension (such as uBlock Origin).
 
 ### 3. Support Content Creators
 
-We deeply respect the hard work of artists, musicians, and content creators. We strongly encourage all users to subscribe to [YouTube Premium](https://www.youtube.com/premium). Purchasing a Premium subscription is the best way to financially support the creators you listen to and ensure the continued growth of the platform. Echo Music is built as a proof-of-concept for developers and enthusiasts, not to harm creators' revenues.
+We deeply respect the hard work of artists, musicians, and content creators. We strongly encourage all users to subscribe to [YouTube Premium](https://www.youtube.com/premium). Purchasing a Premium subscription is the best way to financially support the creators you listen to and ensure the continued growth of the platform. Muzi Music is built as a proof-of-concept for developers and enthusiasts, not to harm creators' revenues.
 
 ### 4. No Hosting of Copyrighted Material
 
@@ -279,13 +260,12 @@ We do not host, upload, distribute, or store any audio, video, or copyrighted me
 
 ### 5. User Responsibility & Legal Contact
 
-The software is provided "AS IS", without warranty of any kind. The developers of Echo Music do not encourage or condone piracy. Users are solely responsible for ensuring their usage of this app complies with their local copyright laws and the Terms of Service of the platforms they access.
+The software is provided "AS IS", without warranty of any kind. The developers of Muzi Music do not encourage or condone piracy. Users are solely responsible for ensuring their usage of this app complies with their local copyright laws and the Terms of Service of the platforms they access.
 
-Because we do not host any media files, we cannot process DMCA takedown requests for audio or video content. However, if you represent a copyright holder or have legal concerns regarding the open-source code itself, please contact us via email at: [hello@echomusic.fun](mailto:hello@echomusic.fun)
+Because we do not host any media files, we cannot process DMCA takedown requests for audio or video content. For inquiries regarding the open-source code itself, please contact via GitHub: [biikkkuuuu](https://github.com/biikkkuuuu).
 
 ---
 
 <div align="center">
   <p>Licensed under <a href="LICENSE">GPL-3.0</a></p>
 </div>
->>>>>>> 2c6adf7 (feat: migrate to MUZI with Echo UI, personal branding @biikkkuuuu and package com.biikkkuuuu.muzi)

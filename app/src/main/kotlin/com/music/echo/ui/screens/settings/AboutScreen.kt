@@ -141,34 +141,6 @@ highlightKey: String? = null) {
                     )
                 )
             }
-
-            /* item {
-                AboutSectionCard(title = "App") {
-                    AboutActionRow(
-                        icon = painterResource(R.drawable.github),
-                        title = "GitHub",
-                        subtitle = "biikkkuuuu/muzo-music",
-                        onClick = { uriHandler.openUri("https://github.com/biikkkuuuu/muzo-music") },
-                    )
-                    AboutDivider()
-                    AboutActionRow(
-                        icon = painterResource(R.drawable.ic_discord_new),
-                        title = "Discord",
-                        subtitle = "discord.gg/EcfV3AxH5c",
-                        onClick = { uriHandler.openUri("https://discord.gg/EcfV3AxH5c") },
-                    )
-                    AboutDivider()
-                    AboutActionRow(
-                        icon = painterResource(R.drawable.ic_telegram_new),
-                        title = "Telegram",
-                        subtitle = "t.me/EchoMusicApp",
-                        onClick = { uriHandler.openUri("https://t.me/EchoMusicApp") },
-                    )
-                }
-            } */
-
-
-
         }
     }
 }

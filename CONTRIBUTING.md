@@ -1,6 +1,6 @@
-# Contributing to Echo Music
+# Contributing to Muzi Music
 
-Thank you for your interest in contributing to Echo Music! This document provides comprehensive guidelines and information for contributors.
+Thank you for your interest in contributing to Muzi Music! This document provides comprehensive guidelines and information for contributors.
 
 ## Table of Contents
 
@@ -65,12 +65,12 @@ We are committed to providing a welcoming and inspiring community for all. We pl
 1. Fork the repository on GitHub
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/Echo-Music.git
-   cd Echo-Music
+   git clone https://github.com/YOUR_USERNAME/muzi-music.git
+   cd muzi-music
    ```
 3. Add the upstream repository:
    ```bash
-   git remote add upstream https://github.com/biikkkuuuu/Echo-Music.git
+   git remote add upstream https://github.com/biikkkuuuu/muzi-music.git
    ```
 
 ## Development Setup
@@ -107,7 +107,7 @@ If you want to test Firebase features:
 
 ## Handling Sensitive Information
 
-When contributing to Echo Music, it's crucial to handle sensitive information properly:
+When contributing to Muzi Music, it's crucial to handle sensitive information properly:
 
 ### Files That Should Never Be Committed
 
@@ -428,7 +428,7 @@ We follow [Semantic Versioning](https://semver.org/):
 
 If you have questions about contributing:
 
-1. Check the [GitHub Discussions](https://github.com/biikkkuuuu/Echo-Music/discussions)
+1. Check the [GitHub Discussions](https://github.com/biikkkuuuu/muzi-music/discussions)
 2. Create a new discussion
 3. Contact maintainers directly through GitHub
 
@@ -444,11 +444,11 @@ Contributors will be recognized in:
 
 If you have questions about contributing:
 
-1. Check the [GitHub Discussions](https://github.com/biikkkuuuu/Echo-Music/discussions)
+1. Check the [GitHub Discussions](https://github.com/biikkkuuuu/muzi-music/discussions)
 2. Create a new discussion
 3. Contact maintainers directly
 
-Thank you for contributing to Echo Music!
+Thank you for contributing to Muzi Music!
 
 ---
 <div align="center">

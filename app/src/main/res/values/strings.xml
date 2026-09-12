@@ -443,7 +443,7 @@
     <string name="listen_together_smart_resync">Smart Network Resync</string>
     <string name="listen_together_smart_resync_desc">Automatically catch up with the host after a connection drop</string>
     <string name="spotify_import_title">Import From Spotify</string>
-    <string name="spotify_import_desc">Connect Spotify, choose playlists, and mirror them into local Echo Music playlists.</string>
+    <string name="spotify_import_desc">Connect Spotify, choose playlists, and mirror them into local Muzi playlists.</string>
     <string name="spotify_connect">Connect Spotify</string>
     <string name="spotify_refresh">Refresh Spotify library</string>
     <string name="spotify_select_sources">Select Spotify playlists</string>
@@ -488,7 +488,7 @@
     <string name="recognition_notification_processing">Identifying…</string>
     <string name="recognition_notification_no_match">No match found</string>
     <string name="recognition_notification_failed">Recognition failed</string>
-    <string name="listen_on_echo_music">Listen on Echo Music</string>
+    <string name="listen_on_echo_music">Listen on Muzi</string>
     <string name="qs_tile_music_recognizer">Recognize music</string>
     <string name="listenbrainz_scrobbling">ListenBrainz scrobbling</string>
     <string name="listenbrainz_scrobbling_description">Automatically submit your listened tracks to ListenBrainz</string>
@@ -496,9 +496,9 @@
     <string name="set_listenbrainz_token">Set ListenBrainz Token</string>
 
     <!-- Echo Extractor Settings -->
-    <string name="youtube_decryption_settings">Echo Extractor</string>
+    <string name="youtube_decryption_settings">Muzi Extractor</string>
     <string name="youtube_decryption_desc">Configure extractor settings</string>
-    <string name="youtube_decryption_support">Echo Extractor</string>
+    <string name="youtube_decryption_support">Muzi Extractor</string>
     <string name="youtube_decryption_support_desc">Automatically extracts YouTube playback configurations. Locked to Active.</string>
     <string name="force_update_cipher">Force Update Configurations</string>
     <string name="force_update_cipher_desc">Download the latest extractor override mappings. Limited to 3 updates per day.</string>
@@ -838,20 +838,20 @@
     <string name="listen_together_logs_desc">Manage Connection logs settings</string>
     <string name="listen_together_choose_server_desc">Manage Choose server settings</string>
 
-    <!-- Echo Brain -->
+    <!-- Muzi Brain -->
     <string name="echo_brain_analyzed_artists">Analyzed Artists</string>
     <plurals name="echo_brain_artists_mapped">
         <item quantity="one">%1$d artist mapped</item>
         <item quantity="other">%1$d artists mapped</item>
     </plurals>
-    <string name="echo_brain_beta">Echo Brain (Beta)</string>
+    <string name="echo_brain_beta">Muzi Brain (Beta)</string>
     <string name="echo_brain_data_management">Data Management</string>
     <string name="echo_brain_discovered_genres">Discovered Genres</string>
     <plurals name="echo_brain_distinct_genres_identified">
         <item quantity="one">%1$d distinct genre identified</item>
         <item quantity="other">%1$d distinct genres identified</item>
     </plurals>
-    <string name="echo_brain_enable">Enable Echo Brain</string>
+    <string name="echo_brain_enable">Enable Muzi Brain</string>
     <string name="echo_brain_enable_desc">Automatically add AI recommendations based on your listening habits</string>
     <string name="echo_brain_export_failed">Export failed</string>
     <string name="echo_brain_export_profile">Export Profile</string>

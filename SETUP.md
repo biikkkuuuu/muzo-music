@@ -1,12 +1,12 @@
 # Setup Instructions
 
-This document provides instructions for setting up the Echo Music project for development.
+This document provides instructions for setting up the Muzi Music project for development.
 
 ## Prerequisites
 
 - Android Studio (latest version recommended)
 - Android SDK (API level as specified in `build.gradle.kts`)
-- JDK 21
+- JDK 17 / 21
 - Git
 
 ## Initial Setup
@@ -14,19 +14,13 @@ This document provides instructions for setting up the Echo Music project for de
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/biikkkuuuu/Echo-Music.git
-cd Echo-Music
+git clone https://github.com/biikkkuuuu/muzi-music.git
+cd muzi-music
 ```
 
 ### 2. Configure Local Properties
 
-Create a `local.properties` file from the template:
-
-```bash
-cp local.properties.template local.properties
-```
-
-Edit `local.properties` and set your Android SDK path:
+Create a `local.properties` file:
 
 ```properties
 sdk.dir=/path/to/your/android/sdk
@@ -43,7 +37,7 @@ sdk.dir=/path/to/your/android/sdk
 Firebase is used for analytics and crash reporting. If you want to use these features:
 
 1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
-2. Add an Android app to your Firebase project
+2. Add an Android app with package name `com.biikkkuuuu.muzi` (and `com.biikkkuuuu.muzi.debug` for debug builds)
 3. Download the `google-services.json` file
 4. Place it in the `app/` directory
 
@@ -72,85 +66,32 @@ KEY_PASSWORD=your_key_password
 
 ### 5. Build the Project
 
-Open the project in Android Studio or build from the command line.
-
-Echo Music now ships a single **GMS** build variant (with Google Cast support). The previous FOSS (no Google Play Services) variant has been removed.
+Open the project in Android Studio or build from the command line:
 
 ```bash
-# Debug build
+# Debug build (FOSS)
+./gradlew assembleUniversalFossDebug
+
+# Debug build (GMS - Google Cast support)
 ./gradlew assembleUniversalGmsDebug
 
 # Release build (requires signing configuration)
-./gradlew assembleUniversalGmsRelease
+./gradlew assembleUniversalFossRelease
 ```
 
-*(On Windows, use `.\gradlew.bat` instead of `./gradlew`)*
+*(On Windows PowerShell, use `.\gradlew.bat` instead of `./gradlew`)*
 
 ### 6. Configure AI Translation (Optional)
 
-Echo Music supports AI-powered lyrics translation. You can configure this in **Settings -> AI Settings**.
+Muzi Music supports AI-powered lyrics translation. You can configure this in **Settings -> AI Settings**.
 
-#### Option A: Using OpenRouter (Default)
-
-This is the recommended setup for most users.
+#### Using OpenRouter
 
 1. Get an API Key from [OpenRouter](https://openrouter.ai/).
 2. In the app, go to **Settings -> AI Settings**.
-3. Ensure **Provider** is set to **OpenRouter**.
+3. Set **Provider** to **OpenRouter**.
 4. Enter your **API Key**.
 
-#### Option B: Using Custom Provider
+---
 
-Use this for other services like OpenAI, Anthropic, or local LLMs.
-
-1. In the app, go to **Settings -> AI Settings**.
-2. Select your **Provider** (e.g., ChatGPT, Gemini, or Custom).
-3. If using **Custom**, enter your provider's **Base URL**.
-4. Enter your **API Key**.
-
-## Important Files
-
-### Confidential Files (Never commit these)
-
-- `local.properties` - Contains your local SDK path
-- `app/google-services.json` - Contains Firebase credentials
-- `*.keystore` - Contains signing keys for release builds
-- `gradle.properties` - May contain signing credentials
-
-These files are already listed in `.gitignore` and should never be committed to version control.
-
-### Template Files (Safe to commit)
-
-- `local.properties.template` - Template for local properties
-- `app/google-services.json` - Optional Firebase configuration
-
-## Troubleshooting
-
-### Build Fails with "SDK location not found"
-
-Make sure you've created `local.properties` with the correct SDK path.
-
-### Firebase-related Build Errors
-
-If you're not using Firebase, you can still build the standard debug variant without `app/google-services.json` — Firebase features will simply be disabled:
-
-```bash
-./gradlew assembleUniversalGmsDebug
-```
-
-### Gradle Sync Issues
-
-Try cleaning and rebuilding:
-
-```bash
-./gradlew clean
-./gradlew build
-```
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+Developed by [@biikkkuuuu](https://github.com/biikkkuuuu)

@@ -1,8 +1,8 @@
-# Privacy Policy for Echo Music App
+# Privacy Policy for Muzi Music App
 
 ## Introduction
 
-Echo Music ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application (the "App").
+Muzi Music ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application (the "App").
 
 ## Information We Collect
 
@@ -119,9 +119,9 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 
 If you have any questions about this Privacy Policy or our data practices, please contact us:
 
-- **GitHub**: [https://github.com/biikkkuuuu/Echo-Music](https://github.com/biikkkuuuu/Echo-Music)
-- **Issues**: [https://github.com/biikkkuuuu/Echo-Music/issues](https://github.com/biikkkuuuu/Echo-Music/issues)
-- **Discussions**: [https://github.com/biikkkuuuu/Echo-Music/discussions](https://github.com/biikkkuuuu/Echo-Music/discussions)
+- **GitHub**: [https://github.com/biikkkuuuu/muzi-music](https://github.com/biikkkuuuu/muzi-music)
+- **Issues**: [https://github.com/biikkkuuuu/muzi-music/issues](https://github.com/biikkkuuuu/muzi-music/issues)
+- **Discussions**: [https://github.com/biikkkuuuu/muzi-music/discussions](https://github.com/biikkkuuuu/muzi-music/discussions)
 
 ## Data Protection Compliance
 
@@ -141,5 +141,4 @@ This Privacy Policy complies with:
 
 ---
 
-**By using Echo Music, you agree to the collection and use of information in accordance with this Privacy Policy.**
-
+**By using Muzi Music, you agree to the collection and use of information in accordance with this Privacy Policy.**
