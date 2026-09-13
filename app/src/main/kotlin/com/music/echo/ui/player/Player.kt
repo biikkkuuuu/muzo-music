@@ -2084,6 +2084,41 @@ fun BottomSheetPlayer(
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding)
                     )
                 }
+
+                SliderStyle.WAVEFORM -> {
+                    com.biikkkuuuu.muzi.ui.component.WaveformSlider(
+                        value = (sliderPosition ?: effectivePosition).toFloat(),
+                        valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                        onValueChange = {
+                            if (!isListenTogetherGuest) {
+                                sliderPosition = it.toLong()
+                            }
+                        },
+                        onValueChangeFinished = {
+                            if (!isListenTogetherGuest) {
+                                sliderPosition?.let {
+                                    if (isCasting) {
+                                        castHandler?.seekTo(it)
+                                        lastManualSeekTime = System.currentTimeMillis()
+                                    } else {
+                                        playerConnection.player.seekTo(it)
+                                    }
+                                    position = it
+                                }
+                                sliderPosition = null
+                            }
+                        },
+                        enabled = !isListenTogetherGuest,
+                        colors = PlayerSliderColors.getSliderColors(
+                            activeColor = if (useNewPlayerDesign) textButtonColor else textButtonColor.copy(alpha = 0.7f),
+                            playerBackground = playerBackground,
+                            useDarkTheme = useDarkTheme
+                        ),
+                        isPlaying = effectiveIsPlaying,
+                        seedKey = mediaMetadata?.id,
+                        modifier = Modifier.padding(horizontal = PlayerHorizontalPadding)
+                    )
+                }
             }
             Spacer(Modifier.height(4.dp))
 

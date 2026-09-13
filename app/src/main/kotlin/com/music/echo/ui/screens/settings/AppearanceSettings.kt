@@ -953,6 +953,43 @@ highlightKey: String? = null) {
                 }
             }
 
+            val waveformItem: @Composable (Modifier) -> Unit = { modifier ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = modifier
+                        .height(84.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(
+                            1.dp,
+                            if (sliderStyle == SliderStyle.WAVEFORM) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable {
+                            onSliderStyleChange(SliderStyle.WAVEFORM)
+                            onSquigglySliderChange(false)
+                            showSliderOptionDialog = false
+                        }
+                        .padding(12.dp)
+                ) {
+                    com.biikkkuuuu.muzi.ui.component.WaveformSlider(
+                        value = 0.5f,
+                        valueRange = 0f..1f,
+                        onValueChange = { },
+                        colors = sliderPreviewColors,
+                        modifier = Modifier.weight(1f),
+                        isPlaying = true,
+                        enabled = false
+                    )
+                    Text(
+                        text = "Waveform",
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
             if (isLandscape) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -962,6 +999,7 @@ highlightKey: String? = null) {
                     wavyItem(Modifier.weight(1f))
                     slimItem(Modifier.weight(1f))
                     squigglyItem(Modifier.weight(1f))
+                    waveformItem(Modifier.weight(1f))
                 }
             } else {
                 Column(
@@ -981,6 +1019,13 @@ highlightKey: String? = null) {
                     ) {
                         slimItem(Modifier.weight(1f))
                         squigglyItem(Modifier.weight(1f))
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        waveformItem(Modifier.weight(0.5f))
+                        Spacer(Modifier.weight(0.5f))
                     }
                 }
             }
@@ -1334,6 +1379,7 @@ highlightKey: String? = null) {
                                     R.string.wavy
                                 )
                                 SliderStyle.SLIM -> stringResource(R.string.slim)
+                                SliderStyle.WAVEFORM -> "Waveform"
                             }
                         )
                     },
